@@ -1,0 +1,21 @@
+Subject: [PATCH] server: Preserve signed coordinates in DPI scaling.
+
+Negative coordinates are promoted to unsigned during DPI scaling. Use signed
+64-bit intermediates to preserve the sign and avoid multiplication overflow.
+Found and tested while adapting WeCom 5.0.12 on Linux.
+
+Developed with AI assistance.
+
+diff --git a/server/user.h b/server/user.h
+index f1a1f07..a60055c 100644
+--- a/server/user.h
++++ b/server/user.h
+@@ -234,7 +234,7 @@ static inline int point_in_rect( const struct rectangle *rect, int x, int y )
+ 
+ static inline int scale_dpi( int val, struct ratio dpi_from, struct ratio dpi_to )
+ {
+-    unsigned int num = dpi_to.num * dpi_from.den, den = dpi_from.num * dpi_to.den;
++    __int64 num = (__int64)dpi_to.num * dpi_from.den, den = (__int64)dpi_from.num * dpi_to.den;
+     if (val >= 0) return (val * num + (den / 2)) / den;
+     return (val * num - (den / 2)) / den;
+ }
