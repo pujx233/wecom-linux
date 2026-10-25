@@ -10,7 +10,7 @@
 
 ```sh
 sha256sum -c SHA256SUMS
-sudo apt install ./com.qq.wecom.spark_5.0.12.6018-3~preview20261025_amd64.deb
+sudo apt install ./com.qq.wecom.spark_5.0.12.6018-3.preview20261025_amd64.deb
 ```
 
 在应用菜单启动“企业微信”。首次启动复制未登录模板到 `~/.local/share/wecom/prefix`，需要约 2.6 GB 用户空间；
