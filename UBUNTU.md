@@ -55,3 +55,43 @@ sh ubuntu/wine-x11-fix/build.sh /absolute/wine-11.20.tar.gz /absolute/new-build
 
 原始安装、运行库与字体材料记录保存在 materials/，不是所有文件均可重新分发。
 字体和厂商运行库按原许可使用；完整 Wine 源码和本次修改随包提供。
+
+## 清理缓存后重建
+
+保留源码和最终 DEB 即可重建私有 Wine，不需要保留旧构建目录或已登录 prefix。
+`package.py` 记录原发行时的严格预登录基线检查；该历史基线没有单独分发。
+公开包的未登录模板可直接从最终 DEB 提取，再替换重建的四个 Wine 组件：
+
+```sh
+wecom_rebuild_dir=/absolute/new-rebuild
+mkdir -p "$wecom_rebuild_dir"
+dpkg-deb -R ./com.qq.wecom.spark_5.0.12.6018-3.preview20261025_amd64.deb \
+  "$wecom_rebuild_dir/package"
+cp "$wecom_rebuild_dir/package/usr/share/doc/com.qq.wecom.spark/wine-11.20.tar.gz" \
+  "$wecom_rebuild_dir/wine-11.20.tar.gz"
+docker build -t wecom-wine-sdk ubuntu/wine-x11-fix
+docker run --rm --network none --user "$(id -u):$(id -g)" \
+  -v "$PWD:/adapter:ro" -v "$wecom_rebuild_dir:/work" \
+  wecom-wine-sdk sh /adapter/ubuntu/wine-x11-fix/build.sh \
+  /work/wine-11.20.tar.gz /work/wine-build
+
+wecom_payload="$wecom_rebuild_dir/package/opt/apps/com.qq.wecom.spark/files"
+install -m 755 "$wecom_rebuild_dir/wine-build/build/server/wineserver" \
+  "$wecom_payload/wine/bin/wineserver"
+for component in win32u winex11.drv; do
+  case "$component" in win32u) library=win32u.so ;; *) library=winex11.so ;; esac
+  install -m 755 "$wecom_rebuild_dir/wine-build/build/dlls/$component/$library" \
+    "$wecom_payload/wine/lib/wine/x86_64-unix/$library"
+done
+for destination in wine/lib/wine/x86_64-windows/explorer.exe \
+  template/drive_c/windows/explorer.exe template/drive_c/windows/system32/explorer.exe; do
+  install -m 755 "$wecom_rebuild_dir/wine-build/build-explorer/programs/explorer/x86_64-windows/explorer.exe" \
+    "$wecom_payload/$destination"
+done
+dpkg-deb --root-owner-group -Zxz --build "$wecom_rebuild_dir/package" \
+  "$wecom_rebuild_dir/wecom-rebuilt.deb"
+```
+
+上述命令保留未登录应用模板，只重建 Wine；不同工具链不保证二进制哈希一致。
+若修改源码后再发行，必须同步包内对应补丁、版本、组件哈希及验收记录，不能沿用本发行的通过结论。
+它也不代表从零重现第三方安装器和字体材料的整个安装过程。
