@@ -1,0 +1,188 @@
+[
+  {
+    "filename": "arial.ttf",
+    "source": "assets/fonts/arial.ttf",
+    "sha256": "df49c8c8ef30e534ca3e762b157a79aab775f3eeb229706014b0003a994a9b67",
+    "full_name": "Arial"
+  },
+  {
+    "filename": "arialbd.ttf",
+    "source": "assets/fonts/arialbd.ttf",
+    "sha256": "1b551e2d9396970fcf7a9d0b823f8df87f389b18c51f646a4b40701a39463aec",
+    "full_name": "Arial Bold"
+  },
+  {
+    "filename": "arialbi.ttf",
+    "source": "assets/fonts/arialbi.ttf",
+    "sha256": "e381b167b14c83b499487778a70f523d944445dc37487da3a98c8bc4ede50852",
+    "full_name": "Arial Bold Italic"
+  },
+  {
+    "filename": "ariali.ttf",
+    "source": "assets/fonts/ariali.ttf",
+    "sha256": "a45201fa83c9d4bc0700621609d6609555b76d1b7d868b5f7607c8cd481485b5",
+    "full_name": "Arial Italic"
+  },
+  {
+    "filename": "calibri.ttf",
+    "source": "assets/fonts/calibri.ttf",
+    "sha256": "436cb479a8f9eff517016868323bdfbca1a053bba4cc55c8753859b64d041c5c",
+    "full_name": "Calibri"
+  },
+  {
+    "filename": "calibrib.ttf",
+    "source": "assets/fonts/calibrib.ttf",
+    "sha256": "ce7dd6ba37e7b8dff865b6ce334ef773b9ad86d8a9d495c309ced108856bed54",
+    "full_name": "Calibri Bold"
+  },
+  {
+    "filename": "calibrii.ttf",
+    "source": "assets/fonts/calibrii.ttf",
+    "sha256": "d9f13268dca6e828cb9ed5827dc99d188cf0d7c55349f92802fd6532926bdfbf",
+    "full_name": "Calibri Italic"
+  },
+  {
+    "filename": "calibriz.ttf",
+    "source": "assets/fonts/calibriz.ttf",
+    "sha256": "b5e3f6b9fcdf4b3a89ed182d4ade810d45cfef17f57b4bbc5cd6be1e83de40ab",
+    "full_name": "Calibri Bold Italic"
+  },
+  {
+    "filename": "consola.ttf",
+    "source": "assets/fonts/consola.ttf",
+    "sha256": "45c14a49e0ba2edc00b72afad9a930cad5c1b9a93323b239a8c308efc5a65e8e",
+    "full_name": "Consolas"
+  },
+  {
+    "filename": "consolab.ttf",
+    "source": "assets/fonts/consolab.ttf",
+    "sha256": "5c27a540c51a0e60b2caa4e9f6c9164fde89a9fdc560747bfa1658f6e556cf61",
+    "full_name": "Consolas Bold"
+  },
+  {
+    "filename": "consolai.ttf",
+    "source": "assets/fonts/consolai.ttf",
+    "sha256": "18db132c539323badaf0e1c9ceffa497e1996946a8faac26cc5fbe6fc8233314",
+    "full_name": "Consolas Italic"
+  },
+  {
+    "filename": "consolaz.ttf",
+    "source": "assets/fonts/consolaz.ttf",
+    "sha256": "fc9e9f0b6ae6d068b01e1511e475b508e15799529f53679f1e927f5418040c3f",
+    "full_name": "Consolas Bold Italic"
+  },
+  {
+    "filename": "cour.ttf",
+    "source": "assets/fonts/cour.ttf",
+    "sha256": "6715838c52f813f3821549d3f645db9a768bd6f3a43d8f85a89cb6875a546c61",
+    "full_name": "Courier New"
+  },
+  {
+    "filename": "courbd.ttf",
+    "source": "assets/fonts/courbd.ttf",
+    "sha256": "edf8a7c5bfcac2e1fe507faab417137cbddc9071637ef4648238d0768c921e02",
+    "full_name": "Courier New Bold"
+  },
+  {
+    "filename": "courbi.ttf",
+    "source": "assets/fonts/courbi.ttf",
+    "sha256": "66dbfa20b534fba0e203da140fec7276a45a1069e424b1b9c35547538128bbe8",
+    "full_name": "Courier New Bold Italic"
+  },
+  {
+    "filename": "couri.ttf",
+    "source": "assets/fonts/couri.ttf",
+    "sha256": "f3f6b09855b6700977e214aab5eb9e5be6813976a24f894bd7766e92c732fbe1",
+    "full_name": "Courier New Italic"
+  },
+  {
+    "filename": "micross.ttf",
+    "source": "assets/fonts/micross.ttf",
+    "sha256": "b0bc5a7f8a531339a6ed86742624d179bdc7279c49a9f8a3643234c0d7e9e0f1",
+    "full_name": "Microsoft Sans Serif"
+  },
+  {
+    "filename": "tahoma.ttf",
+    "source": "assets/fonts/tahoma.ttf",
+    "sha256": "8f8c9a611820737a687ab4624d687abb17b474746cb16f6108ef215bf08eb373",
+    "full_name": "Tahoma"
+  },
+  {
+    "filename": "tahomabd.ttf",
+    "source": "assets/fonts/tahomabd.ttf",
+    "sha256": "d5eff0e5e6bed9802f4c61bd1bb153bc981eb1e07c8fa2c2f5a7f723fccfd8b7",
+    "full_name": "Tahoma Bold"
+  },
+  {
+    "filename": "times.ttf",
+    "source": "assets/fonts/times.ttf",
+    "sha256": "3bbe9306646e401914bd337d380ad0e808aa1d0ecde869e3a8097aac48a56a7f",
+    "full_name": "Times New Roman"
+  },
+  {
+    "filename": "timesbd.ttf",
+    "source": "assets/fonts/timesbd.ttf",
+    "sha256": "55b95fc06b6e32ea757fa420163077d8374b8fd8f3be586904203feaa4a19f98",
+    "full_name": "Times New Roman Bold"
+  },
+  {
+    "filename": "timesbi.ttf",
+    "source": "assets/fonts/timesbi.ttf",
+    "sha256": "0ecfc6ee791cdd71f429ec1afb57486a4a32f8c4796567d384357287c92485f2",
+    "full_name": "Times New Roman Bold Italic"
+  },
+  {
+    "filename": "timesi.ttf",
+    "source": "assets/fonts/timesi.ttf",
+    "sha256": "fb28b821d4f2ea8f8c9441210b1c8b4a26f799288f9ee276ed8efbac529219ca",
+    "full_name": "Times New Roman Italic"
+  },
+  {
+    "filename": "verdana.ttf",
+    "source": "assets/fonts/verdana.ttf",
+    "sha256": "c74da119f4e6e9eae27feb637aa1cc6e696929d17d04ff84f93e5aeedee5fd84",
+    "full_name": "Verdana"
+  },
+  {
+    "filename": "verdanab.ttf",
+    "source": "assets/fonts/verdanab.ttf",
+    "sha256": "5839c5f5e550e3b1c7059a11b8be0064ee61bf3eb26dc6aae7f3fd5491533aec",
+    "full_name": "Verdana Bold"
+  },
+  {
+    "filename": "verdanai.ttf",
+    "source": "assets/fonts/verdanai.ttf",
+    "sha256": "1b323c7f64258f7e0a3b97101569af8dd49f09a4c7c08ad3864719a821a7545b",
+    "full_name": "Verdana Italic"
+  },
+  {
+    "filename": "verdanaz.ttf",
+    "source": "assets/fonts/verdanaz.ttf",
+    "sha256": "6f1570e0b419d4afc36959f6429e542ab42ee9d255366cd77e16e50abe9b5386",
+    "full_name": "Verdana Bold Italic"
+  },
+  {
+    "filename": "SourceHanSansCN-Regular.otf",
+    "source": "assets/fonts/SourceHanSansCN-Regular.otf",
+    "sha256": "e2bc8a2e7f37474b774fff8db758681ece40bb6947a90d571bce9dd60671a8e4",
+    "full_name": "Source Han Sans CN"
+  },
+  {
+    "filename": "SourceHanSansCN-Bold.otf",
+    "source": "assets/fonts/SourceHanSansCN-Bold.otf",
+    "sha256": "62383707c086a32f3afd5e293f34c7eff64c7fea31f579fdc6cbe34d920519a6",
+    "full_name": "Source Han Sans CN Bold"
+  },
+  {
+    "filename": "SourceHanSerifCN-Regular.otf",
+    "source": "assets/fonts/SourceHanSerifCN-Regular.otf",
+    "sha256": "3754ea669c530e2473354f8f6d9f79680a44d7e26ec7d00eeabee4a7e0753c5d",
+    "full_name": "Source Han Serif CN"
+  },
+  {
+    "filename": "SourceHanSerifCN-Bold.otf",
+    "source": "assets/fonts/SourceHanSerifCN-Bold.otf",
+    "sha256": "4ee555ae58b3d22f6a95c2c494f2c36b7cccfc1d2224635f6461a03756f0e3c1",
+    "full_name": "Source Han Serif CN Bold"
+  }
+]

@@ -1,0 +1,3793 @@
+--- a/dlls/win32u/dce.c
++++ b/dlls/win32u/dce.c
+@@ -33,6 +33,7 @@
+ #include "wine/debug.h"
+ 
+ WINE_DEFAULT_DEBUG_CHANNEL(win);
++WINE_DECLARE_DEBUG_CHANNEL(paint);
+ 
+ struct dce
+ {
+@@ -613,6 +614,59 @@
+     pthread_mutex_unlock( &surface->mutex );
+ }
+ 
++static void trace_surface_pixels( struct window_surface *surface, const RECT *dirty,
++                                  const BITMAPINFO *info, const void *bits )
++{
++    const BITMAPINFOHEADER *header = &info->bmiHeader;
++    const DWORD *masks = (const DWORD *)info->bmiColors;
++    UINT height, stride, cols, rows, x, y, nonwhite = 0, nonblack = 0;
++    ULONGLONG hash = 0xcbf29ce484222325ull;
++    DWORD rgb_mask = 0x00ffffff;
++    RECT rect;
++
++    if (header->biSize != sizeof(*header) || header->biPlanes != 1 || header->biBitCount != 32 ||
++        (header->biCompression != BI_RGB && header->biCompression != BI_BITFIELDS) ||
++        header->biWidth <= 0 || !header->biHeight || header->biHeight == (-2147483647 - 1)) return;
++    height = header->biHeight < 0 ? -header->biHeight : header->biHeight;
++    if (!header->biSizeImage || header->biSizeImage % height) return;
++    stride = header->biSizeImage / height;
++    if ((ULONGLONG)header->biWidth * 4 > stride) return;
++    if (header->biCompression == BI_BITFIELDS)
++    {
++        if (!masks[0] || !masks[1] || !masks[2] ||
++            (masks[0] & masks[1]) || (masks[0] & masks[2]) || (masks[1] & masks[2])) return;
++        rgb_mask = masks[0] | masks[1] | masks[2];
++    }
++    SetRect( &rect, 0, 0, min(header->biWidth, surface->rect.right - surface->rect.left),
++             min(height, surface->rect.bottom - surface->rect.top) );
++    if (!intersect_rect( &rect, &rect, dirty )) return;
++    cols = min(32, rect.right - rect.left);
++    rows = min(32, rect.bottom - rect.top);
++    for (y = 0; y < rows; y++)
++    {
++        UINT row = rect.top + (ULONGLONG)(2 * y + 1) * (rect.bottom - rect.top) / (2 * rows);
++        const BYTE *line;
++
++        if (header->biHeight > 0) row = height - 1 - row;
++        line = (const BYTE *)bits + (SIZE_T)row * stride;
++        for (x = 0; x < cols; x++)
++        {
++            UINT col = rect.left + (ULONGLONG)(2 * x + 1) * (rect.right - rect.left) / (2 * cols);
++            DWORD pixel;
++            UINT i;
++
++            memcpy( &pixel, line + (SIZE_T)col * 4, sizeof(pixel) );
++            pixel &= rgb_mask;
++            nonwhite += pixel != rgb_mask;
++            nonblack += pixel != 0;
++            for (i = 0; i < 4; i++) hash = (hash ^ ((pixel >> (8 * i)) & 0xff)) * 0x100000001b3ull;
++        }
++    }
++    TRACE_(paint)( "surface-samples hwnd %p dirty %s sample %s count %u nonwhite %u nonblack %u hash %016llx\n",
++                   surface->hwnd, wine_dbgstr_rect(dirty), wine_dbgstr_rect(&rect), cols * rows,
++                   nonwhite, nonblack, (unsigned long long)hash );
++}
++
+ void window_surface_flush( struct window_surface *surface )
+ {
+     char color_buf[FIELD_OFFSET( BITMAPINFO, bmiColors[256] )];
+@@ -637,6 +691,9 @@
+         BOOL shape_changed = update_surface_shape( surface, &surface->rect, &dirty, color_info, color_bits );
+         void *shape_bits = window_surface_get_shape( surface, shape_info );
+ 
++        TRACE_(paint)( "surface-flush hwnd %p surface %p caller %p dirty %s\n", surface->hwnd, surface,
++                       __builtin_return_address(0), wine_dbgstr_rect(&dirty) );
++        if (TRACE_ON(paint)) trace_surface_pixels( surface, &dirty, color_info, color_bits );
+         TRACE( "Flushing hwnd %p, surface %p %s, bounds %s, dirty %s\n", surface->hwnd, surface,
+                wine_dbgstr_rect( &surface->rect ), wine_dbgstr_rect( &surface->bounds ), wine_dbgstr_rect( &dirty ) );
+ 
+@@ -759,6 +816,7 @@
+     DWORD now;
+     struct window_surface *surface;
+ 
++    TRACE_(paint)( "scheduler-flush idle %u caller %p\n", idle, __builtin_return_address(0) );
+     pthread_mutex_lock( &surfaces_lock );
+     now = NtGetTickCount();
+     if (idle) last_idle = now;
+@@ -1228,10 +1286,11 @@
+ /***********************************************************************
+  *           release_dc
+  */
+-static INT release_dc( HWND hwnd, HDC hdc, BOOL end_paint )
++INT release_dc( HWND hwnd, HDC hdc, BOOL end_paint, BOOL present )
+ {
+     struct list drawables = LIST_INIT( drawables );
+     struct dce *dce;
++    struct window_surface *surface = NULL;
+     BOOL ret = FALSE;
+ 
+     TRACE( "%p %p\n", hwnd, hdc );
+@@ -1240,6 +1299,7 @@
+     dce = get_dc_dce( hdc );
+     if (dce && dce->count && dce->hwnd)
+     {
++        surface = dibdrv_get_dirty_surface( hdc );
+         if (!(dce->flags & DCX_NORESETATTRS)) set_dce_flags( dce->hdc, DCHF_RESETDC );
+         if (end_paint || (dce->flags & DCX_CACHE)) delete_clip_rgn( dce );
+         if (dce->flags & DCX_CACHE)
+@@ -1253,6 +1313,11 @@
+     user_unlock();
+ 
+     release_opengl_drawables( &drawables );
++    if (surface)
++    {
++        if (present) complete_surface_paint( surface->hwnd, WINE_SURFACE_END_DC, surface );
++        window_surface_release( surface );
++    }
+     return ret;
+ }
+ 
+@@ -1391,7 +1456,8 @@
+     dce->flags = (dce->flags & ~user_flags) | (flags & user_flags);
+ 
+     /* cross-process invalidation is not supported yet, so always update the vis rgn */
+-    if (!is_current_process_window( hwnd )) update_vis_rgn = TRUE;
++    if (!is_current_process_window( hwnd ) ||
++        !is_current_process_window( NtUserGetAncestor( hwnd, GA_ROOT ) )) update_vis_rgn = TRUE;
+ 
+     if (set_dce_flags( dce->hdc, DCHF_VALIDATEVISRGN )) update_vis_rgn = TRUE;  /* DC was dirty */
+ 
+@@ -1407,7 +1473,7 @@
+  */
+ INT WINAPI NtUserReleaseDC( HWND hwnd, HDC hdc )
+ {
+-    return release_dc( hwnd, hdc, FALSE );
++    return release_dc( hwnd, hdc, FALSE, TRUE );
+ }
+ 
+ /***********************************************************************
+@@ -1635,7 +1701,7 @@
+                 if (type != NULLREGION)
+                     need_erase = !send_message( hwnd, WM_ERASEBKGND, (WPARAM)hdc, 0 );
+             }
+-            if (!hdc_ret) release_dc( hwnd, hdc, TRUE );
++            if (!hdc_ret) release_dc( hwnd, hdc, TRUE, FALSE );
+         }
+ 
+         if (hdc_ret) *hdc_ret = hdc;
+@@ -1666,7 +1732,7 @@
+ 
+         NtGdiStretchBlt( hdc, dst.left, dst.top, dst.right - dst.left, dst.bottom - dst.top,
+                          hdc, src.left, src.top, src.right - src.left, src.bottom - src.top, SRCCOPY, 0 );
+-        NtUserReleaseDC( hwnd, hdc );
++        release_dc( hwnd, hdc, TRUE, FALSE );
+     }
+ }
+ 
+@@ -1700,9 +1766,42 @@
+                                     0, old_surface->rect.bottom - old_surface->rect.top,
+                                     bits, info, DIB_RGB_COLORS, 0, 0, FALSE, NULL );
+     window_surface_unlock( old_surface );
+-    NtUserReleaseDC( hwnd, hdc );
+-}
+-
++    release_dc( hwnd, hdc, TRUE, FALSE );
++}
++
++
++void complete_surface_paint( HWND hwnd, UINT action, struct window_surface *surface )
++{
++    struct window_surface *driver_surface = NULL;
++    WND *win;
++    LRESULT serial;
++
++    if (surface)
++    {
++        struct ratio monitor_dpi;
++        BOOL current = FALSE;
++
++        if ((win = get_win_ptr( hwnd )) && win != WND_DESKTOP && win != WND_OTHER_PROCESS)
++        {
++            current = win->surface == surface;
++            release_win_ptr( win );
++        }
++        if (!current) return;
++        get_win_monitor_dpi( hwnd, &monitor_dpi );
++        driver_surface = get_driver_window_surface( surface, monitor_dpi );
++    }
++    if (!(serial = user_driver->pWindowMessage( hwnd, WM_WINE_SURFACE_PAINT, action, (LPARAM)driver_surface ))) return;
++    if (surface) window_surface_add_ref( surface );
++    else if ((win = get_win_ptr( hwnd )) && win != WND_DESKTOP && win != WND_OTHER_PROCESS)
++    {
++        if ((surface = win->surface)) window_surface_add_ref( surface );
++        release_win_ptr( win );
++    }
++    if (!surface) return;
++    window_surface_flush( surface );
++    window_surface_release( surface );
++    if (serial != -1) user_driver->pWindowMessage( hwnd, WM_WINE_SURFACE_PAINT, WINE_SURFACE_COMMIT, serial );
++}
+ 
+ /***********************************************************************
+  *           NtUserBeginPaint (win32u.@)
+@@ -1715,9 +1814,16 @@
+     RECT rect;
+     UINT flags = UPDATE_NONCLIENT | UPDATE_ERASE | UPDATE_PAINT | UPDATE_INTERNALPAINT | UPDATE_NOCHILDREN;
+ 
++    TRACE_(paint)( "begin-entry hwnd %p\n", hwnd );
++    user_driver->pWindowMessage( hwnd, WM_WINE_SURFACE_PAINT, WINE_SURFACE_BEGIN_PAINT, 0 );
+     NtUserHideCaret( hwnd );
+ 
+-    if (!(hrgn = send_ncpaint( hwnd, NULL, &flags ))) return 0;
++    if (!(hrgn = send_ncpaint( hwnd, NULL, &flags )))
++    {
++        user_driver->pWindowMessage( hwnd, WM_WINE_SURFACE_PAINT, WINE_SURFACE_ABORT_PAINT, 0 );
++        TRACE_(paint)( "begin-failed hwnd %p\n", hwnd );
++        return 0;
++    }
+ 
+     erase = send_erase( hwnd, flags, hrgn, &rect, &hdc );
+ 
+@@ -1725,12 +1831,16 @@
+ 
+     if (!ps)
+     {
+-        release_dc( hwnd, hdc, TRUE );
++        release_dc( hwnd, hdc, TRUE, FALSE );
++        user_driver->pWindowMessage( hwnd, WM_WINE_SURFACE_PAINT, WINE_SURFACE_ABORT_PAINT, 0 );
++        TRACE_(paint)( "begin-failed hwnd %p null-ps\n", hwnd );
+         return 0;
+     }
+     ps->fErase = erase;
+     ps->rcPaint = rect;
+     ps->hdc = hdc;
++    if (!hdc) user_driver->pWindowMessage( hwnd, WM_WINE_SURFACE_PAINT, WINE_SURFACE_ABORT_PAINT, 0 );
++    TRACE_(paint)( "begin-return hwnd %p hdc %p erase %u\n", hwnd, hdc, erase );
+     return hdc;
+ }
+ 
+@@ -1739,10 +1849,17 @@
+  */
+ BOOL WINAPI NtUserEndPaint( HWND hwnd, const PAINTSTRUCT *ps )
+ {
++    TRACE_(paint)( "end-entry hwnd %p hdc %p\n", hwnd, ps ? ps->hdc : NULL );
+     NtUserShowCaret( hwnd );
+     flush_window_surfaces( FALSE );
+-    if (!ps) return FALSE;
+-    release_dc( hwnd, ps->hdc, TRUE );
++    if (!ps)
++    {
++        TRACE_(paint)( "end-failed hwnd %p null-ps\n", hwnd );
++        return FALSE;
++    }
++    release_dc( hwnd, ps->hdc, TRUE, FALSE );
++    complete_surface_paint( hwnd, WINE_SURFACE_END_PAINT, NULL );
++    TRACE_(paint)( "end-exit hwnd %p hdc %p\n", hwnd, ps->hdc );
+     return TRUE;
+ }
+ 
+@@ -1860,6 +1977,8 @@
+ 
+     if (flags & RDW_UPDATENOW) update_now( hwnd, flags );
+     else if (flags & RDW_ERASENOW) erase_now( hwnd, flags );
++    if (ret && (flags & RDW_VALIDATE) && !NtUserGetUpdateRect( hwnd, NULL, FALSE ))
++        complete_surface_paint( hwnd, WINE_SURFACE_VALIDATE, NULL );
+ 
+     return ret;
+ }
+--- a/dlls/win32u/dibdrv/dc.c
++++ b/dlls/win32u/dibdrv/dc.c
+@@ -317,6 +317,7 @@
+     if (IsRectEmpty( &rc )) return;
+     OffsetRect( &rc, dev->dib.rect.left, dev->dib.rect.top );
+     add_bounds_rect( dev->bounds, &rc );
++    dev->draw_serial++;
+ }
+ 
+ /**********************************************************************
+@@ -504,6 +505,8 @@
+     struct dibdrv_physdev *dibdrv;
+     struct window_surface *surface;
+     UINT lock_count;
++    UINT draw_serial;
++    BOOL drawn;
+ };
+ 
+ static const struct gdi_dc_funcs window_driver;
+@@ -521,6 +524,7 @@
+     if (!dev->lock_count++)
+     {
+         window_surface_lock( surface );
++        dev->draw_serial = dev->dibdrv->draw_serial;
+         if (IsRectEmpty( dev->dibdrv->bounds ) || !surface->draw_start_ticks)
+             surface->draw_start_ticks = NtGetTickCount();
+     }
+@@ -533,6 +537,9 @@
+     if (!--dev->lock_count)
+     {
+         DWORD ticks = NtGetTickCount() - surface->draw_start_ticks;
++        BOOL drawn = dev->draw_serial != dev->dibdrv->draw_serial;
++
++        dev->drawn |= drawn;
+         window_surface_unlock( surface );
+         if (ticks > FLUSH_PERIOD) window_surface_flush( dev->surface );
+     }
+@@ -555,6 +562,28 @@
+ static void unlock_windrv_bits( struct gdi_image_bits *bits )
+ {
+     unlock_surface( bits->param );
++}
++
++struct window_surface *dibdrv_get_dirty_surface( HDC hdc )
++{
++    struct window_surface *surface = NULL;
++    struct windrv_physdev *physdev;
++    DC *dc = get_dc_ptr( hdc );
++    PHYSDEV dev;
++
++    if (!dc) return NULL;
++    if ((dev = find_dc_driver( dc, &window_driver )))
++    {
++        physdev = get_windrv_physdev( dev );
++        if (physdev->drawn)
++        {
++            surface = physdev->surface;
++            window_surface_add_ref( surface );
++            physdev->drawn = FALSE;
++        }
++    }
++    release_dc_ptr( dc );
++    return surface;
+ }
+ 
+ void dibdrv_set_window_surface( DC *dc, struct window_surface *surface )
+@@ -579,6 +608,7 @@
+         }
+ 
+         physdev = get_windrv_physdev( windev );
++        if (physdev->surface != surface) physdev->drawn = FALSE;
+         window_surface_add_ref( surface );
+         if (physdev->surface) window_surface_release( physdev->surface );
+         physdev->surface = surface;
+--- a/dlls/win32u/dibdrv/dibdrv.h
++++ b/dlls/win32u/dibdrv/dibdrv.h
+@@ -110,6 +110,7 @@
+     dash_pos dash_pos;
+     rop_mask dash_masks[2];
+     BOOL   (* pen_lines)(struct dibdrv_physdev *pdev, int num, POINT *pts, BOOL close, HRGN region);
++    UINT draw_serial;
+ } dibdrv_physdev;
+ 
+ extern BOOL     dibdrv_AlphaBlend( PHYSDEV dst_dev, struct bitblt_coords *dst,
+--- a/dlls/win32u/input.c
++++ b/dlls/win32u/input.c
+@@ -39,6 +39,7 @@
+ 
+ WINE_DEFAULT_DEBUG_CHANNEL(win);
+ WINE_DECLARE_DEBUG_CHANNEL(keyboard);
++WINE_DECLARE_DEBUG_CHANNEL(cursor);
+ 
+ #define HIMETRIC_PER_INCH 2540
+ 
+@@ -830,6 +831,7 @@
+         }
+     }
+     SERVER_END_REQ;
++    if (ret) get_user_thread_info()->mouse_input_generation++;
+     if (ret && (prev_x != new_x || prev_y != new_y)) user_driver->pSetCursorPos( new_x, new_y );
+     return ret;
+ }
+@@ -839,6 +841,8 @@
+  */
+ BOOL WINAPI NtUserGetCursorPos( POINT *pt )
+ {
++    struct user_thread_info *thread_info = get_user_thread_info();
++    struct notify_icon_cursor_context *context = thread_info->notify_icon_cursor;
+     struct object_lock lock = OBJECT_LOCK_INIT;
+     const desktop_shm_t *desktop_shm;
+     BOOL ret = TRUE;
+@@ -847,6 +851,13 @@
+     RECT rect;
+ 
+     if (!pt) return FALSE;
++    if (context && context->generation == thread_info->mouse_input_generation)
++    {
++        *pt = context->point;
++        TRACE_(cursor)( "tray cursor scope hit point %s generation %s\n",
++                        wine_dbgstr_point(pt), wine_dbgstr_longlong(context->generation) );
++        goto map_point;
++    }
+ 
+     while ((status = get_shared_desktop( &lock, &desktop_shm )) == STATUS_PENDING)
+     {
+@@ -860,6 +871,7 @@
+     if (NtGetTickCount() - last_change > 100) ret = user_driver->pGetCursorPos( pt );
+     if (!ret) return FALSE;
+ 
++map_point:
+     SetRect( &rect, pt->x, pt->y, pt->x, pt->y );
+     rect = map_rect_raw_to_virt( rect, get_thread_dpi() );
+     *pt = *(POINT *)&rect.left;
+@@ -2395,7 +2407,7 @@
+         NtGdiSelectBitmap( mem_dc, prev_bitmap );
+         NtGdiDeleteObjectApp( mem_dc );
+     }
+-    NtUserReleaseDC( hwnd, dc );
++    release_dc( hwnd, dc, FALSE, FALSE );
+ }
+ 
+ static unsigned int get_caret_registry_timeout(void)
+--- a/dlls/win32u/message.c
++++ b/dlls/win32u/message.c
+@@ -40,6 +40,8 @@
+ WINE_DEFAULT_DEBUG_CHANNEL(msg);
+ WINE_DECLARE_DEBUG_CHANNEL(key);
+ WINE_DECLARE_DEBUG_CHANNEL(relay);
++WINE_DECLARE_DEBUG_CHANNEL(systray);
++WINE_DECLARE_DEBUG_CHANNEL(cursor);
+ 
+ #define QS_DRIVER       0x80000000
+ #define QS_HARDWARE     0x40000000
+@@ -891,6 +893,9 @@
+         memcpy( *buffer, &mcs, sizeof(mcs) );
+         break;
+     }
++    case WM_WINE_NOTIFYICON:
++        minsize = sizeof(struct wine_notify_icon_params);
++        break;
+     case WM_WINE_SETWINDOWPOS:
+     {
+         WINDOWPOS wp;
+@@ -1088,6 +1093,9 @@
+         push_data( data, &data->ps.cis, sizeof(data->ps.cis) );
+         return 0;
+     }
++    case WM_WINE_NOTIFYICON:
++        push_data( data, (const void *)lparam, sizeof(struct wine_notify_icon_params) );
++        return 0;
+     case WM_WINE_SETWINDOWPOS:
+     case WM_WINDOWPOSCHANGING:
+     case WM_WINDOWPOSCHANGED:
+@@ -2188,7 +2196,7 @@
+         return destroy_window( hwnd );
+     case WM_WINE_SETWINDOWPOS:
+         if (is_desktop_window( hwnd )) return 0;
+-        return set_window_pos( (WINDOWPOS *)lparam, 0, 0 );
++        return set_window_pos( (WINDOWPOS *)lparam, 0, 0, FALSE );
+     case WM_WINE_SHOWWINDOW:
+         if (is_desktop_window( hwnd )) return 0;
+         return NtUserShowWindow( hwnd, wparam );
+@@ -2268,6 +2276,29 @@
+     case WM_WINE_SETPIXELFORMAT:
+         set_window_pixel_format( hwnd, wparam, lparam );
+         return 0;
++    case WM_WINE_NOTIFYICON:
++    {
++        const struct wine_notify_icon_params *params = (const void *)lparam;
++        struct user_thread_info *thread_info = get_user_thread_info();
++        struct notify_icon_cursor_context context;
++        LRESULT result;
++
++        if (!is_current_thread_window( hwnd ) || !params->callback_message ||
++            (params->callback_message & 0x80000000)) return 0;
++        context.prev = thread_info->notify_icon_cursor;
++        context.point = params->point;
++        context.generation = thread_info->mouse_input_generation;
++        thread_info->notify_icon_cursor = &context;
++        TRACE_(systray)( "tray callback enter hwnd %p msg %x wp %x lp %x point %s generation %s\n",
++                         hwnd, params->callback_message, params->wparam, params->lparam,
++                         wine_dbgstr_point(&context.point), wine_dbgstr_longlong(context.generation) );
++        result = send_message( hwnd, params->callback_message, params->wparam, params->lparam );
++        thread_info->notify_icon_cursor = context.prev;
++        TRACE_(systray)( "tray callback exit hwnd %p msg %x generation %s current %s\n",
++                         hwnd, params->callback_message, wine_dbgstr_longlong(context.generation),
++                         wine_dbgstr_longlong(thread_info->mouse_input_generation) );
++        return result;
++    }
+     case WM_WINE_TRACKMOUSEEVENT:
+     {
+         TRACKMOUSEEVENT info;
+@@ -2882,6 +2913,15 @@
+     BOOL ret = FALSE;
+ 
+     if (!thread_info->client_info) return FALSE;
++    if (msg_data->source.device == IMDT_MOUSE ||
++        (msg->message >= WM_POINTERUPDATE && msg->message <= WM_POINTERLEAVE))
++    {
++        thread_info->mouse_input_generation++;
++        if (thread_info->notify_icon_cursor)
++            TRACE_(cursor)( "tray cursor invalidated by hardware msg %x device %u generation %s\n",
++                            msg->message, msg_data->source.device,
++                            wine_dbgstr_longlong(thread_info->mouse_input_generation) );
++    }
+     prev_source = thread_info->client_info->msg_source;
+     thread_info->client_info->msg_source.deviceType = msg_data->source.device;
+     thread_info->client_info->msg_source.originId   = msg_data->source.origin;
+@@ -2903,7 +2943,10 @@
+     else if (msg->message == WM_WINE_CLIPCURSOR)
+         process_wine_clipcursor( msg->hwnd, msg->wParam, msg->lParam );
+     else if (msg->message == WM_WINE_SETCURSOR)
++    {
+         process_wine_setcursor( msg->hwnd, (HWND)msg->wParam, (HCURSOR)msg->lParam );
++        accept_hardware_message( hw_id );
++    }
+     else
+         ERR( "unknown message type %x\n", msg->message );
+     set_thread_dpi_awareness_context( context );
+@@ -3346,6 +3389,7 @@
+     BOOL drained = FALSE;
+ 
+     if (check_internal_bits( QS_DRIVER )) drained = user_driver->pProcessEvents( events_mask );
++    else user_driver->pProcessEvents( 0 ); /* flush output even without new driver events */
+ 
+     if (drained || !check_queue_masks( wake_mask, changed_mask ))
+     {
+--- a/dlls/win32u/ntgdi_private.h
++++ b/dlls/win32u/ntgdi_private.h
+@@ -223,6 +223,8 @@
+ extern UINT set_dib_dc_color_table( HDC hdc, UINT startpos, UINT entries,
+                                     const RGBQUAD *colors );
+ extern void dibdrv_set_window_surface( DC *dc, struct window_surface *surface );
++extern struct window_surface *dibdrv_get_dirty_surface( HDC hdc );
++extern void complete_surface_paint( HWND hwnd, UINT action, struct window_surface *surface );
+ 
+ /* driver.c */
+ extern const struct gdi_dc_funcs null_driver;
+--- a/dlls/win32u/ntuser_private.h
++++ b/dlls/win32u/ntuser_private.h
+@@ -100,6 +100,13 @@
+     POINT last_mouse_message_pos;
+ };
+ 
++struct notify_icon_cursor_context
++{
++    struct notify_icon_cursor_context *prev;
++    POINT point;
++    ULONGLONG generation;
++};
++
+ /* internal per-thread data */
+ struct user_thread_info
+ {
+@@ -114,6 +121,8 @@
+     WORD                          hook_unicode;           /* Is current hook unicode? */
+     HHOOK                         hook;                   /* Current hook */
+     struct received_message_info *receive_info;           /* Message being currently received */
++    struct notify_icon_cursor_context *notify_icon_cursor; /* current tray callback cursor scope */
++    ULONGLONG                     mouse_input_generation; /* invalidates nested tray cursor scopes */
+     UINT                          message_time;           /* value for GetMessageTime */
+     UINT                          message_pos;            /* value for GetMessagePos */
+     LPARAM                        message_extra;          /* value for GetMessageExtraInfo */
+--- a/dlls/win32u/win32u_private.h
++++ b/dlls/win32u/win32u_private.h
+@@ -321,7 +321,7 @@
+ extern LONG_PTR set_window_long( HWND hwnd, INT offset, UINT size, LONG_PTR newval,
+                                  BOOL ansi );
+ extern void set_window_normal_placement( HWND hwnd, RECT rect );
+-extern BOOL set_window_pos( WINDOWPOS *winpos, int parent_x, int parent_y );
++extern BOOL set_window_pos( WINDOWPOS *winpos, int parent_x, int parent_y, BOOL keep_z_order );
+ extern UINT set_window_style_bits( HWND hwnd, UINT set_bits, UINT clear_bits );
+ extern void update_window_state( HWND hwnd );
+ extern HWND window_from_point( HWND hwnd, POINT pt, INT *hittest, BOOL send_nchittest );
+@@ -480,4 +480,6 @@
+     return wine_dbg_sprintf( "%d:%d", q.num, q.den );
+ }
+ 
++extern INT release_dc( HWND hwnd, HDC hdc, BOOL end_paint, BOOL present );
++
+ #endif /* __WINE_WIN32U_PRIVATE */
+--- a/dlls/win32u/window.c
++++ b/dlls/win32u/window.c
+@@ -803,7 +803,7 @@
+     winpos.flags = SWP_NOSIZE;
+ 
+     set_window_pos( &winpos, new_screen_rect.left - old_screen_rect.left,
+-                    new_screen_rect.top - old_screen_rect.top );
++                    new_screen_rect.top - old_screen_rect.top, FALSE );
+ 
+     if (was_visible) NtUserShowWindow( hwnd, SW_SHOW );
+ 
+@@ -4099,13 +4099,14 @@
+ }
+ 
+ /* NtUserSetWindowPos implementation */
+-BOOL set_window_pos( WINDOWPOS *winpos, int parent_x, int parent_y )
++BOOL set_window_pos( WINDOWPOS *winpos, int parent_x, int parent_y, BOOL keep_z_order )
+ {
+     RECT valid_rects[2], surface_rect;
+     struct window_surface *surface;
+     struct window_rects old_rects, new_rects;
+     UINT orig_flags, context;
+     BOOL ret = FALSE;
++    HWND owner = keep_z_order ? get_window_relative( winpos->hwnd, GW_OWNER ) : 0;
+ 
+     orig_flags = winpos->flags;
+ 
+@@ -4154,6 +4155,12 @@
+ 
+     /* Fix redundant flags */
+     if (!fixup_swp_flags( winpos, &old_rects.window, parent_x, parent_y )) goto done;
++
++    if (owner && winpos->hwndInsertAfter == HWND_TOP && (winpos->flags & SWP_NOACTIVATE) &&
++        (get_window_long( winpos->hwnd, GWL_STYLE ) & WS_VISIBLE) &&
++        (get_window_long( winpos->hwnd, GWL_EXSTYLE ) & (WS_EX_LAYERED | WS_EX_TRANSPARENT)) ==
++        (WS_EX_LAYERED | WS_EX_TRANSPARENT) && get_window_relative( winpos->hwnd, GW_OWNER ) == owner)
++        winpos->flags |= SWP_NOZORDER;
+ 
+     if((winpos->flags & (SWP_NOZORDER | SWP_HIDEWINDOW | SWP_SHOWWINDOW)) != SWP_NOZORDER)
+     {
+@@ -4270,7 +4277,7 @@
+     map_dpi_winpos( &winpos );
+ 
+     if (is_current_thread_window( hwnd ))
+-        return set_window_pos( &winpos, 0, 0 );
++        return set_window_pos( &winpos, 0, 0, FALSE );
+ 
+     if (flags & SWP_ASYNCWINDOWPOS)
+         return NtUserMessageCall( winpos.hwnd, WM_WINE_SETWINDOWPOS, 0, (LPARAM)&winpos,
+@@ -4431,7 +4438,7 @@
+                winpos->cx, winpos->cy, winpos->flags );
+ 
+         if (is_current_thread_window( winpos->hwnd ))
+-            set_window_pos( winpos, 0, 0 );
++            set_window_pos( winpos, 0, 0, FALSE );
+         else
+             send_message( winpos->hwnd, WM_WINE_SETWINDOWPOS, 0, (LPARAM)winpos );
+     }
+@@ -5089,8 +5096,24 @@
+         else set_window_style_bits( hwnd, 0, WS_VISIBLE );
+     }
+     else
+-        NtUserSetWindowPos( hwnd, HWND_TOP, newPos.left, newPos.top,
+-                            newPos.right - newPos.left, newPos.bottom - newPos.top, swp );
++    {
++        const char *profile = cmd == SW_SHOWNA && was_visible ? getenv( "WINE_WECOM_SHADOW_STACK" ) : NULL;
++        DWORD ex_style = get_window_long( hwnd, GWL_EXSTYLE );
++
++        if (profile && !strcmp( profile, "1" ) && (get_window_long( hwnd, GWL_STYLE ) & WS_VISIBLE) &&
++            (ex_style & (WS_EX_LAYERED | WS_EX_TRANSPARENT)) == (WS_EX_LAYERED | WS_EX_TRANSPARENT) &&
++            get_window_relative( hwnd, GW_OWNER ))
++        {
++            /* Preserve ShowWindow notifications; only the internal Z update is suppressed by this app profile. */
++            WINDOWPOS winpos = {hwnd, HWND_TOP, newPos.left, newPos.top,
++                               newPos.right - newPos.left, newPos.bottom - newPos.top, swp};
++            map_dpi_winpos( &winpos );
++            set_window_pos( &winpos, 0, 0, TRUE );
++        }
++        else
++            NtUserSetWindowPos( hwnd, HWND_TOP, newPos.left, newPos.top,
++                                newPos.right - newPos.left, newPos.bottom - newPos.top, swp );
++    }
+ 
+     new_style = get_window_long( hwnd, GWL_STYLE );
+     if (((style ^ new_style) & WS_MINIMIZE) != 0)
+@@ -5148,8 +5171,8 @@
+     }
+     else release_win_ptr( win );
+ 
+-    /* if previous state was minimized Windows sets focus to the window */
+-    if (style & WS_MINIMIZE)
++    /* Restore focus unless the window is being shown without activation. */
++    if ((style & WS_MINIMIZE) && !(swp & SWP_NOACTIVATE))
+     {
+         NtUserSetFocus( hwnd );
+         /* Send a WM_ACTIVATE message for a top level window, even if the window is already active */
+--- a/dlls/winemac.drv/window.c
++++ b/dlls/winemac.drv/window.c
+@@ -1537,6 +1537,8 @@
+ 
+     switch(msg)
+     {
++    case WM_WINE_SURFACE_PAINT:
++        return 0;
+     case WM_MACDRV_SET_WIN_REGION:
+         if ((data = get_win_data(hwnd)))
+         {
+--- a/dlls/winewayland.drv/window.c
++++ b/dlls/winewayland.drv/window.c
+@@ -617,6 +617,8 @@
+ {
+     switch (msg)
+     {
++    case WM_WINE_SURFACE_PAINT:
++        return 0;
+     case WM_WAYLAND_INIT_DISPLAY_DEVICES:
+         NtUserCallNoParam(NtUserCallNoParam_DisplayModeChanged);
+         return 0;
+--- a/dlls/winex11.drv/Makefile.in
++++ b/dlls/winex11.drv/Makefile.in
+@@ -1,6 +1,6 @@
+ MODULE    = winex11.drv
+ UNIXLIB   = winex11.so
+-UNIX_CFLAGS  = $(X_CFLAGS) $(XKBREGISTRY_CFLAGS)
++UNIX_CFLAGS  = $(X_CFLAGS) $(XKBREGISTRY_CFLAGS) $(DBUS_CFLAGS)
+ UNIX_LIBS    = -lwin32u $(X_LIBS) $(PTHREAD_LIBS) -lm
+ 
+ VER_FILEDESCRIPTION_STR = "Wine X11 driver"
+@@ -20,6 +20,9 @@
+ 	opengl.c \
+ 	palette.c \
+ 	pen.c \
++	sni_event.c \
++	sni_dbus.c \
++	systray.c \
+ 	vulkan.c \
+ 	window.c \
+ 	wintab.c \
+--- a/dlls/winex11.drv/bitblt.c
++++ b/dlls/winex11.drv/bitblt.c
+@@ -24,6 +24,7 @@
+ #endif
+ 
+ #include "config.h"
++#include "ntstatus.h"
+ 
+ #include <assert.h>
+ #include <stdarg.h>
+@@ -51,6 +52,7 @@
+ #include "wine/debug.h"
+ 
+ WINE_DEFAULT_DEBUG_CHANNEL(bitblt);
++WINE_DECLARE_DEBUG_CHANNEL(x11drv);
+ 
+ 
+ #define DST 0   /* Destination drawable */
+@@ -1589,6 +1591,7 @@
+     GC                    gc;
+     struct x11drv_image  *image;
+     BOOL                  byteswap;
++    BOOL                  shape_dirty;
+ };
+ 
+ static struct x11drv_window_surface *get_x11_surface( struct window_surface *surface )
+@@ -1798,6 +1801,10 @@
+     const unsigned char *src = color_bits;
+     unsigned char *dst = (unsigned char *)ximage->data;
+ 
++    surface->shape_dirty |= shape_changed;
++    if (!window_surface_can_present( window_surface->hwnd, surface->window, window_surface )) return FALSE;
++    shape_changed = surface->shape_dirty;
++
+     if (alpha_bits == -1)
+     {
+         if (alpha_mask || color_info->bmiHeader.biBitCount != 32) alpha_bits = 0;
+@@ -1832,19 +1839,23 @@
+     if (shape_changed)
+     {
+ #ifdef HAVE_LIBXSHAPE
+-        if (!shape_bits)
+-            XShapeCombineMask( gdi_display, surface->window, ShapeBounding, 0, 0, None, ShapeSet );
+-        else
++        BOOL use_alpha = alpha_mask && ximage->depth == 32 && !window_surface->shape_region &&
++                         window_surface->color_key == CLR_INVALID;
++        Pixmap shape = None;
++
++        /* ARGB pixels already describe the visual shape. Keep the alpha-derived
++         * mask for input without clipping the backing pixmap's transparent pixels. */
++        if (shape_bits)
+         {
+             struct gdi_image_bits bits = {.ptr = (void *)shape_bits};
+             XVisualInfo vis = default_visual;
+-            Pixmap shape;
+ 
+             vis.depth = 1;
+             shape = create_pixmap_from_image( 0, &vis, shape_info, &bits, DIB_RGB_COLORS );
+-            XShapeCombineMask( gdi_display, surface->window, ShapeBounding, 0, 0, shape, ShapeSet );
+-            XFreePixmap( gdi_display, shape );
+-        }
++        }
++        XShapeCombineMask( gdi_display, surface->window, ShapeBounding, 0, 0, use_alpha ? None : shape, ShapeSet );
++        set_window_surface_input_shape( window_surface->hwnd, surface->window, use_alpha ? shape : None );
++        if (!use_alpha && shape) XFreePixmap( gdi_display, shape );
+ #endif /* HAVE_LIBXSHAPE */
+     }
+ 
+@@ -1854,6 +1865,8 @@
+                    dirty->right - dirty->left, dirty->bottom - dirty->top );
+ 
+     XFlush( gdi_display );
++    window_surface_presented( window_surface->hwnd, surface->window, window_surface );
++    surface->shape_dirty = FALSE;
+ 
+     return TRUE;
+ }
+@@ -1954,21 +1967,49 @@
+ 
+ static BOOL enable_direct_drawing( struct x11drv_win_data *data, BOOL layered )
+ {
++    HWND *children;
++    ULONG count = 128, i;
++    NTSTATUS status;
++    BOOL ret = FALSE;
++
+     if (layered) return FALSE;
+     if (data->embedded) return TRUE; /* draw directly to the window */
+     if (data->whole_window == root_window) return TRUE; /* draw directly to the window */
+     if (data->client_window) return TRUE; /* draw directly to the window */
+     if (!client_side_graphics) return TRUE; /* draw directly to the window */
+-    return FALSE;
++
++    /* Other processes draw directly to this window, outside our backing surface. */
++    for (;;)
++    {
++        if (!(children = malloc( count * sizeof(*children) ))) return FALSE;
++        status = NtUserBuildHwndList( 0, data->hwnd, TRUE, FALSE, 0, count, children, &count );
++        if (!status) break;
++        free( children );
++        if (status != STATUS_BUFFER_TOO_SMALL) return FALSE;
++    }
++    for (i = 0; i < count && children[i] != HWND_BOTTOM; i++)
++    {
++        if (NtUserQueryWindow( children[i], WindowProcess ) == NtCurrentTeb()->ClientId.UniqueProcess) continue;
++        ret = TRUE;
++        break;
++    }
++    free( children );
++    return ret;
+ }
+ 
+ /***********************************************************************
+  *      CreateWindowSurface   (X11DRV.@)
+  */
++BOOL is_window_surface( struct window_surface *surface, Window window )
++{
++    return surface && surface->funcs == &x11drv_surface_funcs && get_x11_surface( surface )->window == window;
++}
++
+ BOOL X11DRV_CreateWindowSurface( HWND hwnd, BOOL layered, const RECT *surface_rect, struct window_surface **surface )
+ {
+     struct window_surface *previous;
+     struct x11drv_win_data *data;
++    BOOL first_argb = FALSE, changed_visual = FALSE;
+ 
+     TRACE( "hwnd %p, layered %u, surface_rect %s, surface %p\n", hwnd, layered, wine_dbgstr_rect( surface_rect ), surface );
+ 
+@@ -1992,9 +2033,39 @@
+         *surface = NULL;  /* indicate that we want to draw directly to the window */
+         goto done; /* draw directly to the window */
+     }
++    else if (!data->first_present_seen && argb_visual.visualid && is_first_present_argb_candidate( data ))
++    {
++        if (data->vis.visualid == argb_visual.visualid && data->use_alpha) first_argb = TRUE;
++        else if (!data->first_present_depth && data->current_state.wm_state == WithdrawnState &&
++                 data->pending_state.wm_state == WithdrawnState)
++        {
++            set_window_visual( data, &argb_visual, TRUE );
++            first_argb = changed_visual = TRUE;
++        }
++    }
+ 
+     *surface = create_surface( data->hwnd, data->whole_window, &data->vis, surface_rect,
+                                layered ? data->use_alpha : FALSE );
++    if (*surface && data->first_present_seen && data->current_state.wm_state == NormalState &&
++        !layered && !data->embedded && !data->client_window &&
++        !(NtUserGetWindowLongW( hwnd, GWL_EXSTYLE ) & WS_EX_LAYERED))
++    {
++        /* Keep the displayed image until a replacement surface finishes painting. */
++        set_first_present_surface( data, *surface, TRUE );
++    }
++    if (first_argb)
++    {
++        if (*surface)
++        {
++            /* This surface is not published yet. Preserve a full first upload while early flushes are deferred. */
++            (*surface)->bounds = (*surface)->rect;
++            set_first_present_surface( data, *surface, FALSE );
++            data->first_present_argb = TRUE;
++            TRACE_(x11drv)( "first-present ARGB prepared hwnd %p/%lx serial %u\n", hwnd, data->whole_window,
++                           data->first_present_serial );
++        }
++        else if (changed_visual) set_window_visual( data, &default_visual, FALSE );
++    }
+ 
+ done:
+     release_win_data( data );
+--- a/dlls/winex11.drv/event.c
++++ b/dlls/winex11.drv/event.c
+@@ -37,9 +37,11 @@
+ 
+ #include <assert.h>
+ #include <stdarg.h>
++#include <stdio.h>
+ #include <string.h>
+ 
+ #include "x11drv.h"
++#include "sni_event.h"
+ #include "shellapi.h"
+ 
+ #include "wine/server.h"
+@@ -372,6 +374,11 @@
+     int count;
+ 
+     if (!data) return FALSE;
++    if (!mask)
++    {
++        XFlush( gdi_display ); /* flush drawing without consuming the X11 event queue */
++        return FALSE;
++    }
+     if (data->current_event) mask = 0;  /* don't process nested events */
+ 
+     for (count = 0; XCheckIfEvent( data->display, &event, filter_event, (XPointer)(UINT_PTR)mask ); count++)
+@@ -866,13 +873,25 @@
+         abs_rect = rect;
+         OffsetRect( &abs_rect, data->rects.client.left, data->rects.client.top );
+ 
+-        SERVER_START_REQ( update_window_zorder )
++        /* Redirected backing-store exposure does not prove that the window is unobscured. */
++        if (!data->use_alpha)
+         {
+-            req->window      = wine_server_user_handle( hwnd );
+-            req->rect        = wine_server_rectangle( abs_rect );
+-            wine_server_call( req );
++            char selection_name[32];
++            Atom selection;
++
++            snprintf( selection_name, sizeof(selection_name), "_NET_WM_CM_S%d", DefaultScreen( data->display ) );
++            selection = XInternAtom( data->display, selection_name, True );
++            if (selection == None || XGetSelectionOwner( data->display, selection ) == None)
++            {
++                SERVER_START_REQ( update_window_zorder )
++                {
++                    req->window      = wine_server_user_handle( hwnd );
++                    req->rect        = wine_server_rectangle( abs_rect );
++                    wine_server_call( req );
++                }
++                SERVER_END_REQ;
++            }
+         }
+-        SERVER_END_REQ;
+     }
+     else flags &= ~RDW_ALLCHILDREN;
+ 
+@@ -1604,6 +1623,7 @@
+     XClientMessageEvent *event = &xev->xclient;
+     unsigned int i;
+ 
++    if (sni_process_event( event )) return TRUE;
+     if (!hwnd) return FALSE;
+ 
+     if (event->format != 32)
+--- a/dlls/winex11.drv/init.c
++++ b/dlls/winex11.drv/init.c
+@@ -628,6 +628,8 @@
+     .pGetCursorPos = X11DRV_GetCursorPos,
+     .pSetCursorPos = X11DRV_SetCursorPos,
+     .pClipCursor = X11DRV_ClipCursor,
++    .pNotifyIcon = X11DRV_NotifyIcon,
++    .pCleanupIcons = X11DRV_CleanupIcons,
+     .pSystrayDockInit = X11DRV_SystrayDockInit,
+     .pSystrayDockInsert = X11DRV_SystrayDockInsert,
+     .pSystrayDockClear = X11DRV_SystrayDockClear,
+--- a/dlls/winex11.drv/mouse.c
++++ b/dlls/winex11.drv/mouse.c
+@@ -60,6 +60,7 @@
+ #define OEMRESOURCE
+ 
+ #include "x11drv.h"
++#include "sni_dbus.h"
+ #include "winreg.h"
+ #include "wine/server.h"
+ #include "wine/debug.h"
+@@ -602,7 +603,8 @@
+     return dst;
+ }
+ 
+-static void send_mouse_input( HWND hwnd, POINT pos, UINT flags, UINT data, UINT time, const struct raw_mouse *raw )
++static void send_mouse_input_extra( HWND hwnd, POINT pos, UINT flags, UINT data, UINT time,
++                                    const struct raw_mouse *raw, ULONG_PTR extra )
+ {
+     INPUT input = { .type = INPUT_MOUSE };
+ 
+@@ -613,8 +615,35 @@
+     input.mi.dwFlags = flags;
+     input.mi.mouseData = data;
+     input.mi.time = time;
++    input.mi.dwExtraInfo = extra;
+ 
+     NtUserSendHardwareInput( hwnd, SEND_HWMSG_RAWINPUT, &input, (LPARAM)raw );
++}
++
++static void send_mouse_input( HWND hwnd, POINT pos, UINT flags, UINT data, UINT time, const struct raw_mouse *raw )
++{
++    send_mouse_input_extra( hwnd, pos, flags, data, time, raw, 0 );
++}
++
++static ULONG_PTR get_xembed_tray_extra( HWND hwnd, const XButtonEvent *event )
++{
++    struct xembed_output outputs[32], current[32];
++    const char *backend = getenv( "WINE_X11_TRAY_BACKEND" );
++    unsigned long timestamp, current_timestamp;
++    POINT point;
++    int count, x = event->x_root, y = event->y_root;
++
++    if (sizeof(ULONG_PTR) != 8 || !event->send_event || !backend || strcmp( backend, "xembed" ) ||
++        (Window)NtUserGetProp( hwnd, WINE_XEMBED_TRAY_WINDOW_PROP ) != event->window) return 0;
++    if (!(count = xembed_get_outputs( outputs, ARRAY_SIZE(outputs), &timestamp )) ||
++        !sni_dbus_map_xembed_point( outputs, count, &x, &y ) ||
++        xembed_get_outputs( current, ARRAY_SIZE(current), &current_timestamp ) != count ||
++        timestamp != current_timestamp || memcmp( outputs, current, count * sizeof(*outputs) )) return 0;
++    point = root_to_virtual_screen( x, y );
++    if (point.x < -32768 || point.x > 32767 || point.y < -32768 || point.y > 32767) return 0;
++    TRACE( "XEmbed callback point root (%d,%d) -> %s, input root (%d,%d) unchanged\n",
++           x, y, wine_dbgstr_point(&point), event->x_root, event->y_root );
++    return WINE_TRAY_MOUSE_EXTRA_MAGIC | (ULONG_PTR)(WORD)point.x | ((ULONG_PTR)(WORD)point.y << 16);
+ }
+ 
+ #ifdef SONAME_LIBXCURSOR
+@@ -1413,15 +1442,11 @@
+  */
+ void X11DRV_SetCursor( HWND hwnd, HCURSOR handle )
+ {
+-    struct x11drv_win_data *data;
+-
+-    if ((data = get_win_data( hwnd )))
+-    {
+-        set_window_cursor( data->whole_window, handle );
+-        release_win_data( data );
+-    }
+-
+-    if (clipping_cursor) set_window_cursor( x11drv_thread_data()->clip_window, handle );
++    Window window = X11DRV_get_whole_window( hwnd ), clip_window = init_clip_window();
++
++    if (window) set_window_cursor( window, handle );
++    if (clip_window) set_window_cursor( clip_window, handle );
++    XSync( gdi_display, False );
+ }
+ 
+ /***********************************************************************
+@@ -1586,7 +1611,8 @@
+     }
+ 
+     pt = map_event_coords( hwnd, event->window, event->root, root, pt );
+-    send_mouse_input( hwnd, pt, MOUSEEVENTF_ABSOLUTE | flags, button_down_data[button], time, NULL );
++    send_mouse_input_extra( hwnd, pt, MOUSEEVENTF_ABSOLUTE | flags, button_down_data[button], time,
++                            NULL, get_xembed_tray_extra( hwnd, event ) );
+     return TRUE;
+ }
+ 
+@@ -1605,7 +1631,8 @@
+     TRACE( "hwnd %p/%lx button %u pos %s\n", hwnd, event->window, button, wine_dbgstr_point( &pt ) );
+ 
+     pt = map_event_coords( hwnd, event->window, event->root, root, pt );
+-    send_mouse_input( hwnd, pt, MOUSEEVENTF_ABSOLUTE | flags, button_up_data[button], time, NULL );
++    send_mouse_input_extra( hwnd, pt, MOUSEEVENTF_ABSOLUTE | flags, button_up_data[button], time,
++                            NULL, get_xembed_tray_extra( hwnd, event ) );
+     return TRUE;
+ }
+ 
+--- a/dlls/winex11.drv/window.c
++++ b/dlls/winex11.drv/window.c
+@@ -444,6 +444,13 @@
+     /* child windows are not managed */
+     style = NtUserGetWindowLongW( hwnd, GWL_STYLE );
+     if ((style & (WS_CHILD|WS_POPUP)) == WS_CHILD) return FALSE;
++    ex_style = NtUserGetWindowLongW( hwnd, GWL_EXSTYLE );
++    /* Captionless, non-activating tool popups and their shadows keep Win32 stacking. */
++    if ((style & (WS_POPUP | WS_THICKFRAME)) == WS_POPUP && (style & WS_CAPTION) != WS_CAPTION &&
++        (ex_style & (WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_APPWINDOW)) ==
++        (WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW) && !fullscreen && hwnd != get_active_window() &&
++        !is_managed( NtUserGetWindowRelative( hwnd, GW_OWNER ) ))
++        return FALSE;
+     /* activated windows are managed */
+     if (!(swp_flags & (SWP_NOACTIVATE|SWP_HIDEWINDOW))) return TRUE;
+     if (hwnd == get_active_window()) return TRUE;
+@@ -459,7 +466,6 @@
+         if (fullscreen) return TRUE;
+     }
+     /* application windows are managed */
+-    ex_style = NtUserGetWindowLongW( hwnd, GWL_EXSTYLE );
+     if (ex_style & WS_EX_APPWINDOW) return TRUE;
+     /* windows that own popups are managed */
+     if (has_owned_popups( hwnd )) return TRUE;
+@@ -561,12 +567,35 @@
+     }
+     else
+     {
+-        /* For normal windows, reset input shape to default (full window) */
+-        XShapeCombineMask( data->display, data->whole_window, ShapeInput, 0, 0, None, ShapeSet );
+-        TRACE( "window %p/%lx reset input shape to default\n",
+-               data->hwnd, data->whole_window );
++        XShapeCombineMask( data->display, data->whole_window, ShapeInput, 0, 0, data->input_shape, ShapeSet );
++        TRACE( "window %p/%lx restored input shape %lx\n", data->hwnd, data->whole_window, data->input_shape );
+     }
+ #endif
++}
++
++/* Takes ownership of the alpha-derived input mask and preserves it across mapping and style updates. */
++void set_window_surface_input_shape( HWND hwnd, Window window, Pixmap shape )
++{
++    struct x11drv_win_data *data;
++
++    if ((data = get_win_data( hwnd )))
++    {
++        if (data->whole_window == window && (data->input_shape || shape))
++        {
++            if (data->input_shape)
++            {
++                XSync( data->display, False ); /* finish mask uses on the window owner's connection */
++                XFreePixmap( gdi_display, data->input_shape );
++            }
++            data->input_shape = shape;
++            XSync( gdi_display, False ); /* the window owner's display must be able to use the pixmap */
++            sync_window_input_shape( data );
++            XFlush( data->display );
++            shape = None;
++        }
++        release_win_data( data );
++    }
++    if (shape) XFreePixmap( gdi_display, shape );
+ }
+ 
+ /***********************************************************************
+@@ -589,7 +618,7 @@
+     }
+ }
+ 
+-static void sync_empty_window_shape( struct x11drv_win_data *data, struct window_surface *surface )
++static void sync_empty_window_shape( struct x11drv_win_data *data )
+ {
+ #ifdef HAVE_LIBXSHAPE
+     if (IsRectEmpty( &data->rects.window ))  /* set an empty shape */
+@@ -601,8 +630,6 @@
+     else
+     {
+         XShapeCombineMask( gdi_display, data->whole_window, ShapeBounding, 0, 0, None, ShapeSet );
+-        /* invalidate surface shape to make sure it gets updated again */
+-        if (surface) window_surface_set_shape( surface, 0 );
+     }
+ #endif
+ }
+@@ -721,7 +748,7 @@
+  *
+  * Return the bitmap bits in ARGB format. Helper for setting icon hints.
+  */
+-static unsigned long *get_bitmap_argb( HDC hdc, HBITMAP color, HBITMAP mask, unsigned int *size )
++unsigned long *get_bitmap_argb( HDC hdc, HBITMAP color, HBITMAP mask, unsigned int *size )
+ {
+     char buffer[FIELD_OFFSET( BITMAPINFO, bmiColors[256] )];
+     BITMAPINFO *info = (BITMAPINFO *)buffer;
+@@ -1100,6 +1127,13 @@
+     else XDeleteProperty( data->display, data->whole_window, x11drv_atom(_NET_WM_ICON) );
+ }
+ 
++static BOOL is_fixed_transient( HWND hwnd, DWORD style, DWORD ex_style )
++{
++    return NtUserGetWindowRelative( hwnd, GW_OWNER ) && !(style & (WS_CHILD | WS_THICKFRAME)) &&
++           (style & WS_CAPTION) != WS_CAPTION &&
++           !(ex_style & (WS_EX_APPWINDOW | WS_EX_DLGMODALFRAME));
++}
++
+ /***********************************************************************
+  *              set_style_hints
+  */
+@@ -1109,6 +1143,7 @@
+     HWND owner = NtUserGetWindowRelative( data->hwnd, GW_OWNER );
+     Window owner_win = 0;
+     XWMHints *wm_hints;
++    const char *fixed_transient_utility = getenv( "WINE_X11_FIXED_TRANSIENT_UTILITY" );
+ 
+     if (owner)
+     {
+@@ -1126,7 +1161,13 @@
+      * only normal windows, and doesn't handle correctly TRANSIENT_FOR hint for
+      * dialogs owned by fullscreen windows.
+      */
+-    if (((style & WS_POPUP) || (ex_style & WS_EX_DLGMODALFRAME)) && owner)
++    if (fixed_transient_utility && !strcmp( fixed_transient_utility, "1" ) &&
++        is_fixed_transient( data->hwnd, style, ex_style ) &&
++        (!(ex_style & WS_EX_LAYERED) ||
++         (ex_style & (WS_EX_TRANSPARENT | WS_EX_NOACTIVATE)) == (WS_EX_TRANSPARENT | WS_EX_NOACTIVATE)) &&
++        (!data->is_fullscreen || (ex_style & WS_EX_NOACTIVATE)))
++        window_set_net_wm_window_type( data, XATOM__NET_WM_WINDOW_TYPE_UTILITY );
++    else if (((style & WS_POPUP) || (ex_style & WS_EX_DLGMODALFRAME)) && owner)
+         window_set_net_wm_window_type( data, XATOM__NET_WM_WINDOW_TYPE_DIALOG );
+     else
+         window_set_net_wm_window_type( data, XATOM__NET_WM_WINDOW_TYPE_NORMAL );
+@@ -1209,6 +1250,165 @@
+     NtUserSetWindowPos( owner, 0, 0, 0, 0, 0, flags );
+ }
+ 
++
++static LONG first_present_serial;
++
++BOOL is_first_present_argb_candidate( struct x11drv_win_data *data )
++{
++    const char *profile = getenv( "WINE_X11_FIXED_TRANSIENT_ARGB" );
++    DWORD style, ex_style;
++
++    if (data->embedded || data->client_window) return FALSE;
++    style = NtUserGetWindowLongW( data->hwnd, GWL_STYLE );
++    ex_style = NtUserGetWindowLongW( data->hwnd, GWL_EXSTYLE );
++    if (profile && !strcmp( profile, "1" ) && !(ex_style & WS_EX_LAYERED) &&
++        is_fixed_transient( data->hwnd, style, ex_style )) return TRUE;
++    profile = getenv( "WINE_WECOM_FIRST_PRESENT_ARGB" );
++    if (!profile || strcmp( profile, "1" ) || data->managed) return FALSE;
++    return (style & (WS_POPUP | WS_CHILD | WS_CAPTION | WS_THICKFRAME)) == WS_POPUP &&
++           (ex_style & (WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_APPWINDOW | WS_EX_LAYERED)) ==
++           (WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
++}
++
++static void cancel_first_present( struct x11drv_win_data *data, BOOL restore )
++{
++    struct window_surface *surface = data->first_present_surface;
++    COLORREF key;
++    DWORD flags = 0;
++    BYTE alpha = 255;
++
++    data->first_present_surface = NULL;
++    data->first_present_replacement = FALSE;
++    data->first_present_serial = 0;
++    data->first_present_ready = data->first_present_uploaded = data->first_present_fallback = FALSE;
++    if (!surface) return;
++    if (restore && data->whole_window && !data->first_present_argb)
++    {
++        NtUserGetLayeredWindowAttributes( data->hwnd, &key, &alpha, &flags );
++        sync_window_opacity( data->display, data->whole_window, alpha, flags );
++    }
++    data->first_present_argb = FALSE;
++    if (surface) window_surface_release( surface );
++}
++
++void set_first_present_surface( struct x11drv_win_data *data, struct window_surface *surface, BOOL replacement )
++{
++    if (data->first_present_surface != surface)
++    {
++        window_surface_add_ref( surface );
++        if (data->first_present_surface) window_surface_release( data->first_present_surface );
++        data->first_present_surface = surface;
++    }
++    do data->first_present_serial = InterlockedIncrement( &first_present_serial );
++    while (!data->first_present_serial);
++    data->first_present_replacement = replacement;
++    data->first_present_ready = data->first_present_uploaded = data->first_present_fallback = FALSE;
++}
++
++/* An unmapped window clips image uploads. Keep the bounds dirty until the native map is complete. */
++BOOL window_surface_can_present( HWND hwnd, Window window, struct window_surface *surface )
++{
++    struct x11drv_win_data *data;
++    XWindowAttributes attr;
++    BOOL pending = FALSE, mapped, hold = FALSE;
++
++    if ((data = get_win_data( hwnd )))
++    {
++        pending = data->whole_window == window && data->first_present_surface == surface;
++        hold = pending && (data->first_present_argb || data->first_present_replacement) &&
++               !data->first_present_ready;
++        release_win_data( data );
++    }
++    if (hold)
++    {
++        TRACE( "first-present defer pending surface hwnd %p/%lx\n", hwnd, window );
++        return FALSE;
++    }
++    if (!pending) return TRUE;
++    X11DRV_expect_error( gdi_display, host_window_error, NULL );
++    mapped = XGetWindowAttributes( gdi_display, window, &attr ) && attr.map_state == IsViewable;
++    if (X11DRV_check_error()) mapped = FALSE;
++    if (!mapped) TRACE( "first-present defer unmapped hwnd %p/%lx\n", hwnd, window );
++    return mapped;
++}
++
++/* The upload and opacity property use different X connections. Complete the upload first. */
++void window_surface_presented( HWND hwnd, Window window, struct window_surface *surface )
++{
++    struct x11drv_win_data *data;
++    ULONG serial = 0;
++
++    if ((data = get_win_data( hwnd )))
++    {
++        if (data->whole_window == window && data->first_present_surface == surface && data->first_present_ready)
++            serial = data->first_present_serial;
++        release_win_data( data );
++    }
++    if (!serial) return;
++    XSync( gdi_display, False );
++    if (!(data = get_win_data( hwnd ))) return;
++    if (data->whole_window != window || data->first_present_surface != surface ||
++        data->first_present_serial != serial || !data->first_present_ready) serial = 0;
++    else data->first_present_uploaded = TRUE;
++    release_win_data( data );
++    if (serial) send_notify_message( hwnd, WM_X11DRV_FIRST_PRESENT, serial, 0 );
++}
++
++static LRESULT surface_paint( HWND hwnd, UINT action, LPARAM value )
++{
++    struct x11drv_win_data *data;
++    struct window_surface *surface = NULL;
++    Window window = None;
++    BOOL clean;
++    LRESULT result = 0;
++
++    if (!(data = get_win_data( hwnd ))) return 0;
++    if (action == WINE_SURFACE_BEGIN_PAINT)
++    {
++        data->first_present_depth++;
++        goto done;
++    }
++    if (action == WINE_SURFACE_ABORT_PAINT)
++    {
++        if (data->first_present_depth) data->first_present_depth--;
++        goto done;
++    }
++    if (action == WINE_SURFACE_END_PAINT && data->first_present_depth) data->first_present_depth--;
++    if (!data->first_present_surface)
++    {
++        if (!data->first_present_depth && (action == WINE_SURFACE_END_PAINT ||
++            (action == WINE_SURFACE_END_DC && is_window_surface( (struct window_surface *)value, data->whole_window ))))
++            result = -1;
++        goto done;
++    }
++    switch (action)
++    {
++    case WINE_SURFACE_END_PAINT:
++    case WINE_SURFACE_VALIDATE:
++    case WINE_SURFACE_END_DC:
++        if (data->first_present_depth) break;
++        if (action == WINE_SURFACE_END_DC && data->first_present_surface != (struct window_surface *)value) break;
++        if (action == WINE_SURFACE_VALIDATE && data->first_present_replacement) break;
++        data->first_present_ready = TRUE;
++        result = data->first_present_serial;
++        break;
++    case WINE_SURFACE_COMMIT:
++        if ((ULONG)value != data->first_present_serial || !data->first_present_ready) break;
++        surface = data->first_present_surface;
++        window_surface_add_ref( surface );
++        window = data->whole_window;
++        break;
++    }
++done:
++    release_win_data( data );
++    if (!surface) return result;
++    pthread_mutex_lock( &surface->mutex );
++    clean = IsRectEmpty( &surface->bounds );
++    pthread_mutex_unlock( &surface->mutex );
++    if (clean) window_surface_presented( hwnd, window, surface );
++    window_surface_release( surface );
++    return result;
++}
+ 
+ /***********************************************************************
+  *              set_wm_hints
+@@ -1402,13 +1602,41 @@
+     }
+ }
+ 
+-static void window_set_config( struct x11drv_win_data *data, RECT rect, BOOL above )
++/* Preserve Win32 ordering only between managed popups with the same real owner and layer. */
++static HWND get_owned_stack_sibling( HWND hwnd, BOOL *above )
++{
++    HWND owner = NtUserGetWindowRelative( hwnd, GW_OWNER ), sibling;
++    DWORD layer = NtUserGetWindowLongW( hwnd, GWL_EXSTYLE ) & WS_EX_TOPMOST;
++    UINT direction, i;
++
++    if (!owner || !is_managed( owner )) return 0;
++    for (i = 0; i < 2; i++)
++    {
++        direction = i ? GW_HWNDNEXT : GW_HWNDPREV;
++        for (sibling = NtUserGetWindowRelative( hwnd, direction ); sibling;
++             sibling = NtUserGetWindowRelative( sibling, direction ))
++        {
++            if (NtUserGetWindowRelative( sibling, GW_OWNER ) != owner ||
++                !(NtUserGetWindowLongW( sibling, GWL_STYLE ) & WS_VISIBLE) ||
++                (NtUserGetWindowLongW( sibling, GWL_EXSTYLE ) & WS_EX_TOPMOST) != layer || !is_managed( sibling ))
++                continue;
++            *above = direction == GW_HWNDNEXT;
++            return sibling;
++        }
++    }
++    return 0;
++}
++
++static void window_set_config( struct x11drv_win_data *data, RECT rect, BOOL above, HWND sibling )
+ {
+     const RECT *old_rect = &data->pending_state.rect;
+     BOOL old_above = data->pending_state.above;
+     XWindowChanges changes;
+     RECT *new_rect = &rect;
+     UINT mask = 0;
++    unsigned long serial;
++    Window sibling_window = None;
++    struct x11drv_win_data *sibling_data;
+ 
+     /* only the size is allowed to change for the desktop window or systray docked windows */
+     if (data->whole_window == root_window || data->embedded)
+@@ -1418,9 +1646,28 @@
+ 
+     data->desired_state.rect = *new_rect;
+     data->desired_state.above = above;
++    data->desired_state.sibling = sibling;
+     if (data->state_locks) return; /* win32 state is being updated, delay the change */
+     if (!data->whole_window) return; /* no window, nothing to update */
+-    if (EqualRect( old_rect, new_rect ) && (old_above || !above || data->managed)) return; /* rects are the same, no need to be raised, nothing to update */
++    if (sibling)
++    {
++        HWND owner = NtUserGetWindowRelative( data->hwnd, GW_OWNER );
++        sibling_data = get_win_data( sibling );
++        if (!owner || !sibling_data || !sibling_data->managed ||
++            NtUserGetWindowRelative( sibling, GW_OWNER ) != owner ||
++            !(NtUserGetWindowLongW( sibling, GWL_STYLE ) & WS_VISIBLE) ||
++            ((NtUserGetWindowLongW( data->hwnd, GWL_EXSTYLE ) ^
++              NtUserGetWindowLongW( sibling, GWL_EXSTYLE )) & WS_EX_TOPMOST))
++        {
++            sibling = data->desired_state.sibling = 0;
++            above = data->desired_state.above = FALSE;
++        }
++        else if (data->managed && data->current_state.wm_state == NormalState && !data->wm_state_serial &&
++                 sibling_data->current_state.wm_state == NormalState && !sibling_data->wm_state_serial)
++            sibling_window = sibling_data->whole_window;
++        release_win_data( sibling_data );
++    }
++    if (EqualRect( old_rect, new_rect ) && (old_above || !above || data->managed) && !sibling_window) return;
+     if (window_needs_config_change_delay( data ))
+     {
+         TRACE( "window %p/%lx is updating _NET_WM_STATE/_MOTIF_WM_HINTS, delaying request\n", data->hwnd, data->whole_window );
+@@ -1456,7 +1703,16 @@
+         OffsetRect( new_rect, old_rect->left - new_rect->left, old_rect->top - new_rect->top );
+     }
+ 
+-    if (above)
++    if (sibling_window)
++    {
++        changes.sibling = sibling_window;
++        changes.stack_mode = above ? Above : Below;
++        mask |= CWSibling | CWStackMode;
++        data->desired_state.sibling = 0; /* consume only after mapping and configuration delays */
++        TRACE( "window %p/%lx stacking %s same-owner sibling %p/%lx\n", data->hwnd, data->whole_window,
++               above ? "above" : "below", sibling, sibling_window );
++    }
++    else if (above && !sibling)
+     {
+         changes.stack_mode = Above;
+         mask |= CWStackMode;
+@@ -1464,10 +1720,28 @@
+ 
+     data->pending_state.rect = *new_rect;
+     data->pending_state.above = above;
+-    data->configure_serial = NextRequest( data->display );
++    serial = NextRequest( data->display );
++    /* A stack-only request need not generate ConfigureNotify if the WM keeps the existing order. */
++    if (!sibling_window || (mask & (CWX | CWY | CWWidth | CWHeight))) data->configure_serial = serial;
+     TRACE( "window %p/%lx, requesting config %s mask %#x above %u, serial %lu\n", data->hwnd, data->whole_window,
+-           wine_dbgstr_rect(new_rect), mask, above, data->configure_serial );
++           wine_dbgstr_rect(new_rect), mask, above, serial );
+     XReconfigureWMWindow( data->display, data->whole_window, data->vis.screen, mask, &changes );
++}
++
++/* Run each sibling's configuration on its own GUI thread, including after a remap or activation. */
++static void sync_owned_window_stack( HWND owner )
++{
++    HWND *list;
++    UINT i;
++
++    if (!(list = build_hwnd_list())) return;
++    for (i = 0; list[i] != HWND_BOTTOM; i++)
++    {
++        if (NtUserGetWindowRelative( list[i], GW_OWNER ) != owner ||
++            !(NtUserGetWindowLongW( list[i], GWL_STYLE ) & WS_VISIBLE) || !is_managed( list[i] )) continue;
++        send_notify_message( list[i], WM_X11DRV_SYNC_OWNED_STACK, 0, 0 );
++    }
++    free( list );
+ }
+ 
+ /***********************************************************************
+@@ -1704,6 +1978,8 @@
+         else if (old_style & (WS_MINIMIZE | WS_MAXIMIZE))
+         {
+             BOOL activate = (old_style & (WS_MINIMIZE | WS_VISIBLE)) == (WS_MINIMIZE | WS_VISIBLE);
++            if ((NtUserGetWindowLongW( data->hwnd, GWL_EXSTYLE ) & WS_EX_NOACTIVATE) &&
++                NtUserGetWindowRelative( data->hwnd, GW_OWNER )) activate = FALSE;
+             TRACE( "restoring win %p/%lx\n", data->hwnd, data->whole_window );
+             return MAKELONG(SC_RESTORE, activate);
+         }
+@@ -1792,7 +2068,9 @@
+     window_set_net_wm_state( data, data->desired_state.net_wm_state );
+     window_set_net_wm_fullscreen_monitors( data, &data->desired_state.monitors );
+     window_set_mwm_hints( data, &data->desired_state.mwm_hints );
+-    window_set_config( data, data->desired_state.rect, FALSE );
++    window_set_config( data, data->desired_state.rect,
++                       data->desired_state.sibling ? data->desired_state.above : FALSE,
++                       data->desired_state.sibling );
+ }
+ 
+ /***********************************************************************
+@@ -1891,7 +2169,12 @@
+     /* send any pending changes from the desired state */
+     window_request_desired_state( data );
+ 
+-    if (data->current_state.wm_state == NormalState) NtUserSetProp( data->hwnd, focus_time_prop, (HANDLE)time );
++    if (data->current_state.wm_state == NormalState)
++    {
++        HWND owner = NtUserGetWindowRelative( data->hwnd, GW_OWNER );
++        NtUserSetProp( data->hwnd, focus_time_prop, (HANDLE)time );
++        sync_owned_window_stack( owner ? owner : data->hwnd );
++    }
+     else if (!data->wm_state_serial) NtUserRemoveProp( data->hwnd, focus_time_prop );
+ }
+ 
+@@ -1990,6 +2273,7 @@
+ {
+     struct x11drv_thread_data *data = x11drv_thread_data();
+     Window *desired = &data->desired_state.net_active_window, *pending = &data->pending_state.net_active_window, *current = &data->current_state.net_active_window;
++    Window old_window = *current;
+     unsigned long *expect_serial = &data->net_active_window_serial;
+     const char *expected, *received;
+     HWND current_hwnd, pending_hwnd;
+@@ -2003,6 +2287,11 @@
+                               current, expected, "", received, NULL ))
+         return;
+ 
++    if (value != old_window && current_hwnd && current_hwnd != NtUserGetDesktopWindow())
++    {
++        HWND owner = NtUserGetWindowRelative( current_hwnd, GW_OWNER );
++        sync_owned_window_stack( owner ? owner : current_hwnd );
++    }
+     NtUserPostMessage( NtUserGetForegroundWindow(), WM_WINE_WINDOW_STATE_CHANGED, 0, 0 );
+ }
+ 
+@@ -2127,6 +2416,7 @@
+     window_set_wm_state( data, WithdrawnState, FALSE );
+     if (data->managed) WARN( "Window is already managed, should wait for WithdrawnState\n" );
+     else window_set_managed( data, TRUE );
++    cancel_first_present( data, TRUE );
+     data->embedded = TRUE;
+     window_set_wm_state( data, NormalState, FALSE );
+ }
+@@ -2142,7 +2432,8 @@
+     DWORD style = NtUserGetWindowLongW( data->hwnd, GWL_STYLE );
+     DWORD ex_style = NtUserGetWindowLongW( data->hwnd, GWL_EXSTYLE );
+     RECT new_rect, window_rect;
+-    BOOL above = FALSE;
++    HWND sibling = data->desired_state.sibling;
++    BOOL above = sibling ? data->desired_state.above : FALSE;
+ 
+     if (data->managed && ((style & WS_MINIMIZE) || data->desired_state.wm_state == IconicState)) return;
+ 
+@@ -2153,8 +2444,8 @@
+         while (prev && !(NtUserGetWindowLongW( prev, GWL_STYLE ) & WS_VISIBLE))
+             prev = NtUserGetWindowRelative( prev, GW_HWNDPREV );
+         if (!prev) above = TRUE;  /* top child */
+-        /* should use stack_mode Below but most window managers don't get it right */
+-        /* and Above with a sibling doesn't work so well either, so we ignore it */
++        if (data->managed) sibling = get_owned_stack_sibling( data->hwnd, &above );
++        /* Keep the existing raise-only policy for unrelated windows and window managers. */
+     }
+ 
+     set_size_hints( data, style );
+@@ -2168,7 +2459,7 @@
+     if (data->is_offscreen) OffsetRect( &new_rect, window_rect.left - old_rects->window.left,
+                                         window_rect.top - old_rects->window.top );
+ 
+-    window_set_config( data, new_rect, above );
++    window_set_config( data, new_rect, above, sibling );
+ }
+ 
+ 
+@@ -2325,6 +2616,7 @@
+ void attach_client_window( struct x11drv_win_data *data, Window client_window )
+ {
+     if (data->client_window == client_window || !client_window) return;
++    cancel_first_present( data, TRUE );
+ 
+     TRACE( "%p/%lx attaching client window %lx\n", data->hwnd, data->whole_window, client_window );
+ 
+@@ -2468,7 +2760,7 @@
+     sync_window_text( data->display, data->whole_window, text );
+ 
+     /* set the window region */
+-    if (IsRectEmpty( &data->rects.window )) sync_empty_window_shape( data, NULL );
++    if (IsRectEmpty( &data->rects.window )) sync_empty_window_shape( data );
+     else if (win_rgn) sync_window_region( data, win_rgn );
+ 
+     /* set the window opacity */
+@@ -2491,6 +2783,9 @@
+ static void destroy_whole_window( struct x11drv_win_data *data, BOOL already_destroyed )
+ {
+     TRACE( "win %p xwin %lx/%lx\n", data->hwnd, data->whole_window, data->client_window );
++    cancel_first_present( data, FALSE );
++    data->first_present_seen = FALSE;
++    data->first_present_depth = 0;
+ 
+     if (!data->whole_window)
+     {
+@@ -2507,6 +2802,12 @@
+             XDestroyWindow( data->display, data->whole_window );
+         }
+     }
++    if (data->input_shape)
++    {
++        XSync( data->display, False );
++        XFreePixmap( gdi_display, data->input_shape );
++    }
++    data->input_shape = None;
+     if (data->whole_colormap) XFreeColormap( data->display, data->whole_colormap );
+     data->whole_window = data->client_window = 0;
+     data->whole_colormap = 0;
+@@ -2915,6 +3216,7 @@
+     struct x11drv_win_data *data;
+     BOOL ret = FALSE;
+ 
++    NtUserRemoveProp( hwnd, WINE_XEMBED_TRAY_WINDOW_PROP );
+     if ((data = get_win_data( hwnd )))
+     {
+         if ((ret = data->embedded))
+@@ -2971,6 +3273,7 @@
+ {
+     Display *display = thread_init_display();
+     Window systray_window, window;
++    const char *backend = getenv( "WINE_X11_TRAY_BACKEND" );
+     XEvent ev;
+     XVisualInfo visual;
+     struct x11drv_win_data *data;
+@@ -2984,6 +3287,8 @@
+     make_window_embedded( data );
+     window = data->whole_window;
+     release_win_data( data );
++    if (backend && !strcmp( backend, "xembed" ))
++        NtUserSetProp( hwnd, WINE_XEMBED_TRAY_WINDOW_PROP, (HANDLE)window );
+ 
+     NtUserSetWindowPos( hwnd, NULL, 0, 0, 0, 0, SWP_NOSIZE|SWP_NOZORDER );
+     NtUserShowWindow( hwnd, SW_SHOWNA );
+@@ -3253,7 +3558,7 @@
+     if (style & WS_VISIBLE)
+     {
+         if (style & WS_MINIMIZE) return IconicState;
+-        if (is_window_rect_mapped( &rects->window )) return NormalState;
++        if (!IsRectEmpty( &rects->window ) && is_window_rect_mapped( &rects->window )) return NormalState;
+     }
+     return WithdrawnState;
+ }
+@@ -3268,7 +3573,17 @@
+     struct x11drv_win_data *data;
+     UINT ex_style = NtUserGetWindowLongW( hwnd, GWL_EXSTYLE ), new_style = NtUserGetWindowLongW( hwnd, GWL_STYLE );
+     struct window_rects old_rects;
++    BOOL invalidate_shape = FALSE, paint_pending = FALSE;
++    ULONG first_present_fallback = 0;
+     BOOL is_managed, was_fullscreen, activate = !(swp_flags & SWP_NOACTIVATE), fullscreen = !!(swp_flags & WINE_SWP_FULLSCREEN);
++
++    if (surface && !(ex_style & WS_EX_LAYERED) && (data = get_win_data( hwnd )))
++    {
++        BOOL first = !data->first_present_seen && !data->embedded && !data->client_window &&
++                     is_window_surface( surface, data->whole_window );
++        release_win_data( data );
++        if (first) paint_pending = NtUserGetUpdateRect( hwnd, NULL, FALSE );
++    }
+ 
+     if ((is_managed = is_window_managed( hwnd, swp_flags, fullscreen ))) make_owner_managed( hwnd );
+ 
+@@ -3314,7 +3629,10 @@
+         sync_window_position( data, swp_flags, &old_rects );
+ #ifdef HAVE_LIBXSHAPE
+         if (IsRectEmpty( &old_rects.window ) != IsRectEmpty( &new_rects->window ))
+-            sync_empty_window_shape( data, surface );
++        {
++            sync_empty_window_shape( data );
++            invalidate_shape = !IsRectEmpty( &new_rects->window );
++        }
+         if (data->shaped)
+         {
+             int old_x_offset = old_rects.window.left - old_rects.visible.left;
+@@ -3328,6 +3646,48 @@
+ #endif
+     }
+ 
++    if ((swp_flags & SWP_HIDEWINDOW) && data->use_alpha && data->vis.visualid == argb_visual.visualid &&
++        is_first_present_argb_candidate( data ))
++    {
++        cancel_first_present( data, TRUE );
++        data->first_present_seen = FALSE;
++    }
++    if (data->first_present_surface)
++    {
++        if ((swp_flags & SWP_HIDEWINDOW) || (ex_style & WS_EX_LAYERED) || data->embedded || data->client_window ||
++            !is_window_surface( surface, data->whole_window ))
++        {
++            cancel_first_present( data, TRUE );
++            if (swp_flags & SWP_HIDEWINDOW) data->first_present_seen = FALSE;
++        }
++        else if (surface != data->first_present_surface)
++        {
++            if (data->first_present_ready && !data->first_present_depth)
++            {
++                data->first_present_fallback = TRUE;
++                first_present_fallback = data->first_present_serial;
++            }
++            else set_first_present_surface( data, surface, data->first_present_replacement );
++        }
++    }
++    if (!data->first_present_seen && get_desired_wm_state( new_style, new_rects ) == NormalState)
++    {
++        data->first_present_seen = TRUE;
++        if (data->first_present_argb)
++        {
++            if (!paint_pending && !data->first_present_depth)
++                data->first_present_ready = TRUE;
++        }
++        else if (paint_pending && !(ex_style & WS_EX_LAYERED) && !data->embedded && !data->client_window &&
++            is_window_surface( surface, data->whole_window ))
++        {
++            set_first_present_surface( data, surface, FALSE );
++            sync_window_opacity( data->display, data->whole_window, 0, LWA_ALPHA );
++            TRACE( "first-present hold hwnd %p/%lx serial %u\n", hwnd, data->whole_window,
++                   data->first_present_serial );
++        }
++    }
++
+     window_set_wm_state( data, get_desired_wm_state( new_style, new_rects ), activate );
+     if (!data->wm_state_serial && data->pending_state.wm_state != WithdrawnState)
+     {
+@@ -3341,6 +3701,10 @@
+     XFlush( data->display );  /* make sure changes are done before we start painting again */
+     release_win_data( data );
+ 
++    if (first_present_fallback)
++        send_notify_message( hwnd, WM_X11DRV_FIRST_PRESENT, first_present_fallback, 1 );
++    /* Flushing the surface can acquire win_data_mutex; never wait for its lock while holding win data. */
++    if (invalidate_shape && surface) window_surface_set_shape( surface, 0 );
+     if (was_fullscreen) NtUserClipCursor( NULL );
+ }
+ 
+@@ -3370,6 +3734,10 @@
+     struct x11drv_win_data *data = get_win_data( hwnd );
+ 
+     if (!data || !data->whole_window) goto done;
++    /* Mirroring the WM's group restore must not raise or activate non-activating owned popups. */
++    if (data->state_locks && cmd == SW_RESTORE &&
++        (NtUserGetWindowLongW( hwnd, GWL_EXSTYLE ) & WS_EX_NOACTIVATE) && NtUserGetWindowRelative( hwnd, GW_OWNER ))
++        swp |= SWP_NOACTIVATE | SWP_NOZORDER;
+     if (style & WS_MINIMIZE)
+     {
+         if (((rect->left != -32000 || rect->top != -32000)) && hide_icon( data ))
+@@ -3457,6 +3825,7 @@
+ 
+     if (data)
+     {
++        cancel_first_present( data, FALSE );
+         set_window_visual( data, &default_visual, FALSE );
+ 
+         if (data->whole_window)
+@@ -3544,8 +3913,37 @@
+ 
+     switch(msg)
+     {
++    case WM_WINE_SURFACE_PAINT:
++        return surface_paint( hwnd, wp, lp );
++    case WM_X11DRV_FIRST_PRESENT:
++        if ((data = get_win_data( hwnd )))
++        {
++            if (data->first_present_surface && data->first_present_serial == (ULONG)wp &&
++                (lp ? data->first_present_fallback : data->first_present_uploaded))
++            {
++                TRACE( "first-present show hwnd %p/%lx serial %lu fallback %lu\n", hwnd, data->whole_window,
++                       (unsigned long)wp, (unsigned long)lp );
++                cancel_first_present( data, TRUE );
++                XFlush( data->display );
++            }
++            release_win_data( data );
++        }
++        return 0;
+     case WM_X11DRV_UPDATE_CLIPBOARD:
+         return update_clipboard( hwnd );
++    case WM_X11DRV_SYNC_OWNED_STACK:
++    {
++        HWND sibling;
++        BOOL above = FALSE;
++
++        if ((data = get_win_data( hwnd )))
++        {
++            if (data->managed && (sibling = get_owned_stack_sibling( hwnd, &above )))
++                window_set_config( data, data->desired_state.rect, above, sibling );
++            release_win_data( data );
++        }
++        return 0;
++    }
+     case WM_X11DRV_SET_WIN_REGION:
+         if ((data = get_win_data( hwnd )))
+         {
+--- a/dlls/winex11.drv/x11drv.h
++++ b/dlls/winex11.drv/x11drv.h
+@@ -218,6 +218,8 @@
+ extern BOOL X11DRV_SetCursorPos( INT x, INT y );
+ extern BOOL X11DRV_GetCursorPos( LPPOINT pos );
+ extern BOOL X11DRV_ClipCursor( const RECT *clip, BOOL reset );
++extern LRESULT X11DRV_NotifyIcon( HWND hwnd, UINT msg, NOTIFYICONDATAW *data );
++extern void X11DRV_CleanupIcons( HWND hwnd );
+ extern void X11DRV_SystrayDockInit( HWND systray );
+ extern BOOL X11DRV_SystrayDockInsert( HWND owner, UINT cx, UINT cy, void *icon );
+ extern void X11DRV_SystrayDockClear( HWND hwnd );
+@@ -635,7 +637,9 @@
+     WM_X11DRV_UPDATE_CLIPBOARD = WM_WINE_FIRST_DRIVER_MSG,
+     WM_X11DRV_SET_WIN_REGION,
+     WM_X11DRV_DELETE_TAB,
+-    WM_X11DRV_ADD_TAB
++    WM_X11DRV_ADD_TAB,
++    WM_X11DRV_SYNC_OWNED_STACK,
++    WM_X11DRV_FIRST_PRESENT
+ };
+ 
+ /* _NET_WM_STATE properties that we keep track of */
+@@ -669,6 +673,7 @@
+     struct monitor_indices monitors;
+     RECT rect;
+     BOOL above;
++    HWND sibling;
+ };
+ 
+ /* x11drv private window data */
+@@ -680,6 +685,7 @@
+     HWND        hwnd;           /* hwnd that this private data belongs to */
+     Window      whole_window;   /* X window for the complete window */
+     Window      client_window;  /* X window for the client area */
++    Pixmap      input_shape;    /* alpha-derived input shape, owned by gdi_display */
+     struct window_rects rects;  /* window rects in monitor DPI, relative to parent client area */
+     struct host_window *parent; /* the host window parent, frame or embedder, NULL if root_window */
+     XIC         xic;            /* X input context */
+@@ -695,6 +701,15 @@
+     UINT        parent_invalid : 1; /* is the parent host window possibly invalid */
+     UINT        reparenting : 1; /* window is being reparented, likely from a decoration change */
+     UINT        is_resizable : 1; /* window is allowed to be resized by the window manager */
++    UINT        first_present_seen : 1;
++    UINT        first_present_ready : 1;
++    UINT        first_present_uploaded : 1;
++    UINT        first_present_fallback : 1;
++    UINT        first_present_argb : 1;
++    UINT        first_present_replacement : 1;
++    struct window_surface *first_present_surface;
++    ULONG       first_present_serial;
++    UINT        first_present_depth;
+     Window      embedder;       /* window id of embedder */
+     Pixmap         icon_pixmap;
+     Pixmap         icon_mask;
+@@ -717,8 +732,15 @@
+ 
+ extern struct x11drv_win_data *get_win_data( HWND hwnd );
+ extern void release_win_data( struct x11drv_win_data *data );
++extern void set_window_surface_input_shape( HWND hwnd, Window window, Pixmap shape );
+ extern void set_window_parent( struct x11drv_win_data *data, Window parent );
+ extern Window X11DRV_get_whole_window( HWND hwnd );
++extern BOOL is_window_surface( struct window_surface *surface, Window window );
++extern BOOL window_surface_can_present( HWND hwnd, Window window, struct window_surface *surface );
++extern void set_first_present_surface( struct x11drv_win_data *data, struct window_surface *surface,
++                                       BOOL replacement );
++extern BOOL is_first_present_argb_candidate( struct x11drv_win_data *data );
++extern void window_surface_presented( HWND hwnd, Window window, struct window_surface *surface );
+ extern Window get_dummy_parent(void);
+ 
+ extern BOOL window_is_reparenting( HWND hwnd );
+@@ -946,6 +968,8 @@
+             max( rect->bottom, rect->top + 1 ) > virtual_rect.top);
+ }
+ 
++extern unsigned long *get_bitmap_argb( HDC hdc, HBITMAP color, HBITMAP mask, unsigned int *size );
++
+ /* GDI helpers */
+ 
+ static inline BOOL lp_to_dp( HDC hdc, POINT *points, INT count )
+--- a/dlls/winex11.drv/x11drv_main.c
++++ b/dlls/winex11.drv/x11drv_main.c
+@@ -44,6 +44,7 @@
+ #include "ntstatus.h"
+ 
+ #include "x11drv.h"
++#include "sni_event.h"
+ #include "winreg.h"
+ #include "xcomposite.h"
+ #include "wine/server.h"
+@@ -693,6 +694,7 @@
+ 
+     if (data)
+     {
++        X11DRV_SNI_ThreadDetach();
+         if (data->xim) XCloseIM( data->xim );
+         if (data->font_set) XFreeFontSet( data->display, data->font_set );
+         if (data->net_supported) XFree( data->net_supported );
+--- a/dlls/winex11.drv/xrandr.c
++++ b/dlls/winex11.drv/xrandr.c
+@@ -33,6 +33,7 @@
+ #endif
+ #include <dlfcn.h>
+ #include "x11drv.h"
++#include "sni_dbus.h"
+ #include "wine/debug.h"
+ 
+ WINE_DEFAULT_DEBUG_CHANNEL(xrandr);
+@@ -1753,6 +1754,46 @@
+ #endif
+ }
+ 
++/* Snapshot native output rectangles without changing the server or foreign tray windows. */
++int xembed_get_outputs( struct xembed_output *outputs, unsigned int capacity, unsigned long *timestamp )
++{
++#ifdef HAVE_XRRGETPROVIDERRESOURCES
++    XRRScreenResources *resources;
++    XRROutputInfo *output;
++    XRRCrtcInfo *crtc;
++    unsigned int count = 0;
++    int i, valid = 1;
++
++    if (!pXRRGetOutputInfo || !(resources = xrandr_get_screen_resources())) return 0;
++    memset( outputs, 0, capacity * sizeof(*outputs) );
++    *timestamp = resources->configTimestamp;
++    for (i = 0; i < resources->noutput && valid; i++)
++    {
++        if (!(output = pXRRGetOutputInfo( gdi_display, resources, resources->outputs[i] ))) break;
++        if (output->connection == RR_Connected && output->crtc)
++        {
++            crtc = pXRRGetCrtcInfo( gdi_display, resources, output->crtc );
++            if (!crtc || !crtc->mode || count == capacity || output->nameLen >= sizeof(outputs[0].name)) valid = 0;
++            else
++            {
++                memcpy( outputs[count].name, output->name, output->nameLen );
++                outputs[count].x = crtc->x;
++                outputs[count].y = crtc->y;
++                outputs[count].width = crtc->width;
++                outputs[count++].height = crtc->height;
++            }
++            if (crtc) pXRRFreeCrtcInfo( crtc );
++        }
++        pXRRFreeOutputInfo( output );
++    }
++    valid = valid && i == resources->noutput;
++    pXRRFreeScreenResources( resources );
++    return valid ? count : 0;
++#else
++    return 0;
++#endif
++}
++
+ #else /* SONAME_LIBXRANDR */
+ 
+ void X11DRV_XRandR_Init(void)
+@@ -1760,4 +1801,9 @@
+     TRACE("XRandR support not compiled in.\n");
+ }
+ 
++int xembed_get_outputs( struct xembed_output *outputs, unsigned int capacity, unsigned long *timestamp )
++{
++    return 0;
++}
++
+ #endif /* SONAME_LIBXRANDR */
+--- a/include/ntuser.h
++++ b/include/ntuser.h
+@@ -640,10 +640,32 @@
+     WM_WINE_UPDATEWINDOWSTATE,
+     WM_WINE_TRACKMOUSEEVENT,
+     WM_WINE_SETPIXELFORMAT,
++    WM_WINE_NOTIFYICON,
++    WM_WINE_SURFACE_PAINT,
+     WM_WINE_FIRST_DRIVER_MSG = 0x80001000,  /* range of messages reserved for the USER driver */
+     WM_WINE_CLIPCURSOR = 0x80001ff0, /* internal driver notification messages */
+     WM_WINE_SETCURSOR,
+     WM_WINE_LAST_DRIVER_MSG = 0x80001fff
++};
++
++/* Pointer-free payload for a tray callback delivered to the icon owner thread. */
++struct wine_notify_icon_params
++{
++    UINT callback_message;
++    UINT wparam;
++    UINT lparam;
++    POINT point;  /* raw physical menu anchor */
++};
++
++/* Driver opt-in handshake for presenting a newly mapped surface after its initial paint. */
++enum wine_surface_paint_action
++{
++    WINE_SURFACE_BEGIN_PAINT,
++    WINE_SURFACE_ABORT_PAINT,
++    WINE_SURFACE_END_PAINT,
++    WINE_SURFACE_VALIDATE,
++    WINE_SURFACE_END_DC,
++    WINE_SURFACE_COMMIT
+ };
+ 
+ /* internal IME message */
+@@ -675,6 +697,10 @@
+     COMPOSITIONSTRING *compstr;
+     BOOL *key_consumed;
+ };
++
++/* Private AMD64 XEmbed button payload; the point is used only for the tray owner callback. */
++#define WINE_TRAY_MOUSE_EXTRA_MAGIC ((ULONGLONG)0x58545259 << 32)
++#define WINE_XEMBED_TRAY_WINDOW_PROP ((const WCHAR *)u"__wine_xembed_tray_icon")
+ 
+ /* NtUserSystemTrayCall calls */
+ enum wine_systray_call
+--- a/programs/explorer/systray.c
++++ b/programs/explorer/systray.c
+@@ -404,6 +404,8 @@
+     GetWindowRect( icon->window, &rc );
+     size.cx = rc.right - rc.left;
+     size.cy = rc.bottom - rc.top;
++    width = min( width, size.cx );
++    height = min( height, size.cy );
+     pos.x = (size.cx - width) / 2;
+     pos.y = (size.cy - height) / 2;
+ 
+@@ -459,22 +461,35 @@
+     if (dib) DeleteObject( dib );
+ }
+ 
+-static BOOL notify_owner( struct icon *icon, UINT msg, LPARAM lparam )
++static BOOL notify_owner( struct icon *icon, UINT msg, LPARAM lparam, ULONG_PTR extra )
+ {
+     WPARAM wp = icon->id;
+     LPARAM lp = msg;
+-
++    struct wine_notify_icon_params params;
++    BOOL scoped = sizeof(ULONG_PTR) == 8 && (extra & 0xffffffff00000000ULL) == WINE_TRAY_MOUSE_EXTRA_MAGIC;
++    BOOL ret;
++
++    if (scoped) params.point = (POINT){(short)LOWORD(extra), (short)HIWORD(extra)};
+     if (icon->version >= NOTIFYICON_VERSION_4)
+     {
+         POINT pt = {.x = (short)LOWORD(lparam), .y = (short)HIWORD(lparam)};
+         ClientToScreen( icon->window, &pt );
++        if (scoped) pt = params.point;
+         wp = MAKEWPARAM( pt.x, pt.y );
+         lp = MAKELPARAM( msg, icon->id );
+     }
+ 
+     TRACE( "relaying 0x%x\n", msg );
+-    if (!SendNotifyMessageW( icon->owner, icon->callback_message, wp, lp ) &&
+-        (GetLastError() == ERROR_INVALID_WINDOW_HANDLE))
++    if (scoped)
++    {
++        params.callback_message = icon->callback_message;
++        params.wparam = wp;
++        params.lparam = lp;
++        ret = NtUserMessageCall( icon->owner, WM_WINE_NOTIFYICON, 0, (LPARAM)&params,
++                                 0, NtUserSendNotifyMessage, FALSE );
++    }
++    else ret = SendNotifyMessageW( icon->owner, icon->callback_message, wp, lp );
++    if (!ret && GetLastError() == ERROR_INVALID_WINDOW_HANDLE)
+     {
+         WARN( "application window was destroyed, removing icon %u\n", icon->id );
+         delete_icon( icon );
+@@ -552,12 +567,13 @@
+     case WM_MBUTTONDBLCLK:
+     {
+         MSG message = {.hwnd = hwnd, .message = msg, .wParam = wparam, .lParam = lparam};
++        ULONG_PTR extra = GetMessageExtraInfo();
+         SendMessageW( icon->tooltip, TTM_RELAYEVENT, 0, (LPARAM)&message );
+-        if (!notify_owner( icon, msg, lparam )) break;
++        if (!notify_owner( icon, msg, lparam, extra )) break;
+         if (icon->version > 0)
+         {
+-            if (msg == WM_LBUTTONUP) notify_owner( icon, NIN_SELECT, lparam );
+-            if (msg == WM_RBUTTONUP) notify_owner( icon, WM_CONTEXTMENU, lparam );
++            if (msg == WM_LBUTTONUP) notify_owner( icon, NIN_SELECT, lparam, extra );
++            if (msg == WM_RBUTTONUP) notify_owner( icon, WM_CONTEXTMENU, lparam, extra );
+         }
+         break;
+     }
+@@ -909,7 +925,7 @@
+                                       icon_data, icon_data + cbMaskBits);
+     }
+     /* try forwarding to the display driver first */
+-    if (cds->dwData == NIM_ADD || !(icon = get_icon( nid.hWnd, nid.uID )))
++    if (!(icon = get_icon( nid.hWnd, nid.uID )))
+     {
+         if ((ret = NtUserMessageCall( hwndSource, WINE_SYSTRAY_NOTIFY_ICON, cds->dwData, 0,
+                                       &nid, NtUserSystemTrayCall, FALSE )) != -1)
+--- a/server/queue.c
++++ b/server/queue.c
+@@ -92,6 +92,8 @@
+     unsigned int           unique_id; /* unique id for nested hw message waits */
+     struct message_result *result;    /* result in sender queue */
+     bool                   mergeable; /* message can be coalesced if eligible for that */
++    struct msg_queue      *cursor_queue; /* receiver of an in-flight cursor update, not referenced */
++    struct thread_input   *cursor_input; /* referenced input until native cursor completion */
+ };
+ 
+ struct timer
+@@ -198,6 +200,10 @@
+ 
+ static void queue_hardware_message( struct desktop *desktop, struct message *msg, int always_queue );
+ static void free_message( struct message *msg );
++static void release_hardware_message( struct msg_queue *queue, unsigned int hw_id );
++static user_handle_t find_hardware_message_window( struct desktop *desktop, struct thread_input *input,
++                                                   struct message *msg, unsigned int *msg_code,
++                                                   struct thread **thread );
+ 
+ /* set the caret window in a given thread input, requires write lock on the thread input shared member */
+ static void set_caret_window( struct thread_input *input, input_shm_t *shared, user_handle_t win )
+@@ -329,6 +335,9 @@
+ {
+     remove_thread_hooks( thread );
+     if (!thread->queue) return;
++    if (thread->queue->input->desktop->cursor_msg &&
++        thread->queue->input->desktop->cursor_msg->cursor_queue == thread->queue)
++        release_hardware_message( thread->queue, thread->queue->input->desktop->cursor_msg->unique_id );
+     release_object( thread->queue );
+     thread->queue = NULL;
+ }
+@@ -890,7 +899,7 @@
+         if (prev->msg == message) break;
+     if (&prev->entry == &input->msg_list) return 0;
+ 
+-    if (prev->result) return 0;
++    if (prev->result || (message == WM_WINE_SETCURSOR && prev->unique_id)) return 0;
+     if (prev->win != msg->win) return 0;
+     if (prev->type != msg->type) return 0;
+ 
+@@ -1691,9 +1700,15 @@
+ /* release the hardware message currently being processed by the given thread */
+ static void release_hardware_message( struct msg_queue *queue, unsigned int hw_id )
+ {
+-    struct thread_input *input = queue->input;
+-    struct message *msg, *other;
++    struct desktop *desktop = queue->input->desktop;
++    struct message *cursor_msg = desktop->cursor_msg, *msg, *other;
++    struct thread_input *input = queue->input, *cursor_input = NULL;
++    struct thread *thread, *owner;
++    unsigned int msg_code;
+     int clr_bit;
++
++    if (cursor_msg && cursor_msg->cursor_queue == queue && cursor_msg->unique_id == hw_id)
++        input = cursor_input = cursor_msg->cursor_input;
+ 
+     LIST_FOR_EACH_ENTRY( msg, &input->msg_list, struct message, entry )
+     {
+@@ -1715,7 +1730,23 @@
+ 
+     update_thread_input_key_state( input, msg->msg, msg->wparam );
+     list_remove( &msg->entry );
++    if (msg == desktop->cursor_msg) desktop->cursor_msg = NULL;
+     free_message( msg );
++    if (!cursor_input) return;
++
++    LIST_FOR_EACH_ENTRY( thread, &desktop->threads, struct thread, desktop_entry )
++    {
++        if (!thread->queue || thread->state == TERMINATED) continue;
++        LIST_FOR_EACH_ENTRY( other, &thread->queue->input->msg_list, struct message, entry )
++        {
++            if (other->msg != WM_WINE_SETCURSOR) continue;
++            find_hardware_message_window( desktop, thread->queue->input, other, &msg_code, &owner );
++            if (!owner) continue;
++            if (owner->queue && owner->state != TERMINATED) set_queue_bits( owner->queue, QS_HARDWARE );
++            release_object( owner );
++        }
++    }
++    release_object( cursor_input );
+ }
+ 
+ static int queue_hotkey_message( struct desktop *desktop, struct message *msg )
+@@ -1772,6 +1803,35 @@
+     case QS_RAWINPUT:
+     case QS_HARDWARE:
+         if (!(win = msg->win) && input) win = input_shm->focus;
++        if (msg->msg == WM_WINE_SETCURSOR && msg->lparam)
++        {
++            process_id_t pid = get_user_object_process( msg->lparam, NTUSER_OBJ_ICON );
++            struct thread *candidate;
++
++            *thread = get_window_thread( win );
++            if (*thread && pid && (*thread)->process->id != pid)
++            {
++                release_object( *thread );
++                *thread = NULL;
++                if ((candidate = get_window_thread( msg->wparam )))
++                {
++                    input = candidate->queue->input;
++                    if (candidate->process->id == pid) *thread = candidate;
++                    else release_object( candidate );
++                }
++                if (!*thread)
++                {
++                    LIST_FOR_EACH_ENTRY( candidate, &desktop->threads, struct thread, desktop_entry )
++                    {
++                        if (candidate->process->id != pid || candidate->state == TERMINATED ||
++                            !candidate->queue || candidate->queue->input != input) continue;
++                        *thread = (struct thread *)grab_object( candidate );
++                        break;
++                    }
++                }
++                if (!*thread) return 0;
++            }
++        }
+         break;
+     case QS_KEY:
+         if (input && !(win = input_shm->focus))
+@@ -2724,6 +2784,7 @@
+             free_message( msg );
+             continue;
+         }
++        if (msg->msg == WM_WINE_SETCURSOR && input->desktop->cursor_msg) continue;
+         win = find_hardware_message_window( input->desktop, input, msg, &msg_code, &win_thread );
+         if (!win || !win_thread)
+         {
+@@ -2780,9 +2841,20 @@
+         reply->time   = msg->time;
+ 
+         data->hw_id = msg->unique_id;
+-        set_reply_data( msg->data, msg->data_size );
+-
+-        if (msg_bit == QS_HARDWARE) flags |= PM_REMOVE; /* always remove internal hardware messages right away */
++        if (!set_reply_data( msg->data, msg->data_size ) && msg->msg == WM_WINE_SETCURSOR)
++        {
++            msg->unique_id = 0;
++            return 1;
++        }
++
++        if (msg->msg == WM_WINE_SETCURSOR)
++        {
++            flags &= ~PM_REMOVE;
++            input->desktop->cursor_msg = msg;
++            msg->cursor_queue = current->queue;
++            msg->cursor_input = (struct thread_input *)grab_object( input );
++        }
++        else if (msg_bit == QS_HARDWARE) flags |= PM_REMOVE; /* remove other internal messages right away */
+         else if (!(msg_bit & (QS_RAWINPUT | QS_POINTER))) flags &= ~PM_REMOVE; /* wait for accept_hardware_message request */
+         if (flags & PM_REMOVE) release_hardware_message( current->queue, data->hw_id );
+         return 1;
+--- a/server/user.c
++++ b/server/user.c
+@@ -129,6 +129,15 @@
+ 
+     if (!(entry = handle_to_entry( handle )) || entry->type != type) return NULL;
+     return get_server_object( entry );
++}
++
++/* return the process owning a user object */
++process_id_t get_user_object_process( user_handle_t handle, unsigned short type )
++{
++    const user_entry_t *entry;
++
++    if (!(entry = handle_to_entry( handle )) || entry->type != type) return 0;
++    return entry->pid;
+ }
+ 
+ /* get the full handle for a possibly truncated handle */
+--- a/server/user.h
++++ b/server/user.h
+@@ -26,6 +26,7 @@
+ #include "unicode.h"
+ 
+ struct thread;
++struct message;
+ struct region;
+ struct window;
+ struct msg_queue;
+@@ -85,6 +86,7 @@
+     struct key_repeat    key_repeat;       /* key auto-repeat */
+     unsigned int         clip_flags;       /* last cursor clip flags */
+     user_handle_t        cursor_win;       /* window that contains the cursor */
++    struct message      *cursor_msg;       /* cursor update awaiting native completion */
+     desktop_shm_t       *shared;           /* desktop session shared memory */
+ };
+ 
+@@ -92,6 +94,7 @@
+ 
+ extern user_handle_t alloc_user_handle( void *ptr, volatile void *shared, unsigned short type );
+ extern void *get_user_object( user_handle_t handle, unsigned short type );
++extern process_id_t get_user_object_process( user_handle_t handle, unsigned short type );
+ extern void *get_user_object_handle( user_handle_t *handle, unsigned short type );
+ extern user_handle_t get_user_full_handle( user_handle_t handle );
+ extern void *free_user_handle( user_handle_t handle );
+--- a/server/winstation.c
++++ b/server/winstation.c
+@@ -282,6 +282,7 @@
+     desktop->users = 0;
+     desktop->clip_flags = 0;
+     desktop->cursor_win = 0;
++    desktop->cursor_msg = NULL;
+     desktop->alt_pressed = 0;
+     memset( &desktop->key_repeat, 0, sizeof(desktop->key_repeat) );
+     list_init( &desktop->threads );
+--- /dev/null
++++ b/dlls/winex11.drv/sni_dbus.c
+@@ -0,0 +1,947 @@
++/*
++ * Native StatusNotifierItem transport
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
++ */
++
++/* The worker performs no Wine or Win32 calls. */
++#if 0
++#pragma makedep unix
++#endif
++
++#include "config.h"
++#include <dlfcn.h>
++#include <errno.h>
++#include <fcntl.h>
++#include <limits.h>
++#include <math.h>
++#include <poll.h>
++#include <pthread.h>
++#include <stdint.h>
++#include <stdlib.h>
++#include <string.h>
++#include <unistd.h>
++#include "sni_dbus.h"
++
++#ifdef SONAME_LIBDBUS_1
++#include <dbus/dbus.h>
++
++#define SNI_ITEM "org.kde.StatusNotifierItem"
++#define SNI_WATCHER "org.kde.StatusNotifierWatcher"
++#define SNI_MENU "com.canonical.dbusmenu"
++#define ITEM_PATH "/StatusNotifierItem"
++#define MENU_PATH "/Menu"
++#define SNI_ACTION_ACTIVATE 1
++#define SNI_ACTION_CONTEXT_MENU 2
++#define SNI_ACTION_SECONDARY 3
++
++extern int sni_queue_event( uint64_t token, unsigned int action, int x, int y );
++
++#define DBUS_FUNCS \
++    DO_FUNC(dbus_bus_add_match) \
++    DO_FUNC(dbus_bus_get_private) \
++    DO_FUNC(dbus_bus_name_has_owner) \
++    DO_FUNC(dbus_connection_add_filter) \
++    DO_FUNC(dbus_connection_close) \
++    DO_FUNC(dbus_connection_dispatch) \
++    DO_FUNC(dbus_connection_get_is_connected) \
++    DO_FUNC(dbus_connection_get_outgoing_size) \
++    DO_FUNC(dbus_connection_get_unix_fd) \
++    DO_FUNC(dbus_connection_read_write) \
++    DO_FUNC(dbus_connection_ref) \
++    DO_FUNC(dbus_connection_register_object_path) \
++    DO_FUNC(dbus_connection_send) \
++    DO_FUNC(dbus_connection_send_with_reply_and_block) \
++    DO_FUNC(dbus_connection_set_exit_on_disconnect) \
++    DO_FUNC(dbus_connection_unref) \
++    DO_FUNC(dbus_error_free) \
++    DO_FUNC(dbus_error_init) \
++    DO_FUNC(dbus_error_is_set) \
++    DO_FUNC(dbus_message_append_args) \
++    DO_FUNC(dbus_message_get_args) \
++    DO_FUNC(dbus_message_get_interface) \
++    DO_FUNC(dbus_message_get_member) \
++    DO_FUNC(dbus_message_get_path) \
++    DO_FUNC(dbus_message_get_signature) \
++    DO_FUNC(dbus_message_get_sender) \
++    DO_FUNC(dbus_message_is_method_call) \
++    DO_FUNC(dbus_message_is_signal) \
++    DO_FUNC(dbus_message_iter_append_basic) \
++    DO_FUNC(dbus_message_iter_append_fixed_array) \
++    DO_FUNC(dbus_message_iter_close_container) \
++    DO_FUNC(dbus_message_iter_get_arg_type) \
++    DO_FUNC(dbus_message_iter_get_basic) \
++    DO_FUNC(dbus_message_iter_init) \
++    DO_FUNC(dbus_message_iter_init_append) \
++    DO_FUNC(dbus_message_iter_next) \
++    DO_FUNC(dbus_message_iter_open_container) \
++    DO_FUNC(dbus_message_iter_recurse) \
++    DO_FUNC(dbus_message_new_error) \
++    DO_FUNC(dbus_message_new_method_call) \
++    DO_FUNC(dbus_message_new_method_return) \
++    DO_FUNC(dbus_message_new_signal) \
++    DO_FUNC(dbus_message_set_no_reply) \
++    DO_FUNC(dbus_message_set_auto_start) \
++    DO_FUNC(dbus_message_unref) \
++    DO_FUNC(dbus_threads_init_default)
++
++#define DO_FUNC(func) static typeof(func) *p_##func;
++DBUS_FUNCS
++#undef DO_FUNC
++
++struct sni_item
++{
++    struct sni_item *next;
++    uint64_t token;
++    char *id, *title;
++    unsigned int width, height;
++    unsigned char *argb;
++    int hidden, menu_open, pending_action;
++    unsigned int dirty;
++    DBusConnection *connection;
++};
++
++static struct sni_item *items;
++static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
++static pthread_t worker;
++static int wake_pipe[2] = {-1, -1}, worker_running, stopping;
++static void *dbus_handle;
++
++enum { DIRTY_ICON = 1, DIRTY_TIP = 2, DIRTY_STATUS = 4, DIRTY_REGISTER = 8 };
++
++static struct sni_item *find_item( uint64_t token )
++{
++    struct sni_item *item;
++    for (item = items; item; item = item->next) if (item->token == token) return item;
++    return NULL;
++}
++
++static int load_dbus(void)
++{
++    if (dbus_handle) return 1;
++    if (!(dbus_handle = dlopen( SONAME_LIBDBUS_1, RTLD_NOW ))) return 0;
++#define DO_FUNC(func) if (!(p_##func = dlsym( dbus_handle, #func ))) goto failed;
++    DBUS_FUNCS
++#undef DO_FUNC
++    if (!p_dbus_threads_init_default()) goto failed;
++    return 1;
++failed:
++    dlclose( dbus_handle );
++    dbus_handle = NULL;
++    return 0;
++}
++
++static int append_string( DBusMessageIter *iter, const char *value )
++{
++    return p_dbus_message_iter_append_basic( iter, DBUS_TYPE_STRING, &value );
++}
++
++static int append_pixmaps( DBusMessageIter *iter, const struct sni_item *item, int render )
++{
++    DBusMessageIter array, image, bytes;
++    int width = item->width, height = item->height, size = width * height * 4;
++
++    if (!p_dbus_message_iter_open_container( iter, DBUS_TYPE_ARRAY, "(iiay)", &array )) return 0;
++    if (render && item->argb && width && height)
++    {
++        if (!p_dbus_message_iter_open_container( &array, DBUS_TYPE_STRUCT, NULL, &image ) ||
++            !p_dbus_message_iter_append_basic( &image, DBUS_TYPE_INT32, &width ) ||
++            !p_dbus_message_iter_append_basic( &image, DBUS_TYPE_INT32, &height ) ||
++            !p_dbus_message_iter_open_container( &image, DBUS_TYPE_ARRAY, "y", &bytes ) ||
++            !p_dbus_message_iter_append_fixed_array( &bytes, DBUS_TYPE_BYTE, &item->argb, size ) ||
++            !p_dbus_message_iter_close_container( &image, &bytes ) ||
++            !p_dbus_message_iter_close_container( &array, &image )) return 0;
++    }
++    return p_dbus_message_iter_close_container( iter, &array );
++}
++
++static const char *property_signature( const char *interface, const char *name )
++{
++    if (!strcmp( interface, SNI_MENU ))
++    {
++        if (!strcmp( name, "Version" )) return "u";
++        if (!strcmp( name, "IconThemePath" )) return "as";
++        if (!strcmp( name, "TextDirection" ) || !strcmp( name, "Status" )) return "s";
++        return NULL;
++    }
++    if (strcmp( interface, SNI_ITEM )) return NULL;
++    if (!strcmp( name, "Menu" )) return "o";
++    if (!strcmp( name, "WindowId" )) return "i";
++    if (!strcmp( name, "ItemIsMenu" )) return "b";
++    if (!strcmp( name, "ToolTip" )) return "(sa(iiay)ss)";
++    if (!strcmp( name, "IconPixmap" ) || !strcmp( name, "OverlayIconPixmap" ) ||
++        !strcmp( name, "AttentionIconPixmap" )) return "a(iiay)";
++    if (!strcmp( name, "Category" ) || !strcmp( name, "Id" ) || !strcmp( name, "Title" ) ||
++        !strcmp( name, "Status" ) || !strcmp( name, "IconName" ) || !strcmp( name, "IconThemePath" ) ||
++        !strcmp( name, "OverlayIconName" ) || !strcmp( name, "AttentionIconName" ) ||
++        !strcmp( name, "AttentionMovieName" )) return "s";
++    return NULL;
++}
++
++static int append_property_value( DBusMessageIter *iter, const struct sni_item *item,
++                                  const char *interface, const char *name )
++{
++    DBusMessageIter array, tooltip;
++    dbus_uint32_t version = 3;
++    dbus_int32_t window = 0;
++    dbus_bool_t is_menu = FALSE;
++    const char *value = "";
++
++    if (!strcmp( interface, SNI_MENU ))
++    {
++        if (!strcmp( name, "Version" ))
++            return p_dbus_message_iter_append_basic( iter, DBUS_TYPE_UINT32, &version );
++        if (!strcmp( name, "IconThemePath" ))
++            return p_dbus_message_iter_open_container( iter, DBUS_TYPE_ARRAY, "s", &array ) &&
++                   p_dbus_message_iter_close_container( iter, &array );
++        return append_string( iter, !strcmp( name, "Status" ) ? "normal" : "ltr" );
++    }
++    if (!strcmp( name, "Menu" ))
++    {
++        value = MENU_PATH;
++        return p_dbus_message_iter_append_basic( iter, DBUS_TYPE_OBJECT_PATH, &value );
++    }
++    if (!strcmp( name, "WindowId" )) return p_dbus_message_iter_append_basic( iter, DBUS_TYPE_INT32, &window );
++    if (!strcmp( name, "ItemIsMenu" )) return p_dbus_message_iter_append_basic( iter, DBUS_TYPE_BOOLEAN, &is_menu );
++    if (!strcmp( name, "ToolTip" ))
++        return p_dbus_message_iter_open_container( iter, DBUS_TYPE_STRUCT, NULL, &tooltip ) &&
++               append_string( &tooltip, "" ) && append_pixmaps( &tooltip, item, 0 ) &&
++               append_string( &tooltip, item->title ) && append_string( &tooltip, "" ) &&
++               p_dbus_message_iter_close_container( iter, &tooltip );
++    if (strstr( name, "Pixmap" )) return append_pixmaps( iter, item, !strcmp( name, "IconPixmap" ) );
++    if (!strcmp( name, "Category" )) value = "ApplicationStatus";
++    if (!strcmp( name, "Id" )) value = item->id;
++    if (!strcmp( name, "Title" )) value = item->title;
++    if (!strcmp( name, "Status" )) value = item->hidden ? "Passive" : "Active";
++    return append_string( iter, value );
++}
++
++static int append_property( DBusMessageIter *iter, const struct sni_item *item, const char *interface,
++                            const char *name, int dictionary )
++{
++    DBusMessageIter entry, variant;
++    const char *signature = property_signature( interface, name );
++    DBusMessageIter *parent = iter;
++
++    if (!signature) return 0;
++    if (dictionary)
++    {
++        if (!p_dbus_message_iter_open_container( iter, DBUS_TYPE_DICT_ENTRY, NULL, &entry ) ||
++            !append_string( &entry, name )) return 0;
++        parent = &entry;
++    }
++    if (!p_dbus_message_iter_open_container( parent, DBUS_TYPE_VARIANT, signature, &variant ) ||
++        !append_property_value( &variant, item, interface, name ) ||
++        !p_dbus_message_iter_close_container( parent, &variant )) return 0;
++    return !dictionary || p_dbus_message_iter_close_container( iter, &entry );
++}
++
++static int append_menu_property( DBusMessageIter *iter, const char *name, const char *text, int boolean )
++{
++    DBusMessageIter entry, value;
++    dbus_bool_t enabled = TRUE;
++    return p_dbus_message_iter_open_container( iter, DBUS_TYPE_DICT_ENTRY, NULL, &entry ) &&
++           append_string( &entry, name ) &&
++           p_dbus_message_iter_open_container( &entry, DBUS_TYPE_VARIANT, boolean ? "b" : "s", &value ) &&
++           (boolean ? (int)p_dbus_message_iter_append_basic( &value, DBUS_TYPE_BOOLEAN, &enabled ) :
++                      append_string( &value, text )) &&
++           p_dbus_message_iter_close_container( &entry, &value ) &&
++           p_dbus_message_iter_close_container( iter, &entry );
++}
++
++static int append_menu_properties( DBusMessageIter *iter, int id )
++{
++    DBusMessageIter props;
++    if (!p_dbus_message_iter_open_container( iter, DBUS_TYPE_ARRAY, "{sv}", &props )) return 0;
++    if (!id)
++    {
++        if (!append_menu_property( &props, "children-display", "submenu", 0 )) return 0;
++    }
++    else if (!append_menu_property( &props, "label", id == 1 ? "打开" : "更多操作…", 0 ) ||
++             !append_menu_property( &props, "visible", NULL, 1 ) ||
++             !append_menu_property( &props, "enabled", NULL, 1 )) return 0;
++    return p_dbus_message_iter_close_container( iter, &props );
++}
++
++static int append_menu_layout( DBusMessageIter *iter, int id, int depth )
++{
++    DBusMessageIter layout, children, variant;
++    int child;
++    if (!p_dbus_message_iter_open_container( iter, DBUS_TYPE_STRUCT, NULL, &layout ) ||
++        !p_dbus_message_iter_append_basic( &layout, DBUS_TYPE_INT32, &id ) ||
++        !append_menu_properties( &layout, id ) ||
++        !p_dbus_message_iter_open_container( &layout, DBUS_TYPE_ARRAY, "v", &children )) return 0;
++    if (!id && depth)
++    {
++        for (child = 1; child <= 2; child++)
++            if (!p_dbus_message_iter_open_container( &children, DBUS_TYPE_VARIANT, "(ia{sv}av)", &variant ) ||
++                !append_menu_layout( &variant, child, 0 ) ||
++                !p_dbus_message_iter_close_container( &children, &variant )) return 0;
++    }
++    return p_dbus_message_iter_close_container( &layout, &children ) &&
++           p_dbus_message_iter_close_container( iter, &layout );
++}
++
++static int handle_menu_event( struct sni_item *item, DBusMessageIter *iter )
++{
++    dbus_int32_t id;
++    const char *event;
++    unsigned int action;
++
++    p_dbus_message_iter_get_basic( iter, &id );
++    p_dbus_message_iter_next( iter );
++    p_dbus_message_iter_get_basic( iter, &event );
++    if (!id && !strcmp( event, "opened" ))
++    {
++        item->menu_open = 1;
++        item->pending_action = 0;
++    }
++    if (!id && !strcmp( event, "closed" )) item->menu_open = 0;
++    if ((id == 1 || id == 2) && !strcmp( event, "clicked" )) item->pending_action = id;
++    if (item->menu_open || !item->pending_action || item->hidden) return 1;
++    action = item->pending_action == 1 ? SNI_ACTION_ACTIVATE : SNI_ACTION_CONTEXT_MENU;
++    if (!sni_queue_event( item->token, action, 0, 0 )) return 0;
++    item->pending_action = 0;
++    return 1;
++}
++
++static DBusHandlerResult handle_method( DBusConnection *connection, DBusMessage *message, void *user_data )
++{
++    static const char *item_properties[] = {"Category", "Id", "Title", "Status", "WindowId", "IconName",
++        "IconThemePath", "IconPixmap", "Menu", "ItemIsMenu", "ToolTip", "OverlayIconName", "OverlayIconPixmap",
++        "AttentionIconName", "AttentionIconPixmap", "AttentionMovieName", NULL};
++    static const char *menu_properties[] = {"Version", "TextDirection", "Status", "IconThemePath", NULL};
++    const char *interface = p_dbus_message_get_interface( message ), *member = p_dbus_message_get_member( message );
++    const char *signature = p_dbus_message_get_signature( message ), *property_interface, *name, **property;
++    DBusMessageIter iter, input, array, value, events;
++    struct sni_item *item;
++    DBusMessage *reply = NULL;
++    dbus_uint32_t revision = 1;
++    dbus_int32_t id, depth, x, y;
++    dbus_bool_t need_update = FALSE;
++    unsigned int action;
++    int ok = 1;
++
++    if (!interface || !member || !p_dbus_message_is_method_call( message, interface, member ))
++        return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
++    if (!(reply = p_dbus_message_new_method_return( message ))) return DBUS_HANDLER_RESULT_NEED_MEMORY;
++    p_dbus_message_iter_init_append( reply, &iter );
++    pthread_mutex_lock( &mutex );
++    if (!(item = find_item( (uintptr_t)user_data )) || item->connection != connection) goto unknown;
++    if (!strcmp( interface, DBUS_INTERFACE_PROPERTIES ))
++    {
++        if (!strcmp( member, "Get" ) && !strcmp( signature, "ss" ))
++        {
++            p_dbus_message_get_args( message, NULL, DBUS_TYPE_STRING, &property_interface,
++                                     DBUS_TYPE_STRING, &name, DBUS_TYPE_INVALID );
++            if (!property_signature( property_interface, name )) goto unknown;
++            ok = append_property( &iter, item, property_interface, name, 0 );
++        }
++        else if (!strcmp( member, "GetAll" ) && !strcmp( signature, "s" ))
++        {
++            p_dbus_message_get_args( message, NULL, DBUS_TYPE_STRING, &property_interface, DBUS_TYPE_INVALID );
++            property = !strcmp( property_interface, SNI_ITEM ) ? item_properties :
++                       !strcmp( property_interface, SNI_MENU ) ? menu_properties : NULL;
++            if (!property) goto unknown;
++            ok = p_dbus_message_iter_open_container( &iter, DBUS_TYPE_ARRAY, "{sv}", &array );
++            while (ok && *property) ok = append_property( &array, item, property_interface, *property++, 1 );
++            if (ok) ok = p_dbus_message_iter_close_container( &iter, &array );
++        }
++        else goto unknown;
++    }
++    else if (!strcmp( interface, SNI_ITEM ))
++    {
++        action = !strcmp( member, "Activate" ) ? SNI_ACTION_ACTIVATE :
++                 !strcmp( member, "ContextMenu" ) ? SNI_ACTION_CONTEXT_MENU :
++                 !strcmp( member, "SecondaryActivate" ) ? SNI_ACTION_SECONDARY : 0;
++        if (action && !strcmp( signature, "ii" ))
++        {
++            p_dbus_message_get_args( message, NULL, DBUS_TYPE_INT32, &x, DBUS_TYPE_INT32, &y, DBUS_TYPE_INVALID );
++            ok = item->hidden || sni_queue_event( item->token, action, x, y );
++        }
++        else if ((!strcmp( member, "ProvideXdgActivationToken" ) && !strcmp( signature, "s" )) ||
++                 (!strcmp( member, "Scroll" ) && !strcmp( signature, "is" ))) {}
++        else goto unknown;
++    }
++    else if (!strcmp( interface, SNI_MENU ))
++    {
++        p_dbus_message_iter_init( message, &input );
++        if (!strcmp( member, "GetLayout" ) && !strcmp( signature, "iias" ))
++        {
++            p_dbus_message_iter_get_basic( &input, &id );
++            p_dbus_message_iter_next( &input );
++            p_dbus_message_iter_get_basic( &input, &depth );
++            if (id < 0 || id > 2) goto unknown;
++            ok = p_dbus_message_iter_append_basic( &iter, DBUS_TYPE_UINT32, &revision ) &&
++                 append_menu_layout( &iter, id, depth );
++        }
++        else if (!strcmp( member, "GetGroupProperties" ) && !strcmp( signature, "aias" ))
++        {
++            p_dbus_message_iter_recurse( &input, &events );
++            ok = p_dbus_message_iter_open_container( &iter, DBUS_TYPE_ARRAY, "(ia{sv})", &array );
++            while (ok && p_dbus_message_iter_get_arg_type( &events ) == DBUS_TYPE_INT32)
++            {
++                p_dbus_message_iter_get_basic( &events, &id );
++                if (id < 0 || id > 2) goto unknown;
++                ok = p_dbus_message_iter_open_container( &array, DBUS_TYPE_STRUCT, NULL, &value ) &&
++                     p_dbus_message_iter_append_basic( &value, DBUS_TYPE_INT32, &id ) &&
++                     append_menu_properties( &value, id ) && p_dbus_message_iter_close_container( &array, &value );
++                p_dbus_message_iter_next( &events );
++            }
++            if (ok) ok = p_dbus_message_iter_close_container( &iter, &array );
++        }
++        else if (!strcmp( member, "GetProperty" ) && !strcmp( signature, "is" ))
++        {
++            const char *text;
++            dbus_bool_t enabled = TRUE;
++            p_dbus_message_iter_get_basic( &input, &id );
++            p_dbus_message_iter_next( &input );
++            p_dbus_message_iter_get_basic( &input, &name );
++            if (id < 0 || id > 2) goto unknown;
++            if (id && (!strcmp( name, "enabled" ) || !strcmp( name, "visible" )))
++                ok = p_dbus_message_iter_open_container( &iter, DBUS_TYPE_VARIANT, "b", &value ) &&
++                     p_dbus_message_iter_append_basic( &value, DBUS_TYPE_BOOLEAN, &enabled ) &&
++                     p_dbus_message_iter_close_container( &iter, &value );
++            else
++            {
++                if (!id && !strcmp( name, "children-display" )) text = "submenu";
++                else if (id && !strcmp( name, "label" )) text = id == 1 ? "打开" : "更多操作…";
++                else goto unknown;
++                ok = p_dbus_message_iter_open_container( &iter, DBUS_TYPE_VARIANT, "s", &value ) &&
++                     append_string( &value, text ) && p_dbus_message_iter_close_container( &iter, &value );
++            }
++        }
++        else if (!strcmp( member, "Event" ) && !strcmp( signature, "isvu" )) ok = handle_menu_event( item, &input );
++        else if (!strcmp( member, "EventGroup" ) && !strcmp( signature, "a(isvu)" ))
++        {
++            p_dbus_message_iter_recurse( &input, &events );
++            while (ok && p_dbus_message_iter_get_arg_type( &events ) == DBUS_TYPE_STRUCT)
++            {
++                p_dbus_message_iter_recurse( &events, &value );
++                ok = handle_menu_event( item, &value );
++                p_dbus_message_iter_next( &events );
++            }
++            if (ok) ok = p_dbus_message_iter_open_container( &iter, DBUS_TYPE_ARRAY, "i", &array ) &&
++                         p_dbus_message_iter_close_container( &iter, &array );
++        }
++        else if (!strcmp( member, "AboutToShow" ) && !strcmp( signature, "i" ))
++            ok = p_dbus_message_iter_append_basic( &iter, DBUS_TYPE_BOOLEAN, &need_update );
++        else if (!strcmp( member, "AboutToShowGroup" ) && !strcmp( signature, "ai" ))
++        {
++            ok = p_dbus_message_iter_open_container( &iter, DBUS_TYPE_ARRAY, "i", &array ) &&
++                 p_dbus_message_iter_close_container( &iter, &array ) &&
++                 p_dbus_message_iter_open_container( &iter, DBUS_TYPE_ARRAY, "i", &array ) &&
++                 p_dbus_message_iter_close_container( &iter, &array );
++        }
++        else goto unknown;
++    }
++    else goto unknown;
++    pthread_mutex_unlock( &mutex );
++    if (ok) ok = p_dbus_connection_send( connection, reply, NULL );
++    p_dbus_message_unref( reply );
++    return ok ? DBUS_HANDLER_RESULT_HANDLED : DBUS_HANDLER_RESULT_NEED_MEMORY;
++unknown:
++    pthread_mutex_unlock( &mutex );
++    p_dbus_message_unref( reply );
++    if (!(reply = p_dbus_message_new_error( message, DBUS_ERROR_UNKNOWN_METHOD, "Unknown SNI operation" )))
++        return DBUS_HANDLER_RESULT_NEED_MEMORY;
++    ok = p_dbus_connection_send( connection, reply, NULL );
++    p_dbus_message_unref( reply );
++    return ok ? DBUS_HANDLER_RESULT_HANDLED : DBUS_HANDLER_RESULT_NEED_MEMORY;
++}
++
++static void register_item( DBusConnection *connection )
++{
++    const char *path = ITEM_PATH;
++    DBusMessage *message = p_dbus_message_new_method_call( SNI_WATCHER, "/StatusNotifierWatcher", SNI_WATCHER,
++                                                         "RegisterStatusNotifierItem" );
++    if (!message) return;
++    p_dbus_message_set_no_reply( message, TRUE );
++    if (p_dbus_message_append_args( message, DBUS_TYPE_STRING, &path, DBUS_TYPE_INVALID ))
++        p_dbus_connection_send( connection, message, NULL );
++    p_dbus_message_unref( message );
++}
++
++static DBusHandlerResult watcher_changed( DBusConnection *connection, DBusMessage *message, void *data )
++{
++    const char *name, *old_owner, *new_owner;
++    if (p_dbus_message_is_signal( message, DBUS_INTERFACE_DBUS, "NameOwnerChanged" ) &&
++        p_dbus_message_get_args( message, NULL, DBUS_TYPE_STRING, &name, DBUS_TYPE_STRING, &old_owner,
++                                 DBUS_TYPE_STRING, &new_owner, DBUS_TYPE_INVALID ) &&
++        !strcmp( name, SNI_WATCHER ) && *new_owner) register_item( connection );
++    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
++}
++
++static void send_signal( DBusConnection *connection, const char *name, const char *status )
++{
++    DBusMessage *message = p_dbus_message_new_signal( ITEM_PATH, SNI_ITEM, name );
++    if (!message) return;
++    if (!status || p_dbus_message_append_args( message, DBUS_TYPE_STRING, &status, DBUS_TYPE_INVALID ))
++        p_dbus_connection_send( connection, message, NULL );
++    p_dbus_message_unref( message );
++}
++
++static void wake_worker(void)
++{
++    unsigned char byte = 0;
++    ssize_t ret;
++    if (wake_pipe[1] >= 0)
++        do ret = write( wake_pipe[1], &byte, 1 ); while (ret < 0 && errno == EINTR);
++}
++
++static void *run_worker( void *arg )
++{
++    for (;;)
++    {
++        struct sni_item *item;
++        DBusConnection **connections;
++        struct pollfd *fds;
++        unsigned char bytes[128];
++        unsigned int count = 0, index = 0;
++
++        pthread_mutex_lock( &mutex );
++        if (stopping)
++        {
++            pthread_mutex_unlock( &mutex );
++            return NULL;
++        }
++        for (item = items; item; item = item->next) count++;
++        connections = calloc( count, sizeof(*connections) );
++        fds = calloc( count + 1, sizeof(*fds) );
++        if (!fds || (count && !connections))
++        {
++            struct pollfd wake = {.fd = wake_pipe[0], .events = POLLIN};
++            pthread_mutex_unlock( &mutex );
++            free( connections );
++            free( fds );
++            poll( &wake, 1, 100 );
++            continue;
++        }
++        fds[0].fd = wake_pipe[0];
++        fds[0].events = POLLIN;
++        for (item = items; item; item = item->next)
++        {
++            DBusConnection *connection = item->connection;
++            connections[index] = p_dbus_connection_ref( connection );
++            fds[index + 1].fd = -1;
++            p_dbus_connection_get_unix_fd( connection, &fds[index + 1].fd );
++            fds[index + 1].events = POLLIN;
++            if (item->dirty & DIRTY_REGISTER) register_item( connection );
++            if (item->dirty & DIRTY_ICON) send_signal( connection, "NewIcon", NULL );
++            if (item->dirty & DIRTY_TIP)
++            {
++                send_signal( connection, "NewToolTip", NULL );
++                send_signal( connection, "NewTitle", NULL );
++            }
++            if (item->dirty & DIRTY_STATUS)
++                send_signal( connection, "NewStatus", item->hidden ? "Passive" : "Active" );
++            item->dirty = 0;
++            index++;
++        }
++        pthread_mutex_unlock( &mutex );
++        for (index = 0; index < count; index++)
++        {
++            if (p_dbus_connection_read_write( connections[index], 0 ))
++            {
++                while (p_dbus_connection_dispatch( connections[index] ) == DBUS_DISPATCH_DATA_REMAINS) {}
++                if (p_dbus_connection_get_outgoing_size( connections[index] )) fds[index + 1].events |= POLLOUT;
++            }
++            else fds[index + 1].fd = -1;
++        }
++        poll( fds, count + 1, -1 );
++        if (fds[0].revents) while (read( wake_pipe[0], bytes, sizeof(bytes) ) > 0) {}
++        for (index = 0; index < count; index++) p_dbus_connection_unref( connections[index] );
++        free( connections );
++        free( fds );
++    }
++}
++
++static unsigned char *copy_pixels( unsigned int width, unsigned int height, const unsigned char *argb )
++{
++    unsigned char *copy;
++    size_t size;
++    if (!argb || !width || !height) return NULL;
++    if (width > 1024 || height > 1024) return NULL;
++    size = width * height * 4;
++    if (!(copy = malloc( size ))) return NULL;
++    memcpy( copy, argb, size );
++    return copy;
++}
++
++static void free_item( struct sni_item *item )
++{
++    if (item->connection)
++    {
++        p_dbus_connection_close( item->connection );
++        p_dbus_connection_unref( item->connection );
++    }
++    free( item->argb );
++    free( item->title );
++    free( item->id );
++    free( item );
++}
++
++int sni_dbus_add( uint64_t token, const char *id, const char *title, unsigned int width,
++                  unsigned int height, const unsigned char *argb, int hidden )
++{
++    static const DBusObjectPathVTable vtable = {.message_function = handle_method};
++    static const char match[] = "type='signal',sender='org.freedesktop.DBus',"
++        "interface='org.freedesktop.DBus',member='NameOwnerChanged',arg0='org.kde.StatusNotifierWatcher'";
++    struct sni_item *item;
++    DBusError error;
++    int ok;
++
++    if (!load_dbus()) return 0;
++    if (!(item = calloc( 1, sizeof(*item) ))) return 0;
++    item->token = token;
++    item->width = width;
++    item->height = height;
++    item->hidden = hidden;
++    item->dirty = DIRTY_REGISTER;
++    if (!(item->id = strdup( id )) || !(item->title = strdup( title ? title : "Wine application" ))) goto failed;
++    item->argb = copy_pixels( width, height, argb );
++    if (argb && width && height && !item->argb) goto failed;
++    p_dbus_error_init( &error );
++    if (!(item->connection = p_dbus_bus_get_private( DBUS_BUS_SESSION, &error ))) goto dbus_failed;
++    p_dbus_connection_set_exit_on_disconnect( item->connection, FALSE );
++    if (!p_dbus_bus_name_has_owner( item->connection, SNI_WATCHER, &error )) goto dbus_failed;
++    if (!p_dbus_connection_register_object_path( item->connection, ITEM_PATH, &vtable, (void *)(uintptr_t)token ) ||
++        !p_dbus_connection_register_object_path( item->connection, MENU_PATH, &vtable, (void *)(uintptr_t)token ) ||
++        !p_dbus_connection_add_filter( item->connection, watcher_changed, NULL, NULL )) goto dbus_failed;
++    p_dbus_bus_add_match( item->connection, match, &error );
++    if (p_dbus_error_is_set( &error )) goto dbus_failed;
++    pthread_mutex_lock( &mutex );
++    if (find_item( token ) || stopping)
++    {
++        pthread_mutex_unlock( &mutex );
++        goto failed;
++    }
++    if (!worker_running)
++    {
++        if (pipe2( wake_pipe, O_NONBLOCK | O_CLOEXEC ))
++        {
++            pthread_mutex_unlock( &mutex );
++            goto failed;
++        }
++        if (!(ok = !pthread_create( &worker, NULL, run_worker, NULL )))
++        {
++            close( wake_pipe[0] );
++            close( wake_pipe[1] );
++            wake_pipe[0] = wake_pipe[1] = -1;
++            pthread_mutex_unlock( &mutex );
++            goto failed;
++        }
++        worker_running = 1;
++    }
++    item->next = items;
++    items = item;
++    wake_worker();
++    pthread_mutex_unlock( &mutex );
++    return 1;
++dbus_failed:
++    if (p_dbus_error_is_set( &error )) p_dbus_error_free( &error );
++failed:
++    free_item( item );
++    return 0;
++}
++
++int sni_dbus_update( uint64_t token, const char *title, unsigned int width, unsigned int height,
++                     const unsigned char *argb, int hidden )
++{
++    struct sni_item *item;
++    unsigned char *pixels = copy_pixels( width, height, argb );
++    char *text = title ? strdup( title ) : NULL;
++
++    if ((title && !text) || (argb && width && height && !pixels)) goto failed;
++    pthread_mutex_lock( &mutex );
++    if (!(item = find_item( token )))
++    {
++        pthread_mutex_unlock( &mutex );
++        goto failed;
++    }
++    if (title)
++    {
++        free( item->title );
++        item->title = text;
++        item->dirty |= DIRTY_TIP;
++    }
++    if (argb)
++    {
++        free( item->argb );
++        item->argb = pixels;
++        item->width = width;
++        item->height = height;
++        item->dirty |= DIRTY_ICON;
++    }
++    if (item->hidden != hidden)
++    {
++        item->hidden = hidden;
++        item->pending_action = 0;
++        item->menu_open = 0;
++        item->dirty |= DIRTY_STATUS;
++    }
++    wake_worker();
++    pthread_mutex_unlock( &mutex );
++    return 1;
++failed:
++    free( text );
++    free( pixels );
++    return 0;
++}
++
++void sni_dbus_remove( uint64_t token )
++{
++    struct sni_item **link, *item;
++    pthread_mutex_lock( &mutex );
++    for (link = &items; *link; link = &(*link)->next) if ((*link)->token == token) break;
++    item = *link;
++    if (item) *link = item->next;
++    wake_worker();
++    pthread_mutex_unlock( &mutex );
++    if (item) free_item( item );
++}
++
++void sni_dbus_cleanup(void)
++{
++    struct sni_item *item, *next;
++    int join;
++    pthread_mutex_lock( &mutex );
++    stopping = 1;
++    join = worker_running;
++    wake_worker();
++    pthread_mutex_unlock( &mutex );
++    if (join) pthread_join( worker, NULL );
++    pthread_mutex_lock( &mutex );
++    for (item = items; item; item = next)
++    {
++        next = item->next;
++        free_item( item );
++    }
++    items = NULL;
++    if (wake_pipe[0] >= 0) close( wake_pipe[0] );
++    if (wake_pipe[1] >= 0) close( wake_pipe[1] );
++    wake_pipe[0] = wake_pipe[1] = -1;
++    worker_running = stopping = 0;
++    pthread_mutex_unlock( &mutex );
++}
++
++static int read_basic( DBusMessageIter *iter, int type, void *value )
++{
++    if (p_dbus_message_iter_get_arg_type( iter ) != type) return 0;
++    p_dbus_message_iter_get_basic( iter, value );
++    p_dbus_message_iter_next( iter );
++    return 1;
++}
++
++static int read_container( DBusMessageIter *iter, int type, DBusMessageIter *contents )
++{
++    if (p_dbus_message_iter_get_arg_type( iter ) != type) return 0;
++    p_dbus_message_iter_recurse( iter, contents );
++    p_dbus_message_iter_next( iter );
++    return 1;
++}
++
++static int read_property( DBusMessageIter properties, const char *name, int type, void *value )
++{
++    DBusMessageIter entry, variant;
++    const char *key;
++
++    while (read_container( &properties, DBUS_TYPE_DICT_ENTRY, &entry ))
++        if (read_basic( &entry, DBUS_TYPE_STRING, &key ) && !strcmp( key, name ) &&
++            read_container( &entry, DBUS_TYPE_VARIANT, &variant )) return read_basic( &variant, type, value );
++    return 0;
++}
++
++static DBusMessage *call_mutter( DBusConnection *connection, const char *path, const char *interface,
++                               const char *method, int property )
++{
++    const char *name = "UiScalingFactor", *x11 = "org.gnome.Mutter.X11";
++    DBusMessage *message, *reply;
++
++    if (!(message = p_dbus_message_new_method_call( property ? x11 : "org.gnome.Mutter.DisplayConfig",
++                                                   path, interface, method ))) return NULL;
++    p_dbus_message_set_auto_start( message, FALSE );
++    if (property && !p_dbus_message_append_args( message, DBUS_TYPE_STRING, &x11, DBUS_TYPE_STRING, &name,
++                                                DBUS_TYPE_INVALID ))
++    {
++        p_dbus_message_unref( message );
++        return NULL;
++    }
++    reply = p_dbus_connection_send_with_reply_and_block( connection, message, 250, NULL );
++    p_dbus_message_unref( message );
++    return reply;
++}
++
++static int output_index( const struct xembed_output *outputs, unsigned int count, const char *connector )
++{
++    unsigned int index;
++    for (index = 0; index < count; index++) if (!strcmp( outputs[index].name, connector )) return index;
++    return -1;
++}
++
++static int read_current_modes( DBusMessageIter monitors, const struct xembed_output *outputs, unsigned int count,
++                               int *widths, int *heights )
++{
++    DBusMessageIter monitor, spec, modes, mode, flags;
++    dbus_bool_t current;
++    const char *connector;
++    int index, width, height, found;
++
++    while (read_container( &monitors, DBUS_TYPE_STRUCT, &monitor ))
++    {
++        if (!read_container( &monitor, DBUS_TYPE_STRUCT, &spec ) ||
++            !read_basic( &spec, DBUS_TYPE_STRING, &connector )) return 0;
++        if ((index = output_index( outputs, count, connector )) < 0) continue;
++        if (widths[index] || !read_container( &monitor, DBUS_TYPE_ARRAY, &modes )) return 0;
++        found = 0;
++        while (read_container( &modes, DBUS_TYPE_STRUCT, &mode ))
++        {
++            p_dbus_message_iter_next( &mode ); /* mode id */
++            if (!read_basic( &mode, DBUS_TYPE_INT32, &width ) ||
++                !read_basic( &mode, DBUS_TYPE_INT32, &height )) return 0;
++            p_dbus_message_iter_next( &mode ); /* refresh rate */
++            p_dbus_message_iter_next( &mode ); /* preferred scale */
++            p_dbus_message_iter_next( &mode ); /* supported scales */
++            if (!read_container( &mode, DBUS_TYPE_ARRAY, &flags )) return 0;
++            if (read_property( flags, "is-current", DBUS_TYPE_BOOLEAN, &current ) && current)
++            {
++                if (found++ || width <= 0 || height <= 0) return 0;
++                widths[index] = width;
++                heights[index] = height;
++            }
++        }
++        if (!found) return 0;
++    }
++    return 1;
++}
++
++static int validate_logical_outputs( DBusMessageIter logical, const struct xembed_output *outputs,
++                                     unsigned int count, unsigned int layout, int scale,
++                                     const int *widths, const int *heights, int x, int y )
++{
++    DBusMessageIter monitor, connectors, spec;
++    unsigned int transform, seen = 0;
++    const char *connector;
++    double monitor_scale;
++    int index, lx, ly, width, height, swap, contains = 0;
++    dbus_bool_t primary;
++
++    while (read_container( &logical, DBUS_TYPE_STRUCT, &monitor ))
++    {
++        if (!read_basic( &monitor, DBUS_TYPE_INT32, &lx ) || !read_basic( &monitor, DBUS_TYPE_INT32, &ly ) ||
++            !read_basic( &monitor, DBUS_TYPE_DOUBLE, &monitor_scale ) ||
++            !read_basic( &monitor, DBUS_TYPE_UINT32, &transform ) ||
++            !read_basic( &monitor, DBUS_TYPE_BOOLEAN, &primary ) ||
++            !read_container( &monitor, DBUS_TYPE_ARRAY, &connectors ) || transform > 7 ||
++            !isfinite(monitor_scale) || monitor_scale <= 0 || monitor_scale > 8) return 0;
++        while (read_container( &connectors, DBUS_TYPE_STRUCT, &spec ))
++        {
++            if (!read_basic( &spec, DBUS_TYPE_STRING, &connector ) ||
++                (index = output_index( outputs, count, connector )) < 0 || (seen & (1u << index)) ||
++                !widths[index] || !heights[index]) return 0;
++            width = widths[index];
++            height = heights[index];
++            if (transform & 1) { swap = width; width = height; height = swap; }
++            if (layout == 1)
++            {
++                if (width / monitor_scale > INT_MAX || height / monitor_scale > INT_MAX) return 0;
++                width = round( width / monitor_scale );
++                height = round( height / monitor_scale );
++            }
++            if ((int64_t)lx * scale != outputs[index].x || (int64_t)ly * scale != outputs[index].y ||
++                (int64_t)width * scale != outputs[index].width ||
++                (int64_t)height * scale != outputs[index].height) return 0;
++            if (x >= lx && y >= ly && (int64_t)x < (int64_t)lx + width && (int64_t)y < (int64_t)ly + height)
++                contains = 1;
++            seen |= 1u << index;
++        }
++    }
++    return contains && seen == (count == 32 ? UINT32_MAX : (1u << count) - 1);
++}
++
++/* Only the read-only, fully matched Mutter/XRandR contract permits scaling a synthetic tray point. */
++int sni_dbus_map_xembed_point( const struct xembed_output *outputs, unsigned int count, int *x, int *y )
++{
++    static const char state_signature[] = "ua((ssss)a(siiddada{sv})a{sv})a(iiduba(ssss)a{sv})a{sv}";
++    DBusMessage *state = NULL, *factor = NULL, *after = NULL;
++    DBusMessageIter iter, monitors, logical, properties, variant;
++    DBusConnection *connection = NULL;
++    int widths[32] = {0}, heights[32] = {0}, scale, valid = 0;
++    dbus_uint32_t serial, current_serial, layout = 1;
++
++    if (!count || count > 32 || !getenv( "DBUS_SESSION_BUS_ADDRESS" )) return 0;
++    pthread_mutex_lock( &mutex );
++    valid = load_dbus();
++    pthread_mutex_unlock( &mutex );
++    if (!valid) return 0;
++    valid = 0;
++    if (!(connection = p_dbus_bus_get_private( DBUS_BUS_SESSION, NULL ))) goto done;
++    p_dbus_connection_set_exit_on_disconnect( connection, FALSE );
++    state = call_mutter( connection, "/org/gnome/Mutter/DisplayConfig", "org.gnome.Mutter.DisplayConfig",
++                         "GetCurrentState", 0 );
++    factor = call_mutter( connection, "/org/gnome/Mutter/X11", DBUS_INTERFACE_PROPERTIES, "Get", 1 );
++    if (!state || !factor || strcmp( p_dbus_message_get_signature( state ), state_signature ) ||
++        strcmp( p_dbus_message_get_signature( factor ), "v" ) || !p_dbus_message_get_sender( state ) ||
++        !p_dbus_message_get_sender( factor ) ||
++        strcmp( p_dbus_message_get_sender( state ), p_dbus_message_get_sender( factor ) )) goto done;
++    p_dbus_message_iter_init( factor, &iter );
++    if (!read_container( &iter, DBUS_TYPE_VARIANT, &variant ) ||
++        !read_basic( &variant, DBUS_TYPE_INT32, &scale ) || scale < 1 || scale > 8) goto done;
++    p_dbus_message_iter_init( state, &iter );
++    if (!read_basic( &iter, DBUS_TYPE_UINT32, &serial ) ||
++        !read_container( &iter, DBUS_TYPE_ARRAY, &monitors ) ||
++        !read_container( &iter, DBUS_TYPE_ARRAY, &logical ) ||
++        !read_container( &iter, DBUS_TYPE_ARRAY, &properties )) goto done;
++    read_property( properties, "layout-mode", DBUS_TYPE_UINT32, &layout );
++    if (layout == 2) scale = 1;
++    else if (layout != 1) goto done;
++    if (!read_current_modes( monitors, outputs, count, widths, heights ) ||
++        !validate_logical_outputs( logical, outputs, count, layout, scale, widths, heights, *x, *y )) goto done;
++    after = call_mutter( connection, "/org/gnome/Mutter/DisplayConfig", "org.gnome.Mutter.DisplayConfig",
++                         "GetCurrentState", 0 );
++    if (!after || strcmp( p_dbus_message_get_signature( after ), state_signature ) ||
++        !p_dbus_message_get_sender( after ) ||
++        strcmp( p_dbus_message_get_sender( state ), p_dbus_message_get_sender( after ) )) goto done;
++    p_dbus_message_iter_init( after, &iter );
++    if (!read_basic( &iter, DBUS_TYPE_UINT32, &current_serial ) || serial != current_serial ||
++        (int64_t)*x * scale < INT_MIN || (int64_t)*x * scale > INT_MAX ||
++        (int64_t)*y * scale < INT_MIN || (int64_t)*y * scale > INT_MAX) goto done;
++    *x *= scale;
++    *y *= scale;
++    valid = 1;
++done:
++    if (after) p_dbus_message_unref( after );
++    if (factor) p_dbus_message_unref( factor );
++    if (state) p_dbus_message_unref( state );
++    if (connection)
++    {
++        p_dbus_connection_close( connection );
++        p_dbus_connection_unref( connection );
++    }
++    return valid;
++}
++
++#else
++int sni_dbus_add( uint64_t token, const char *id, const char *title, unsigned int width,
++                  unsigned int height, const unsigned char *argb, int hidden ) { return 0; }
++int sni_dbus_update( uint64_t token, const char *title, unsigned int width, unsigned int height,
++                     const unsigned char *argb, int hidden ) { return 0; }
++void sni_dbus_remove( uint64_t token ) {}
++void sni_dbus_cleanup(void) {}
++int sni_dbus_map_xembed_point( const struct xembed_output *outputs, unsigned int count, int *x, int *y )
++{
++    return 0;
++}
++#endif
+--- /dev/null
++++ b/dlls/winex11.drv/systray.c
+@@ -0,0 +1,325 @@
++/*
++ * X11 StatusNotifierItem integration
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
++ */
++
++#if 0
++#pragma makedep unix
++#endif
++
++#include "config.h"
++
++#include <stdio.h>
++
++#include "x11drv.h"
++#include "sni_event.h"
++#include "sni_dbus.h"
++
++WINE_DEFAULT_DEBUG_CHANNEL(systray);
++
++struct tray_icon
++{
++    struct list entry;
++    HWND owner;
++    UINT id, callback_message, version;
++    DWORD state;
++    uint64_t token;
++};
++
++static struct list icon_list = LIST_INIT(icon_list);
++static uint64_t next_token;
++static Display *tray_display;
++
++static struct tray_icon *get_icon( HWND owner, UINT id )
++{
++    struct tray_icon *icon;
++
++    LIST_FOR_EACH_ENTRY( icon, &icon_list, struct tray_icon, entry )
++        if (icon->owner == owner && icon->id == id) return icon;
++    return NULL;
++}
++
++static struct tray_icon *get_icon_token( uint64_t token )
++{
++    struct tray_icon *icon;
++
++    LIST_FOR_EACH_ENTRY( icon, &icon_list, struct tray_icon, entry )
++        if (icon->token == token) return icon;
++    return NULL;
++}
++
++static void delete_icon( struct tray_icon *icon )
++{
++    list_remove( &icon->entry );
++    sni_dbus_remove( icon->token );
++    free( icon );
++}
++
++/* DrawIconEx retains the separate alpha bitmap and also handles monochrome icons. */
++static unsigned char *get_icon_pixels( HICON icon, unsigned int *width, unsigned int *height )
++{
++    char buffer[FIELD_OFFSET(BITMAPINFO, bmiColors[2])] = {0};
++    BITMAPINFO *info = (BITMAPINFO *)buffer;
++    HBITMAP color = 0, mask = 0, previous = 0;
++    unsigned long *bits = NULL;
++    unsigned char *argb = NULL;
++    unsigned int size, i, alpha;
++    LONG cx, cy;
++    HDC hdc = 0;
++    void *color_bits, *mask_bits;
++
++    if (!NtUserGetIconSize( icon, 0, &cx, &cy )) return NULL;
++    cy /= 2;  /* NtUserGetIconSize includes both AND and XOR mask heights. */
++    if (cx <= 0 || cy <= 0 || cx > INT_MAX / cy / 4) return NULL;
++    if (!(hdc = NtGdiCreateCompatibleDC(0))) return NULL;
++    info->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
++    info->bmiHeader.biWidth = cx;
++    info->bmiHeader.biHeight = -cy;
++    info->bmiHeader.biPlanes = 1;
++    info->bmiHeader.biBitCount = 32;
++    info->bmiHeader.biCompression = BI_RGB;
++    info->bmiHeader.biSizeImage = cx * cy * 4;
++    color = NtGdiCreateDIBSection( hdc, NULL, 0, info, DIB_RGB_COLORS, 0, 0, 0, &color_bits );
++    if (!color) goto done;
++    memset( color_bits, 0, info->bmiHeader.biSizeImage );
++    if (!(previous = NtGdiSelectBitmap( hdc, color ))) goto done;
++    if (!NtUserDrawIconEx( hdc, 0, 0, icon, cx, cy, 0, 0, DI_NORMAL | DI_NOMIRROR )) goto done;
++
++    info->bmiHeader.biBitCount = 1;
++    info->bmiHeader.biSizeImage = ((cx + 31) / 32 * 4) * cy;
++    info->bmiColors[1].rgbRed = info->bmiColors[1].rgbGreen = info->bmiColors[1].rgbBlue = 255;
++    mask = NtGdiCreateDIBSection( hdc, NULL, 0, info, DIB_RGB_COLORS, 0, 0, 0, &mask_bits );
++    if (!mask) goto done;
++    memset( mask_bits, 255, info->bmiHeader.biSizeImage );
++    NtGdiSelectBitmap( hdc, mask );
++    if (!NtUserDrawIconEx( hdc, 0, 0, icon, cx, cy, 0, 0, DI_MASK | DI_NOMIRROR )) goto done;
++    NtGdiSelectBitmap( hdc, previous );
++    if (!(bits = get_bitmap_argb( hdc, color, mask, &size ))) goto done;
++    if (!(argb = malloc( cx * cy * 4 ))) goto done;
++    for (i = 0; i < cx * cy; i++)
++    {
++        alpha = bits[i + 2] >> 24;
++        argb[i * 4] = alpha;
++        /* DrawIconEx produces premultiplied pixels; SNI uses straight ARGB bytes. */
++        argb[i * 4 + 1] = alpha ? min( 255, (((bits[i + 2] >> 16) & 255) * 255 + alpha / 2) / alpha ) : 0;
++        argb[i * 4 + 2] = alpha ? min( 255, (((bits[i + 2] >> 8) & 255) * 255 + alpha / 2) / alpha ) : 0;
++        argb[i * 4 + 3] = alpha ? min( 255, ((bits[i + 2] & 255) * 255 + alpha / 2) / alpha ) : 0;
++    }
++    *width = cx;
++    *height = cy;
++done:
++    free( bits );
++    if (previous) NtGdiSelectBitmap( hdc, previous );
++    if (hdc) NtGdiDeleteObjectApp( hdc );
++    if (color) NtGdiDeleteObjectApp( color );
++    if (mask) NtGdiDeleteObjectApp( mask );
++    return argb;
++}
++
++static void get_tip_text( const WCHAR *tip, char *text, unsigned int size )
++{
++    DWORD len = 0;
++
++    RtlUnicodeToUTF8N( text, size - 1, &len, tip, lstrlenW(tip) * sizeof(WCHAR) );
++    text[len] = 0;
++}
++
++static BOOL modify_icon( struct tray_icon *icon, const NOTIFYICONDATAW *data )
++{
++    unsigned char blank[4] = {0}, *pixels = NULL;
++    unsigned int width = 0, height = 0;
++    DWORD state = icon->state;
++    char title[384];
++    BOOL ret = TRUE;
++
++    if (data->uFlags & NIF_STATE) state = (state & ~data->dwStateMask) | (data->dwState & data->dwStateMask);
++    if (data->uFlags & NIF_TIP) get_tip_text( data->szTip, title, sizeof(title) );
++    if ((data->uFlags & NIF_ICON) && data->hIcon &&
++        !(pixels = get_icon_pixels( data->hIcon, &width, &height ))) return FALSE;
++    if (data->uFlags & (NIF_ICON | NIF_TIP | NIF_STATE))
++        ret = sni_dbus_update( icon->token, data->uFlags & NIF_TIP ? title : NULL, width, height,
++                              pixels ? pixels : data->uFlags & NIF_ICON ? blank : NULL,
++                              !!(state & NIS_HIDDEN) );
++    free( pixels );
++    if (!ret) return FALSE;
++    icon->state = state;
++    if (data->uFlags & NIF_MESSAGE) icon->callback_message = data->uCallbackMessage;
++    return TRUE;
++}
++
++static LRESULT add_icon( const NOTIFYICONDATAW *data )
++{
++    unsigned char blank[4] = {0}, *pixels = NULL;
++    unsigned int width = 0, height = 0;
++    struct tray_icon *icon;
++    char id[64], title[384] = "Wine";
++    const char *backend = getenv( "WINE_X11_TRAY_BACKEND" );
++
++    if (get_icon( data->hWnd, data->uID )) return FALSE;
++    if (backend && !strcmp( backend, "xembed" )) return -1;
++    if (!sni_events_init()) return -1;
++    tray_display = x11drv_thread_data()->display;
++    if (!(icon = calloc( 1, sizeof(*icon) ))) return FALSE;
++    if ((data->uFlags & NIF_ICON) && data->hIcon &&
++        !(pixels = get_icon_pixels( data->hIcon, &width, &height )))
++    {
++        free( icon );
++        return FALSE;
++    }
++    if (data->uFlags & NIF_TIP) get_tip_text( data->szTip, title, sizeof(title) );
++    icon->owner = data->hWnd;
++    icon->id = data->uID;
++    icon->token = ++next_token;
++    if (!icon->token) icon->token = ++next_token;
++    if (data->uFlags & NIF_MESSAGE) icon->callback_message = data->uCallbackMessage;
++    if (data->uFlags & NIF_STATE) icon->state = data->dwState & data->dwStateMask;
++    snprintf( id, sizeof(id), "wine-%08x-%u", HandleToUlong(icon->owner), icon->id );
++    if (!sni_dbus_add( icon->token, id, title, width, height, pixels ? pixels : blank,
++                       !!(icon->state & NIS_HIDDEN) ))
++    {
++        free( pixels );
++        free( icon );
++        return -1;
++    }
++    free( pixels );
++    list_add_tail( &icon_list, &icon->entry );
++    return TRUE;
++}
++
++LRESULT X11DRV_NotifyIcon( HWND hwnd, UINT msg, NOTIFYICONDATAW *data )
++{
++    struct tray_icon *icon;
++
++    if (msg == NIM_ADD) return add_icon( data );
++    if (!(icon = get_icon( data->hWnd, data->uID ))) return -1;
++    switch (msg)
++    {
++    case NIM_MODIFY:
++        return modify_icon( icon, data );
++    case NIM_DELETE:
++        delete_icon( icon );
++        return TRUE;
++    case NIM_SETVERSION:
++        icon->version = data->uVersion;
++        return TRUE;
++    default:
++        return -1;
++    }
++}
++
++void X11DRV_CleanupIcons( HWND owner )
++{
++    struct tray_icon *icon, *next;
++
++    LIST_FOR_EACH_ENTRY_SAFE( icon, next, &icon_list, struct tray_icon, entry )
++        if (icon->owner == owner) delete_icon( icon );
++}
++
++/* Re-resolve after each callback because same-process callbacks may delete or replace an item. */
++static BOOL notify_owner( uint64_t token, UINT msg, POINT point )
++{
++    struct tray_icon *icon = get_icon_token( token );
++    struct wine_notify_icon_params params;
++    WPARAM wp;
++    LPARAM lp;
++
++    if (!icon) return FALSE;
++    wp = icon->id;
++    lp = msg;
++    if (icon->version >= NOTIFYICON_VERSION_4)
++    {
++        wp = MAKEWPARAM( point.x, point.y );
++        lp = MAKELPARAM( msg, icon->id );
++    }
++    params.callback_message = icon->callback_message;
++    params.wparam = wp;
++    params.lparam = lp;
++    params.point = point;
++    if (!send_notify_message( icon->owner, WM_WINE_NOTIFYICON, 0, (LPARAM)&params ) &&
++        RtlGetLastWin32Error() == ERROR_INVALID_WINDOW_HANDLE)
++    {
++        if ((icon = get_icon_token( token ))) delete_icon( icon );
++        return FALSE;
++    }
++    return get_icon_token( token ) != NULL;
++}
++
++static POINT get_menu_anchor( HWND root )
++{
++    MONITORINFO monitor = {.cbSize = sizeof(monitor)};
++    RECT rect, visible;
++    POINT point;
++
++    if (!NtUserGetMonitorInfo( NtUserMonitorFromWindow( root, MONITOR_DEFAULTTONEAREST ), &monitor ))
++        monitor.rcWork = NtUserGetVirtualScreenRect( MDT_RAW_DPI );
++    point.x = monitor.rcWork.left + (monitor.rcWork.right - monitor.rcWork.left) / 2;
++    point.y = min( monitor.rcWork.bottom - 1, monitor.rcWork.top + 24 );
++    if (root && NtUserIsWindowVisible(root) && !(NtUserGetWindowLongW( root, GWL_STYLE ) & WS_MINIMIZE) &&
++        NtUserGetWindowRect( root, &rect, 0 ) && intersect_rect( &visible, &rect, &monitor.rcWork ))
++    {
++        point.x = visible.left + (visible.right - visible.left) / 2;
++        point.y = visible.top + (visible.bottom - visible.top) / 2;
++    }
++    return point;
++}
++
++void sni_dispatch_event( uint64_t token, unsigned int action, int x, int y )
++{
++    struct tray_icon *icon = get_icon_token( token );
++    UINT context, version, down, up;
++    HWND root;
++    POINT point;
++
++    if (!icon || (icon->state & NIS_HIDDEN)) return;
++    if (!NtUserIsWindow( icon->owner ))
++    {
++        delete_icon( icon );
++        return;
++    }
++    version = icon->version;
++    context = NtUserSetThreadDpiAwarenessContext( NTUSER_DPI_PER_MONITOR_AWARE );
++    root = NtUserGetAncestor( icon->owner, GA_ROOTOWNER );
++    point = get_menu_anchor( root );
++    /* These actions follow a real shell activation. AllowSetForegroundWindow is still a Wine stub. */
++    if (root && root != NtUserGetDesktopWindow() && !NtUserSetForegroundWindowInternal(root))
++        WARN( "could not activate tray owner root %p\n", root );
++    if (action == SNI_ACTION_CONTEXT_MENU) down = WM_RBUTTONDOWN;
++    else if (action == SNI_ACTION_SECONDARY) down = WM_MBUTTONDOWN;
++    else down = WM_LBUTTONDOWN;
++    up = down + WM_LBUTTONUP - WM_LBUTTONDOWN;
++    if (notify_owner( token, down, point ) && notify_owner( token, up, point ) && version)
++    {
++        if (action == SNI_ACTION_ACTIVATE) notify_owner( token, NIN_SELECT, point );
++        else if (action == SNI_ACTION_CONTEXT_MENU) notify_owner( token, WM_CONTEXTMENU, point );
++    }
++    NtUserSetThreadDpiAwarenessContext( context );
++}
++
++void X11DRV_SNI_ThreadDetach(void)
++{
++    struct x11drv_thread_data *data = x11drv_thread_data();
++    struct tray_icon *icon, *next;
++
++    if (!data || data->display != tray_display) return;
++    sni_dbus_cleanup();
++    LIST_FOR_EACH_ENTRY_SAFE( icon, next, &icon_list, struct tray_icon, entry )
++    {
++        list_remove( &icon->entry );
++        free( icon );
++    }
++    sni_events_cleanup();
++    tray_display = NULL;
++}
+--- /dev/null
++++ b/dlls/winex11.drv/sni_event.h
+@@ -0,0 +1,38 @@
++/*
++ * StatusNotifierItem callbacks on the Explorer GUI thread
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
++ */
++
++#ifndef __WINE_SNI_EVENT_H
++#define __WINE_SNI_EVENT_H
++
++#include <stdint.h>
++
++enum sni_action
++{
++    SNI_ACTION_ACTIVATE = 1,
++    SNI_ACTION_CONTEXT_MENU,
++    SNI_ACTION_SECONDARY
++};
++
++extern BOOL sni_events_init(void);
++extern void sni_events_cleanup(void);
++extern BOOL sni_queue_event( uint64_t token, unsigned int action, int x, int y );
++extern BOOL sni_process_event( XClientMessageEvent *event );
++extern void sni_dispatch_event( uint64_t token, unsigned int action, int x, int y );
++extern void X11DRV_SNI_ThreadDetach(void);
++
++#endif
+--- /dev/null
++++ b/dlls/winex11.drv/sni_dbus.h
+@@ -0,0 +1,41 @@
++/*
++ * Native StatusNotifierItem transport
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
++ */
++
++/* All strings and pixels are copied synchronously. */
++#ifndef __WINE_SNI_DBUS_H
++#define __WINE_SNI_DBUS_H
++
++#include <stdint.h>
++
++int sni_dbus_add( uint64_t token, const char *id, const char *title, unsigned int width,
++                  unsigned int height, const unsigned char *argb, int hidden );
++int sni_dbus_update( uint64_t token, const char *title, unsigned int width, unsigned int height,
++                     const unsigned char *argb, int hidden );
++void sni_dbus_remove( uint64_t token );
++void sni_dbus_cleanup(void);
++
++struct xembed_output
++{
++    char name[256];
++    int x, y, width, height;
++};
++
++int xembed_get_outputs( struct xembed_output *outputs, unsigned int capacity, unsigned long *timestamp );
++int sni_dbus_map_xembed_point( const struct xembed_output *outputs, unsigned int count, int *x, int *y );
++
++#endif
+--- /dev/null
++++ b/dlls/winex11.drv/sni_event.c
+@@ -0,0 +1,157 @@
++/*
++ * StatusNotifierItem native-to-GUI event bridge
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
++ */
++
++#if 0
++#pragma makedep unix
++#endif
++
++#include "config.h"
++
++#include <fcntl.h>
++#include <stdlib.h>
++
++#include "x11drv.h"
++#include "sni_event.h"
++
++struct sni_event
++{
++    struct sni_event *next;
++    uint64_t token;
++    unsigned int action;
++    int x, y;
++};
++
++static pthread_mutex_t event_mutex = PTHREAD_MUTEX_INITIALIZER;
++static Display *gui_display, *worker_display;
++static Window collector;
++static Atom event_atom;
++static struct sni_event *event_head, *event_tail;
++
++/* Called only on the Explorer GUI thread, before publishing any DBus item. */
++BOOL sni_events_init(void)
++{
++    Display *display = x11drv_init_thread_data()->display;
++    BOOL ret = FALSE;
++
++    pthread_mutex_lock( &event_mutex );
++    if (gui_display)
++    {
++        ret = gui_display == display;
++        goto done;
++    }
++    if (!(worker_display = XOpenDisplay( DisplayString(display) ))) goto done;
++    fcntl( ConnectionNumber(worker_display), F_SETFD, FD_CLOEXEC );
++    event_atom = XInternAtom( display, "_WINE_SNI_EVENT", False );
++    collector = XCreateWindow( display, DefaultRootWindow(display), 0, 0, 1, 1, 0,
++                               0, InputOnly, CopyFromParent, 0, NULL );
++    /* The worker connection must not send before the server has created the collector. */
++    XSync( display, False );
++    gui_display = display;
++    ret = TRUE;
++done:
++    pthread_mutex_unlock( &event_mutex );
++    return ret;
++}
++
++/* ThreadDetach calls this before closing its display; late worker actions are then rejected. */
++void sni_events_cleanup(void)
++{
++    struct x11drv_thread_data *data = x11drv_thread_data();
++    struct sni_event *event;
++
++    pthread_mutex_lock( &event_mutex );
++    if (!data || data->display != gui_display) goto done;
++    /* Closing first also completes queued sends before the collector is destroyed. */
++    XCloseDisplay( worker_display );
++    XDestroyWindow( gui_display, collector );
++    XFlush( gui_display );
++    gui_display = worker_display = NULL;
++    collector = 0;
++    event_atom = 0;
++    while ((event = event_head))
++    {
++        event_head = event->next;
++        free( event );
++    }
++    event_tail = NULL;
++done:
++    pthread_mutex_unlock( &event_mutex );
++}
++
++/* Safe on a native pthread: no Wine, Win32, HICON or HWND operation is performed here. */
++BOOL sni_queue_event( uint64_t token, unsigned int action, int x, int y )
++{
++    struct sni_event *event;
++    XEvent wake = {0};
++    BOOL ret = FALSE;
++
++    if (!token || action < SNI_ACTION_ACTIVATE || action > SNI_ACTION_SECONDARY) return FALSE;
++    if (!(event = malloc( sizeof(*event) ))) return FALSE;
++    event->next = NULL;
++    event->token = token;
++    event->action = action;
++    event->x = x;
++    event->y = y;
++
++    pthread_mutex_lock( &event_mutex );
++    if (!gui_display) goto done;
++    if (!event_head)
++    {
++        wake.xclient.type = ClientMessage;
++        wake.xclient.window = collector;
++        wake.xclient.message_type = event_atom;
++        wake.xclient.format = 32;
++        if (!XSendEvent( worker_display, collector, False, NoEventMask, &wake )) goto done;
++        XFlush( worker_display );
++    }
++    if (event_tail) event_tail->next = event;
++    else event_head = event;
++    event_tail = event;
++    ret = TRUE;
++done:
++    pthread_mutex_unlock( &event_mutex );
++    if (!ret) free( event );
++    return ret;
++}
++
++/* Called before the ordinary ClientMessage handler rejects an unregistered XID. */
++BOOL sni_process_event( XClientMessageEvent *event )
++{
++    struct sni_event *pending, *next;
++
++    pthread_mutex_lock( &event_mutex );
++    if (!gui_display || event->display != gui_display || event->window != collector ||
++        event->message_type != event_atom || event->format != 32)
++    {
++        pthread_mutex_unlock( &event_mutex );
++        return FALSE;
++    }
++    pending = event_head;
++    event_head = event_tail = NULL;
++    pthread_mutex_unlock( &event_mutex );
++
++    while (pending)
++    {
++        next = pending->next;
++        /* Backend resolves the generation token again; a deleted item is never dereferenced. */
++        sni_dispatch_event( pending->token, pending->action, pending->x, pending->y );
++        free( pending );
++        pending = next;
++    }
++    return TRUE;
++}

@@ -1,0 +1,26 @@
+{
+  "status": "normal-use",
+  "wine": "11.20",
+  "wecom": "5.0.12.6018",
+  "installer": {
+    "path": "assets/WeCom_5.0.12.6018.exe",
+    "sha256": "61ec2507ba8a579bfdb95c459da12d3d745b43f4f4c3e45fa87979410b6d1af1"
+  },
+  "cef": {
+    "component": "5.0.79.5483",
+    "chromium": "129.0.6668.101",
+    "architecture": "x86_64",
+    "directory": "assets/cef",
+    "file_count": 89,
+    "manifest": "cef64-vendor-manifest.json",
+    "ww_min": "5.0.8.8000",
+    "ww_max": ""
+  },
+  "richedit": {
+    "path": "assets/riched20.dll",
+    "sha256": "1c2508fb55ddc459d0327f2017471545c87420443391567094e768fb34032da1",
+    "version": "5.30.23.1200",
+    "architecture": "x86",
+    "target": "drive_c/windows/syswow64/riched20.dll"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "artifacts_sha256": {
+    "wineserver": "41e1d17e3a7dd0a67caae9a4fe4aa344583504e1f579a1a7fe751f3721c7f8e0",
+    "win32u.so": "fc37ae35490f120f957b1459e950a1407bd0a7e08f447fd1f228fcb01581cd98",
+    "winex11.so": "23dacd623b7c088870c4604a15dd151eaf98d6c49855e8e2010b86f195156504",
+    "explorer.exe": "08cc8d2f854d217e724ac0e82993ec77e80b3ce2b1b87ea701912ef54f685c84"
+  },
+  "wine_pe_debug_removed": true,
+  "non_debug_pe_sections_byte_identical": true,
+  "vendor_files_stripped": false,
+  "archive_identical_file_hardlinks": true
+}

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=企业微信
+Comment=企业微信 5.0.12 / Wine 11.20，Ubuntu 适配测试版
+Exec=/opt/apps/com.qq.wecom.spark/files/start.sh
+Icon=com.qq.wecom.spark
+Terminal=false
+Categories=Network;InstantMessaging;
+StartupWMClass=wxwork.exe

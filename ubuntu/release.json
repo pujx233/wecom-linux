@@ -1,0 +1,41 @@
+{
+  "name": "企业微信",
+  "package": "com.qq.wecom.spark",
+  "package_version": "5.0.12.6018-3~preview20261025",
+  "status": "preview; known issues remain",
+  "wecom_version": "5.0.12.6018",
+  "wine_version": "11.20",
+  "tested_environment": "Ubuntu 26.04.1 amd64, GNOME 50.1 Wayland/XWayland, 200% displays, IBus/Rime",
+  "upstream_adapter": "tbsangel/archlinux-wine-wecom-setup@f0ad4711049476bb2d87b40acaff53ca5ee58124",
+  "wine_source_sha256": "98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793",
+  "prelogin_archive_sha256": "94eb246b3562e8e2e1d672a2f9c1edc91a15034a37106b6a6d7faae8dddcae62",
+  "wine_patch_sha256": "9d64094f6616e3f439ac38f59eb325ab4d9ac9edb1b22b9288c055a11c626e27",
+  "wine_components": {
+    "wineserver": "wine/bin/wineserver",
+    "win32u.so": "wine/lib/wine/x86_64-unix/win32u.so",
+    "winex11.so": "wine/lib/wine/x86_64-unix/winex11.so",
+    "explorer.exe": "wine/lib/wine/x86_64-windows/explorer.exe"
+  },
+  "artifacts_sha256": {
+    "wineserver": "41e1d17e3a7dd0a67caae9a4fe4aa344583504e1f579a1a7fe751f3721c7f8e0",
+    "win32u.so": "fc37ae35490f120f957b1459e950a1407bd0a7e08f447fd1f228fcb01581cd98",
+    "winex11.so": "23dacd623b7c088870c4604a15dd151eaf98d6c49855e8e2010b86f195156504",
+    "explorer.exe": "38f3ca59c3349b4962fcb29415fb73c2c6164ac93c117c2dd30563453c1a23da",
+    "libcef.dll": "02b6cd5185af5fa390c41116f9c4a07912dc2175c8f8a75d0ec3f41256220265"
+  },
+  "helpers_sha256": {
+    "ime-bridge.so": "9a93e3f60dcc4406a45c559bf388875caff392ce540a7829ae62d238ef1d29e3",
+    "titlebar-managed.exe": "2dd612b184b88884d0e4f601173be8a386daee08f45b46614ea233d5a9880662",
+    "set-status-font.exe": "2a24c02cad3725f61d15e334f85aa5d92e7f6c220488e24bacf41783dbb36943"
+  },
+  "release_acceptance_complete": false,
+  "host_desktop_changes_required": false,
+  "extra_desktop_required": false,
+  "account_data_included": false,
+  "packaging": {
+    "wine_pe_debug_removed": true,
+    "unchanged_non_debug_sections": true,
+    "packaged_components": "packaged-runtime.json",
+    "template_copy_preserves_file_independence": true
+  }
+}

@@ -1,0 +1,15 @@
+Windows Registry Editor Version 5.00
+
+; Optional: open Excel files using the host desktop's default application.
+; Import only into the intended WeCom prefix, after checking existing associations.
+[HKEY_CLASSES_ROOT\.xlsx]
+@="WeCom.NativeSpreadsheet"
+
+[HKEY_CLASSES_ROOT\.xls]
+@="WeCom.NativeSpreadsheet"
+
+[HKEY_CLASSES_ROOT\WeCom.NativeSpreadsheet]
+@="Native desktop spreadsheet"
+
+[HKEY_CLASSES_ROOT\WeCom.NativeSpreadsheet\shell\open\command]
+@="\"C:\\windows\\system32\\winebrowser.exe\" \"%1\""

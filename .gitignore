@@ -1,0 +1,22 @@
+# Third-party materials and locally generated archives are not stored in Git history.
+/assets/
+/dist/
+/wecom-wine-diagnostics/
+/.local-debug/
+/.local-runtime/
+/.local-build/
+*.log
+*.dmp
+*.bak
+*.obj
+*.pdb
+__pycache__/
+*.pyc
+.DS_Store
+
+# The small, source-included Windows helpers are intentional.
+*.exe
+ubuntu/gnome-rootfix/runtime/
+!/scripts/set-status-font.exe
+!/scripts/titlebar-managed.exe
+!/scripts/gnome-popup-fix.exe
