@@ -1,46 +1,41 @@
 # 企业微信
 
-企业微信 Linux 适配，内置独立 Wine，直接在 Ubuntu 桌面运行。
+企业微信 Linux 适配，内置独立 Wine，当前本地候选为 **5.0.12.6018 R5（2026-10-28）**，
+适用于 **Ubuntu 26.04 amd64**，Wine **11.20**。[下载 R5 安装包与校验和](https://github.com/pujx233/wecom-linux/releases/tag/v5.0.12.6018-r5-preview.20261028)。
 
-## 版本
-
-企业微信 **5.0.12.6018**，Wine **11.20**，社区测试版 R3。
-适用于 **Ubuntu 26.04 amd64**，安装包约 **955 MB**。
-
-## 安装
-
-从 [Releases](https://github.com/pujx233/wecom-linux/releases) 下载 DEB 和 SHA256SUMS，在下载目录执行：
+取得 DEB 和对应 SHA256SUMS 后执行：
 
 ```sh
 sha256sum -c SHA256SUMS
-sudo apt install ./com.qq.wecom.spark_5.0.12.6018-3.preview20261025_amd64.deb
+sudo apt install ./com.qq.wecom.spark_5.0.12.6018-5.preview20261028_amd64.deb
 ```
 
-在应用菜单启动“企业微信”。程序安装约占 2.9 GB，首次启动另需约 2.6 GB 用户空间。
-用户数据保存在 `~/.local/share/wecom/prefix`。
-卸载命令：`sudo apt remove com.qq.wecom.spark`，个人数据会保留。
+在应用菜单启动“企业微信”。用户数据保存在 `~/.local/share/wecom/prefix`。
+升级保留已有账号目录，启动器从安装包加载新版助手。
+卸载使用 `sudo apt remove com.qq.wecom.spark`，个人数据会保留。
 
-## 修复问题
+本轮修订覆盖：
 
-- 改善右键菜单、透明窗口、阴影遮挡和绘制裁剪。
-- 改善聊天记录首次打开的白帧和刷新延迟。
-- 修订邮件光标、高分屏显示和内置网页组件兼容问题。
-- 改善托盘图标透明度和清晰度。
-- 内置独立 Wine、输入法桥接和字体配置，保留邮件、会议等组件。
-- 去掉重复文件和 Wine 调试信息，将安装包从约 1.50 GB 缩减至约 955 MB。
+- 用 XDamage 接收其他进程绘制的变化，修正邮件正文已绘制但共享框架仍显示旧内容的问题。
+- 保留嵌套消息循环期间的待合成状态，在窗口同步解锁后提交，避免通知被消费后丢帧。
+- 去除界面线程等待合成器私有属性的轮询，保留绘图完成和 XSync 提交协议。
+- 修正普通透明工具窗口的输入规则，以及人物卡片、头像预览和同 owner 弹窗的原生层级。
+- 复用合成缓冲区，合并重复提交；保留顶栏、阴影、聊天记录裁剪及 GDI+ 图片缩放修订。
+- 当前原生模式停用标题栏样式改写和模拟鼠标消息；保留主窗口阴影不接收点击的企微适配。
 
-## 遗留问题
+本机验收环境为 GNOME 50.1 Wayland 会话中的 **X11/XWayland**，双屏、200% 缩放。
+包内使用未登录模板，不包含维护者账号和聊天记录；系统 Wine、GNOME、Mutter 和桌面设置无需修改。
+证据及测试边界见 [validation.json](ubuntu/validation.json)，通用修复与兼容策略的区分见
+[完整代码审查](ubuntu/wine-x11-fix/CODE-REVIEW.md)。
 
-- 托盘单击、右键行为仍不完善，“更多操作”会出现回到屏幕中间的问题。
-- 部分成员卡、已读人数弹窗、标题栏和窗口切换仍有闪动或残影。
+托盘“更多操作”的菜单定位仍有限制；XWayland 下的企微截图黑屏本轮搁置。
+进入邮件模块、图片准备和桌面开窗动画仍需要时间。附件收发、审批、音视频及其他桌面尚未全面验收。
+这是社区预览修订，局部场景通过不代表企业微信所有功能兼容。
 
-使用与构建见 [Ubuntu 说明](UBUNTU.md)和 [Wine 构建说明](ubuntu/wine-x11-fix/README.md)。
+安装、升级、重建及独立测试见 [Ubuntu 说明](UBUNTU.md)和
+[Wine 构建说明](ubuntu/wine-x11-fix/README.md)。DEB 的 `/usr/share/doc/com.qq.wecom.spark/`
+提供 Wine 原始完整源码、净补丁、构建脚本、助手源码及 LGPL。
 
-## 源码与来源
-
-- [ubuntu/](ubuntu/)：启动器、CEF 兼容补丁、Wine 补丁、构建与打包脚本。
-- [scripts/](scripts/) 与 [configs/](configs/)：随包助手的源码、二进制与配置。
-- 原始 Wine 完整源码、补丁及 LGPL 许可证随 DEB 位于 `/usr/share/doc/com.qq.wecom.spark/`。
-- 安装和输入/字体等基础工作来自 [tbsangel/archlinux-wine-wecom-setup](https://github.com/tbsangel/archlinux-wine-wecom-setup)，
-  并在此基础上适配 Ubuntu。
-- 企业微信和图标属于腾讯；这是非官方社区适配。第三方许可证与 CEF 修改说明见 [THIRD-PARTY.md](THIRD-PARTY.md)。
+企业微信和图标属于腾讯。基础适配来自
+[tbsangel/archlinux-wine-wecom-setup](https://github.com/tbsangel/archlinux-wine-wecom-setup)，
+许可证与 CEF 修改说明见 [THIRD-PARTY.md](THIRD-PARTY.md)。

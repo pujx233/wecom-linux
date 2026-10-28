@@ -61,7 +61,7 @@ API DWORD MsgWaitForMultipleObjects(DWORD,const HANDLE *,BOOL,DWORD,DWORD);
 API BOOL PeekMessageA(MSG *,HANDLE,unsigned,unsigned,unsigned);
 API BOOL TranslateMessage(const MSG *);
 API long DispatchMessageA(const MSG *);
-static HANDLE main_window;static DWORD main_pid;static int apply,found,changed,watch;
+static HANDLE main_window;static DWORD main_pid;static int apply,found,changed,watch,native_frames;
 static long tray_geometry[7],tray_maps[16][8];static int tray_enabled;static HANDLE pending_menu;
 static DWORD menu_due;static RECT tray_rect;static POINT tray_point;
 static HANDLE pending_tooltip,tooltip_owner;static DWORD tooltip_due;
@@ -118,9 +118,14 @@ static void wait_for_main_window(void){
     }
 }
 static BOOL __stdcall inspect(HANDLE w,long unused){
-    char cls[128];DWORD pid=0;GetClassNameA(w,cls,128);
+    char cls[128];DWORD pid=0;
+    if(!GetClassNameA(w,cls,sizeof(cls)))return 1;
     int is_titlebar=same(cls,"TitleBarWindow"),is_shadow=same(cls,"PerryShadowWnd");
     if((!is_titlebar&&!is_shadow)||GetParent(w)!=main_window)return 1;
+    if(native_frames&&is_titlebar)return 1;
+    HANDLE frame=GetPropA(main_window,"__wine_x11_wm_window");
+    if(is_titlebar&&frame&&frame!=GetPropA(main_window,"__wine_x11_whole_window")&&
+       GetPropA(w,"__wine_x11_wm_window")==frame)return 1;
     GetWindowThreadProcessId(w,&pid);if(pid!=main_pid)return 1;
     DWORD style=GetWindowLongA(w,-16),exstyle=GetWindowLongA(w,-20);RECT before,after;
     if(is_shadow&&!(exstyle&0x00080000))return 1; /* Only layered shadows. */
@@ -128,10 +133,9 @@ static BOOL __stdcall inspect(HANDLE w,long unused){
     int needs_change=is_titlebar?(!(style&0x00080000)||(exstyle&0x08000000)):!(exstyle&0x00000020);
     if(!watch || needs_change) {text(cls);text(" hwnd=");hex((DWORD)w);text(" owner=");hex((DWORD)main_window);text(" style=");hex(style);text(" exstyle=");hex(exstyle);text("\n");}
     if(apply&&needs_change){
-        /* WS_SYSMENU makes an owned popup managed in winex11.drv;
-           clearing WS_EX_NOACTIVATE lets a title-bar click raise the group;
-           WS_EX_TRANSPARENT lets border input pass through the layered shadow
-           to WeWorkWindow, which implements the actual resizing. */
+        /* Legacy Wine needs title-bar style changes for native management.
+           The main shadow is passive in both profiles: WeWorkWindow handles
+           resizing, and a transparent title-bar hit must reach that owner. */
         if(is_titlebar){
             if(!(style&0x00080000))SetWindowLongA(w,-16,style|0x00080000);
             if(exstyle&0x08000000)SetWindowLongA(w,-20,exstyle&~0x08000000);
@@ -288,7 +292,8 @@ static void restore_tray_menu(void){
 static void __stdcall popup_shown(HANDLE hook,DWORD event,HANDLE w,long object,long child,DWORD thread,DWORD time){
     char cls[128];DWORD pid=0;
     if(object||child)return;
-    GetWindowThreadProcessId(w,&pid);GetClassNameA(w,cls,sizeof(cls));
+    GetWindowThreadProcessId(w,&pid);
+    if(!GetClassNameA(w,cls,sizeof(cls)))return;
     if(same(cls,"tooltips_class32")){
         HANDLE owner=GetParent(w);RECT r;POINT p;
         if(!tray_enabled||!is_tray_tooltip(w,owner)||!GetWindowRect(owner,&r)||!GetCursorPos(&p))return;
@@ -298,7 +303,8 @@ static void __stdcall popup_shown(HANDLE hook,DWORD event,HANDLE w,long object,l
         return;
     }
     if(pid!=main_pid||GetParent(w)!=main_window||!same(cls,"DuiMenuWnd"))return;
-    HANDLE foreground=GetForegroundWindow();GetClassNameA(foreground,cls,sizeof(cls));
+    HANDLE foreground=GetForegroundWindow();
+    if(!GetClassNameA(foreground,cls,sizeof(cls)))return;
     if(!same(cls,"__wine_tray_icon")||!GetWindowRect(foreground,&tray_rect))return;
     if(!GetCursorPos(&tray_point)||tray_point.x<tray_rect.left||tray_point.x>=tray_rect.right||
        tray_point.y<tray_rect.top||tray_point.y>=tray_rect.bottom)return;
@@ -400,7 +406,7 @@ static long __stdcall tray_mouse(int code,unsigned message,long data){
         EnumWindows(menu_contains_click,0);
         if(!click_in_menu)dismiss_tray_menu("outside click");
     }
-    if(code>=0&&data&&forward_context_click(message,*(POINT *)data))return 1;
+    if(!native_frames&&code>=0&&data&&forward_context_click(message,*(POINT *)data))return 1;
     /* WH_MOUSE_LL runs in this watcher. Only an actual left-button release
        over this prefix's unique Wine tray icon may request activation. */
     if(code>=0&&message==0x0202&&data){
@@ -431,6 +437,8 @@ static void activate_after_tray_click(void){
     text(" activated=");hex(activated);text("\n");flush();
 }
 void mainCRTStartup(void){
+    char frame_profile[2];
+    native_frames=GetEnvironmentVariableA("WINE_X11_OWNED_FRAME",frame_profile,sizeof(frame_profile))==1&&frame_profile[0]=='1';
     char *s=GetCommandLineA();
     while(*s){
         if(s[0]=='-'&&s[1]=='a'&&s[2]=='p'&&s[3]=='p'&&s[4]=='l'&&s[5]=='y')apply=1;
@@ -464,6 +472,7 @@ void mainCRTStartup(void){
             if(candidate)GetWindowThreadProcessId(candidate,&candidate_pid);
             if(candidate_pid==main_pid)main_window=candidate;
         }
+        /* Native grouping needs no title-bar rewrite; retain the passive shadow role. */
         found=0;changed=0;EnumWindows(inspect,0);
         if(!watch){text("matched=");hex(found);text(" changed=");hex(changed);text("\n");}
         flush();

@@ -1,97 +1,84 @@
-# Ubuntu 使用与验收边界
+# Ubuntu 使用、复用与重建
 
-当前交付为企业微信 5.0.12.6018 / 私有 Wine 11.20 的预览包，2026-10-25。
-验证环境：Ubuntu 26.04.1、GNOME 50.1 Wayland、XWayland、两块 200% 显示器、IBus/Rime。
-包名 `com.qq.wecom.spark`，桌面名称“企业微信”。不需要额外桌面或任何 GNOME 系统修订。
+当前候选为企业微信 5.0.12.6018 R5 / 私有 Wine 11.20，2026-10-28。
+验收环境为 Ubuntu 26.04.1 amd64、GNOME 50.1 Wayland/XWayland、双屏 200%、IBus/Rime。
+其他发行版、桌面和缩放比例需要另行验证。
 
-## 运行目录
+程序与未登录模板位于 `/opt/apps/com.qq.wecom.spark/files`。
+用户 prefix 位于 `${XDG_DATA_HOME:-$HOME/.local/share}/wecom/prefix`，日志在相邻的 `logs` 目录。
+首次启动按当前 Linux 用户重定位模板，升级沿用账号目录并使用安装包内的启动器、助手。
+企微的配置修改只作用于该 prefix，不改系统 Wine 或桌面全局设置。
 
-程序和模板：`/opt/apps/com.qq.wecom.spark/files`。
-用户 prefix：`${XDG_DATA_HOME:-$HOME/.local/share}/wecom/prefix`；日志在相邻的 `logs` 目录。
-首次启动只复制从未登录过的模板，不复制维护者的在线 prefix。
-用户目录按当前 Linux 用户重定位；不连接维护者的 home。系统 Wine 与其他 Wine 应用不受影响。
+## 修复与边界
 
-## 当前修订
+邮件跨进程正文通过原生像素变化通知更新共享框架；主进程不必再次调用 GDI 才能看到新内容。
+合成内容的待处理状态独立于通知队列，应用重入消息循环时不会丢掉更新，状态解锁后重新排队。
+绘图提交保持应用完成信号和 XSync 协议，移除了持有窗口锁时等待合成器私有属性的轮询。
+人物卡片与头像预览使用稳定的原生 owner 关系，同 owner 的共享框架也能按 Win32 请求换序。
+普通 `WS_EX_TRANSPARENT` 不再被直接当作整窗鼠标穿透；分层透明窗口继续允许穿透。
 
-Wine 的透明窗口、输入区域、窗口关系、跨进程 DC、绘图提交及 SNI 修改整合为
-`ubuntu/wine-x11-fix/wine-11.20-x11-popups.patch`，直接适用于原始 Wine 11.20。
-四个组件 wineserver、win32u.so、winex11.so、x64 explorer.exe 必须配套；不能只替换其中一个。
-固定 SHA256 与对应源码哈希见 release.json 和 validation.json。
+顶栏、主体和阴影在一个原生框架中提交，缓冲区按窗口尺寸复用。
+原生模式不再为顶栏添加 `WS_SYSMENU` 或清除 `WS_EX_NOACTIVATE`，也不重放普通菜单点击。
+主窗口阴影保持被动输入角色，这是企微适配。其余兼容策略与审查结论见[代码审查](ubuntu/wine-x11-fix/CODE-REVIEW.md)。
 
-聊天记录白帧有两条提前提交路径：获取 DC 被误认为绘制完成；Wine 内部光标反色更新又提前释放 DC。
-现在应用实际写入后的 ReleaseDC 或 EndPaint 才能完成提交；读取、内部光标和有效像素迁移不作完成信号。
-已完成内容立即刷新，不等待下一次消息循环。没有按像素颜色、固定延时或企微窗口名隐藏白帧。
-这项修订没有实现 NtGdiFlush 的其他功能，也不能据此声称所有 GDI 场景都已修复。
+CEF 修订仅接受固定 SHA256 的原厂 x86 DLL，回补 V8 保护模式和 Chromium 光标坐标处理。
+原 CEF 签名因此失效；`WXWork.exe` 没有修改。不能将此补丁直接套用到其他企微版本。
+邮件进程在该 prefix 中设置 IFEO `dpiAwareness=1`，与主进程的 DPI 模式保持一致。
 
-邮件通过私有 prefix 的 WeMail.exe IFEO dpiAwareness=1 与主进程统一 DPI 模式。
-CEF 固定原始 SHA256 后回补 V8 PAGE_WRITECOPY 兼容和旧 Chromium WindowFromPoint 坐标修订。
-它改变了原厂 CEF DLL，原有 Authenticode 签名不再有效，企业微信 WXWork.exe 未修改。
+托盘菜单定位及截图黑屏没有在 R5 修复。图片准备、网络取数与桌面开窗动画仍有耗时。
+附件收发、审批、音视频、已读人数等功能未全面验收，不能据此承诺企业微信全部功能可用。
 
-## 实际结果和限制
+## 构建 Wine 与助手
 
-- 当前绘图组合：SNI 路线 4 次重启后的首次聊天记录开/关、1 次连续开/关均未采到白帧。
-- 桌面快捷方式实际启动路线也已复测；截图和录像是异步采样，不能保证覆盖全部帧。
-- 右键、独立聊天窗口切换、邮件光标有通过样本，仍未覆盖全部弹窗和状态组合。
-- 已知托盘“更多操作”使用居中回退，单击/右键语义不完整。本次保留失败，没有发布为稳定版。
-- XEmbed 替代方案在顶栏位置变化后仍偏移 124 物理像素，已回退，不包含在发布组合。
-- 头像/成员卡、已读人数面板、标题栏、最大化/展开/聊天记录的全部过渡仍需继续验收。
-- 附件收发、审批、音视频及其他 Linux 桌面未全面验证，不使用测试通过标签暗示兼容。
-
-## 构建和打包
-
-Wine 完整源码归档 SHA256 为
-`98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793`，
-来源为 `https://github.com/wine-mirror/wine/archive/refs/tags/wine-11.20.tar.gz`。
-依赖和构建命令见 `ubuntu/wine-x11-fix/`。
-基础 prefix 来自官方企微安装器与运行库安装后、首次账号登录前保存的副本。
-打包脚本必须核对该副本的逐文件清单，再覆盖明确列出的私有 Wine 组件、助手和 CEF 修订。
-不要将任何已经登录过的 prefix 作为 --baseline。
+Wine 原始归档 SHA256：
+`98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793`。
+原始源码、完整净补丁、SDK Dockerfile、构建脚本及 LGPL 随包提供。
 
 ```sh
-python3 ubuntu/package.py --help
-bash ubuntu/build-helpers.sh /absolute/helper-output
-sh ubuntu/wine-x11-fix/build.sh /absolute/wine-11.20.tar.gz /absolute/new-build
-```
-
-原始安装、运行库与字体材料记录保存在 materials/，不是所有文件均可重新分发。
-字体和厂商运行库按原许可使用；完整 Wine 源码和本次修改随包提供。
-
-## 清理缓存后重建
-
-保留源码和最终 DEB 即可重建私有 Wine，不需要保留旧构建目录或已登录 prefix。
-`package.py` 记录原发行时的严格预登录基线检查；该历史基线没有单独分发。
-公开包的未登录模板可直接从最终 DEB 提取，再替换重建的四个 Wine 组件：
-
-```sh
-wecom_rebuild_dir=/absolute/new-rebuild
-mkdir -p "$wecom_rebuild_dir"
-dpkg-deb -R ./com.qq.wecom.spark_5.0.12.6018-3.preview20261025_amd64.deb \
-  "$wecom_rebuild_dir/package"
-cp "$wecom_rebuild_dir/package/usr/share/doc/com.qq.wecom.spark/wine-11.20.tar.gz" \
-  "$wecom_rebuild_dir/wine-11.20.tar.gz"
 docker build -t wecom-wine-sdk ubuntu/wine-x11-fix
 docker run --rm --network none --user "$(id -u):$(id -g)" \
-  -v "$PWD:/adapter:ro" -v "$wecom_rebuild_dir:/work" \
+  -v "$PWD:/adapter:ro" -v /absolute/build-area:/work \
   wecom-wine-sdk sh /adapter/ubuntu/wine-x11-fix/build.sh \
-  /work/wine-11.20.tar.gz /work/wine-build
-
-wecom_payload="$wecom_rebuild_dir/package/opt/apps/com.qq.wecom.spark/files"
-install -m 755 "$wecom_rebuild_dir/wine-build/build/server/wineserver" \
-  "$wecom_payload/wine/bin/wineserver"
-for component in win32u winex11.drv; do
-  case "$component" in win32u) library=win32u.so ;; *) library=winex11.so ;; esac
-  install -m 755 "$wecom_rebuild_dir/wine-build/build/dlls/$component/$library" \
-    "$wecom_payload/wine/lib/wine/x86_64-unix/$library"
-done
-for destination in wine/lib/wine/x86_64-windows/explorer.exe \
-  template/drive_c/windows/explorer.exe template/drive_c/windows/system32/explorer.exe; do
-  install -m 755 "$wecom_rebuild_dir/wine-build/build-explorer/programs/explorer/x86_64-windows/explorer.exe" \
-    "$wecom_payload/$destination"
-done
-dpkg-deb --root-owner-group -Zxz --build "$wecom_rebuild_dir/package" \
-  "$wecom_rebuild_dir/wecom-rebuilt.deb"
+  /work/wine-11.20.tar.gz /work/new-output
+bash ubuntu/build-helpers.sh /absolute/helper-output
 ```
 
-上述命令保留未登录应用模板，只重建 Wine；不同工具链不保证二进制哈希一致。
-若修改源码后再发行，必须同步包内对应补丁、版本、组件哈希及验收记录，不能沿用本发行的通过结论。
-它也不代表从零重现第三方安装器和字体材料的整个安装过程。
+运行时必须配套部署 wineserver、win32u.so、winex11.so、x64 explorer.exe 和两个架构的 gdiplus.dll。
+完整构建命令和组件路径见 `ubuntu/wine-x11-fix/README.md`；不要混用其他 Wine 版本的组件。
+当前二进制来自已记录的 SDK 构建，干净源码重建另有验证；不同编译路径和工具链会改变二进制哈希。
+
+## 重建未登录安装包
+
+公开 R3 DEB 是已校验的模板来源，无须维护者的历史构建缓存或已登录 prefix。
+`package.py` 校验来源、运行时和助手哈希，剥离 Wine PE 调试数据并核对其运行时 section 不变。
+厂商 DLL 不执行 strip。重复文件在包内去重，首次创建用户目录时解除硬链接以保持文件独立。
+
+```sh
+python3 ubuntu/package.py \
+  --base-package /absolute/com.qq.wecom.spark_5.0.12.6018-3.preview20261025_amd64.deb \
+  --runtime /absolute/verified-wine-runtime \
+  --helpers /absolute/verified-helpers \
+  --wine-source /absolute/wine-11.20.tar.gz \
+  --stage /absolute/new-stage \
+  --output /absolute/com.qq.wecom.spark_5.0.12.6018-5.preview20261028_amd64.deb
+```
+
+自行构建时，应先记录配套组件的新指纹并更新 `release.json`，再运行打包和验收。
+公开基包必须匹配元数据中的 SHA256，不能换成任意已登录的账号目录。
+基础安装器、运行库与字体来源保存在 `materials/`，仍须遵循原许可。
+这套流程可重建 Wine 与适配包，不等于从零重现所有第三方安装器的安装过程。
+
+## 独立回归与 DPI
+
+`ubuntu/wine-x11-fix/tests/frame-composition/` 包含跨进程绘制、输入穿透、owner 和共享框架换序用例。
+它们在私有 GNOME/XWayland 会话中运行，使用合成窗口和账号无关的测试 prefix。
+真实客户端的场景与通过范围单列于 `validation.json`，不会以模型测试替代实际客户端验收。
+
+模板默认 192 DPI（200%）。调整其他缩放时先退出企微，再只修改专属 prefix：
+
+```sh
+WINEPREFIX="$HOME/.local/share/wecom/prefix" \
+  /opt/apps/com.qq.wecom.spark/files/wine/bin/wine winecfg
+```
+
+新源码、组件或缩放组合须重新验收，不能沿用旧版本的通过结论。

@@ -28,9 +28,10 @@ static void check(BOOL result, const char *operation)
 static void stage(const char *name, HWND window)
 {
     pump(180);
-    printf("{\"stage\":\"%s\",\"xid\":%lu,\"foreground\":%lu}\n", name,
+    printf("{\"stage\":\"%s\",\"xid\":%lu,\"foreground\":%lu,\"wm_xid\":%lu,\"hwnd\":%lu,\"active\":%lu}\n", name,
            (unsigned long)GetPropA(window, "__wine_x11_whole_window"),
-           (unsigned long)GetForegroundWindow());
+           (unsigned long)GetForegroundWindow(), (unsigned long)GetPropA(window, "__wine_x11_wm_window"),
+           (unsigned long)window, (unsigned long)GetActiveWindow());
 }
 
 static void update_layered(HWND window, int left, int top, int width, int height)

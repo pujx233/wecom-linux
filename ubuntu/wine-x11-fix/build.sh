@@ -15,11 +15,15 @@ tar -xzf "$archive" --strip-components=1 -C "$output/source"
 patch -d "$output/source" -p1 < "$root/wine-11.20-x11-popups.patch"
 cd "$output/build"
 ../source/configure --enable-win64 --without-mingw --without-wayland
-grep -q '^#define SONAME_LIBDBUS_1 ' include/config.h
+for feature in SONAME_LIBDBUS_1 SONAME_LIBXCOMPOSITE SONAME_LIBXDAMAGE SONAME_LIBXRENDER HAVE_LIBXSHAPE; do
+  grep -q "^#define $feature " include/config.h
+done
 make -j "${WECOM_BUILD_JOBS:-4}" server/wineserver dlls/winex11.drv/winex11.so dlls/win32u/win32u.so
 sha256sum server/wineserver dlls/winex11.drv/winex11.so dlls/win32u/win32u.so
 mkdir "$output/build-explorer"
 cd "$output/build-explorer"
-../source/configure --enable-win64 --without-x --without-wayland
-make -j "${WECOM_BUILD_JOBS:-4}" programs/explorer/x86_64-windows/explorer.exe
-sha256sum programs/explorer/x86_64-windows/explorer.exe
+../source/configure --enable-archs=i386,x86_64 --without-x --without-wayland
+make -j "${WECOM_BUILD_JOBS:-4}" programs/explorer/x86_64-windows/explorer.exe \
+  dlls/gdiplus/i386-windows/gdiplus.dll dlls/gdiplus/x86_64-windows/gdiplus.dll
+sha256sum programs/explorer/x86_64-windows/explorer.exe \
+  dlls/gdiplus/i386-windows/gdiplus.dll dlls/gdiplus/x86_64-windows/gdiplus.dll

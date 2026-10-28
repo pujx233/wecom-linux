@@ -141,6 +141,8 @@ try:
         assert xid
         attributes = Attributes()
         assert x.XGetWindowAttributes(display, xid, C.byref(attributes))
+        wm_attributes = Attributes()
+        assert x.XGetWindowAttributes(display, stage.get('wm_xid') or xid, C.byref(wm_attributes))
         left, top, child = C.c_int(), C.c_int(), C.c_ulong()
         assert x.XTranslateCoordinates(display, xid, attributes.root, 0, 0,
                                        C.byref(left), C.byref(top), C.byref(child))
@@ -163,7 +165,9 @@ try:
             check('nonempty 1x1 popup still maps', stage['mapped'] and
                   (attributes.width, attributes.height) == (1, 1))
         elif name in ('palette', 'appwindow', 'resizable', 'activated'):
-            check(name + ': normal WM management retained', not stage['override_redirect'])
+            check(name + ': normal WM management retained', not wm_attributes.override_redirect)
+            if name == 'activated':
+                check('owned tool accepts explicit activation', stage['active'] == stage['hwnd'])
         elif name in ('edgemenu', 'bordered'):
             expected = (648, 900, 320, 100) if name == 'edgemenu' else (600, 852, 416, 196)
             check(name + ': nonactivating popup stays unmanaged', stage['override_redirect'])
@@ -173,9 +177,10 @@ try:
             if name == 'bordered':
                 check('bordered shadow remains input transparent', not any(inputs))
         elif name in ('layered', 'plain', 'retagged', 'interactive', 'remapped', 'cycles', 'stress'):
-            check(name + ': ARGB visual covers full backing pixmap', sum(bounding) == 128 * 128)
+            grouped = stage.get('wm_xid') and stage['wm_xid'] != xid
+            check(name + ': ARGB visual region retained', bounding == ring if grouped else sum(bounding) == 128 * 128)
             check(name + ': exact alpha input mask retained', inputs == ring)
-            check(name + ': tool owned by managed window stays managed', not stage['override_redirect'])
+            check(name + ': tool owned by managed window stays managed', not wm_attributes.override_redirect)
             check(name + ': nonactivating popup leaves foreground unchanged', stage['foreground'] == first_foreground)
             image = x.XGetImage(display, xid, 0, 0, 128, 128, C.c_ulong(-1).value, 2)
             assert image and image.contents.bits_per_pixel == 32 and image.contents.byte_order == 0

@@ -1,102 +1,239 @@
 {
-  "status": "preview; full application acceptance incomplete",
+  "status": "R5 requested rendering, input and layering scenarios passed; broad product acceptance remains incomplete",
   "sanitized": true,
+  "environment": "Ubuntu 26.04.1 amd64, GNOME 50.1 Wayland/XWayland, 200% displays, IBus/Rime",
+  "runtime_sha256": {
+    "wineserver": "41e1d17e3a7dd0a67caae9a4fe4aa344583504e1f579a1a7fe751f3721c7f8e0",
+    "win32u.so": "d534e66ffa84c17cfeb0f78d6386fb2623a561aec546b0659744ee6abb9d85cc",
+    "winex11.so": "2357fbd516630340d1f20904307ed51e7b1317847182ff2471d244bba025695a",
+    "explorer.exe": "005dbf5f71b8d69f0748aa5ae544829d262e67617f65fb8672d28368753e49ce",
+    "libcef.dll": "02b6cd5185af5fa390c41116f9c4a07912dc2175c8f8a75d0ec3f41256220265",
+    "gdiplus-i386.dll": "7638a21e0ffdef61ae77066dc5904352c60a20c64ae6a5e6d6ee896524b3be36",
+    "gdiplus-x86_64.dll": "1c07e1c7ff5ab9b88f190b9a528e65566a981f8667a84fee29e350aaf1137d38"
+  },
   "source_patch_replay": {
+    "baseline_commit": "7298a818b79446bae153b8d5aa27235ab3703bf9",
     "passed": true,
-    "modified_files": 31,
-    "fuzz": 0,
-    "source_sha256": {
-      "dlls/win32u/dce.c": "d4d2b0671ff9812f7a5974c95a79c780ef9838f6419958298e63d0978751354d",
-      "dlls/win32u/dibdrv/dc.c": "ab41097b3423129dbe450791996f756c48e15ae79b70eeeec10fc1f7c1b87b60",
-      "dlls/win32u/dibdrv/dibdrv.h": "f9b8222362e67ba349426121368cfecc170f139bc221c0ef2d639ed55a0ebad4",
-      "dlls/win32u/input.c": "3d5c3e4ecc5bb4f8fc898863da34e6b6f85d854c228399272e0b6daf0479e1eb",
-      "dlls/win32u/message.c": "402bc999bcc9d6f116d58ec72f30ebf05037bec147004f3bc28306ac1c549f01",
-      "dlls/win32u/ntgdi_private.h": "9a6e79e41af83920d4acb2c9cbcd68fe0251afcfe5231fdd50b898305c5d0d84",
-      "dlls/win32u/ntuser_private.h": "d798b19c2ac0c938618de218af85f8e55ba8f68afba9500454f8969f39e7bb73",
-      "dlls/win32u/win32u_private.h": "ea2f7421eb2bf94d51acbed6734e50780e7c2e5d613440c61aeb4438b4b73efe",
-      "dlls/win32u/window.c": "8b399b34787a8c7ae64409a21ae25cf9ec15af4858d197e5f31d0b318402f4da",
-      "dlls/winemac.drv/window.c": "5636716d61c4e930cfc0b3585ba72f2e999bab52f7952bbd59c0f857b8b2e48e",
-      "dlls/winewayland.drv/window.c": "7c1d321066b75051a0c35fbc615a1fd0af9db1981ad27d4532c595a96b1e3955",
-      "dlls/winex11.drv/Makefile.in": "8eb8ecd88e42f5de1c35056823512a8f24f9e3a9b3927a0503e6dc2d78f3e28e",
-      "dlls/winex11.drv/bitblt.c": "93cc180466964151c455424a4694efbc7ad561474ed41a6174b5a3ed123d5a7a",
-      "dlls/winex11.drv/event.c": "18609627bd399e62a6fd877d8eb9f96bfb1320ec38a5e711d278049e22fbb286",
-      "dlls/winex11.drv/init.c": "e72f3181f70165555956066c9911fecbe4fdcd3f0f21dfebce3debb75629d910",
-      "dlls/winex11.drv/mouse.c": "47052ae2742d20bb17ff79482f1a46d671ab071e1de765965ef0677c6075298b",
-      "dlls/winex11.drv/window.c": "54eccc2a049c3d105fbd8e6e559f8fc83bd4b3715ae9f2797b8fabd337b42e7a",
-      "dlls/winex11.drv/x11drv.h": "dba61c83c788fad716c3292e03c57dcf347a0b639b11efa29991f4b0ab71aeff",
-      "dlls/winex11.drv/x11drv_main.c": "f0540e5873fff565b5aefeedbe14ca3ad8d8263c8ddd81bf6bc2575b5bfdb89a",
-      "dlls/winex11.drv/xrandr.c": "46b9035956d4a85725a6de9c0f2b52cd257443869639f0fe3bb7302a248f61a8",
-      "include/ntuser.h": "19833910daa894ed69a3ded8b1c4bc418adbc18a1a42ab20256cffd78ce1d7ac",
-      "programs/explorer/systray.c": "90b97e7dfa1601147d14970a09933bfad33c10109403d7ae7cdcd3edc343b251",
-      "server/queue.c": "19423b43fb0ea386c6e7eafa7613655b5a0f351af048d81de8314a16a9958528",
-      "server/user.c": "d68a1a993303ce0e6c6394164a485c6af9a73b23a07a17c7dd25a163faf6b762",
-      "server/user.h": "676dc21c8f5f7fc891a6919c3b1034b0e6b7cb1b3e1e34cd093f09defc5b40b3",
-      "server/winstation.c": "3743d7e6de457ec5c644d32aadab043f87411afce15b22ee4a4f163c4341294e",
-      "dlls/winex11.drv/sni_dbus.c": "951039f81a8128097f3a2f3a702b137b43a8a9e24b65f047bf5d4c87d79392e9",
-      "dlls/winex11.drv/systray.c": "6c5200dcb235d42a7fd91ba98900129a46d43d9c02a4fe62e4eef068efef93bf",
-      "dlls/winex11.drv/sni_event.h": "92a4a18c41d916c44a263be0796e1f9df287727967310c93d8b9deb82c8babd5",
-      "dlls/winex11.drv/sni_dbus.h": "dc1f0a8d40c50de67e50568af16406d4d93346b39c3e527b9345a5cbbc07acdd",
-      "dlls/winex11.drv/sni_event.c": "f9ee48c34b0a2dd53296e0da902661b38bf9ea654f2714e801aa531c01e90cca"
-    }
+    "patch_sha256": "2aeb86055dd92da37ee52dd58605580a5cc6463a8863e3555ea1784dafc99a35",
+    "modified_files": 39,
+    "added_lines_over_120": [],
+    "excluded_unbuilt_local_edit": "server/user.h scale_dpi experiment was excluded; shipped wineserver retained"
   },
-  "actual_application": {
-    "history_first_open_close": {
-      "sni_cold_restarts": 4,
-      "warm_sequence": 1,
-      "sampled_white_frames": 0,
-      "sampling_is_not_atomic": true
+  "source_build": {
+    "official_source_sha256": "98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793",
+    "native_components_clean_build_passed": true,
+    "explorer_and_both_gdiplus_architectures_built": true,
+    "latest_gdiplus_incremental_build_passed": true,
+    "required_features": [
+      "DBus",
+      "XComposite",
+      "XDamage",
+      "XRender",
+      "XShape"
+    ],
+    "different_toolchain_or_build_path_may_change_binary_hashes": true,
+    "final_official_archive_replay_matches_all_39_clean_build_sources": true,
+    "final_changed_objects_build_without_new_warnings": true
+  },
+  "isolated": {
+    "geometry_matrix": {
+      "scales": [
+        1,
+        2
+      ],
+      "cases": 12,
+      "passed": true
     },
-    "mail_cursor": {
-      "host_scaling": "200%",
-      "mail_link_first_entries_per_display": 6,
-      "page_reentries": 5,
-      "passed_in_tested_samples": true
+    "lifecycle_visual_recreation_drag_matrix": {
+      "scales": [
+        1,
+        2
+      ],
+      "cases": 12,
+      "passed": true
     },
-    "tray_more_operations": {
-      "passed": false,
-      "reason": "DBusMenu action lacks coordinates; current SNI route uses center fallback"
-    },
-    "all_popups_transitions_and_features": {
-      "passed": false,
-      "reason": "not comprehensively qualified"
-    }
-  },
-  "isolated_tests": {
-    "draw_readback_invalidation_validbits_phases": 3,
-    "pure_dc_caret_and_scaled_surface_probes_passed": true,
-    "do_not_treat_as_actual_application_acceptance": true
-  },
-  "withdrawn_not_shipped": {
-    "native_tray_dynamic_layout": "124 physical pixel drift after panel actor moved",
-    "signed_dpi_and_xsettings": "retained as research, not in release runtime"
-  },
-  "account_or_private_images_included": false,
-  "packaging": {
-    "wine_pe_debug_removed": true,
-    "all_non_debug_pe_sections_identical": true,
-    "no_vendor_binary_stripping": true,
-    "composited_login_smoke": {
+    "delayed_paint_with_alpha_decoration": {
       "passed": true,
-      "window_title": "WeCom",
-      "geometry": {
-        "x": 0,
-        "y": 0,
-        "width": 600,
-        "height": 840,
-        "border": 0,
-        "depth": 24,
-        "root_origin": [
-          500,
-          180
-        ]
-      },
-      "network": "none",
-      "account_data_used": false,
-      "host_desktop_used": false,
-      "first_launch_profile_relocated": true,
-      "scope": "isolated package launcher and login UI only; no authenticated feature acceptance",
-      "visual_observation": "Composited login screen rendered, logo and Loading QR code visible; network disabled"
+      "commit_before_body_ready": false
     },
-    "logged_in_function_tests_repeated_after_packaging": false
-  }
+    "foreign_frame": {
+      "samples": 8,
+      "passed": true,
+      "gdi_native_source_and_desktop_pixels_checked": true,
+      "source_below_overlay_unchanged": true
+    },
+    "reentrant_state_update": {
+      "before_nested_sample_passed": false,
+      "after_nested_sample_passed": true,
+      "deployed_path_repeats": 4,
+      "clean_replay_passed": true,
+      "timer_added": false
+    },
+    "popup_input": {
+      "style_cases": 3,
+      "click_pairs_per_case": 3,
+      "normal_and_nonlayered_transparent_do_not_pass_through": true,
+      "layered_transparent_negative_control_passed": true,
+      "owned_preview_and_same_owner_restack_passed": true
+    },
+    "sni_callback_transport": {
+      "cases_by_arch": {
+        "32": 12,
+        "64": 12
+      },
+      "scales": [
+        1,
+        2
+      ],
+      "notify_versions": [
+        0,
+        4
+      ],
+      "passed": true,
+      "menu_position_acceptance_excluded": true
+    },
+    "unchanged_gdiplus_checks": {
+      "pixel_cases_per_arch": 144,
+      "architectures": [
+        32,
+        64
+      ],
+      "exact_to_baseline": true,
+      "blend_color_equivalence_cases": 128500000,
+      "component_hashes_unchanged": true
+    }
+  },
+  "actual": {
+    "account_and_exe_retained": true,
+    "runtime_file_inodes_match_loaded_mappings": true,
+    "main_drag": {
+      "matched_frames": 176,
+      "misaligned_frames": 0,
+      "four_drags_and_return_to_initial_geometry": true
+    },
+    "maximize_restore": {
+      "cycles": 2,
+      "native_body_titlebar_origins_equal": true,
+      "normal_geometry_restored": true
+    },
+    "preview": {
+      "three_opens_and_two_drags_passed": true,
+      "matched_drag_frames": 86,
+      "bad_drag_frames": 0,
+      "outside_main_changed_pixels_worst": 0,
+      "stable_titlebar_buttons_complete": true,
+      "three_complete_image_upper_bounds_ms": [
+        855.1,
+        689.5,
+        679.5
+      ]
+    },
+    "history": {
+      "three_final_photo_frame_completion_ms": [
+        554.1,
+        517.9,
+        496.9
+      ],
+      "six_expanded_conversation_switches_passed": true,
+      "conversation_switch_content_upper_bounds_ms": [
+        {
+          "header": 553.4
+        },
+        {
+          "header": 550.6,
+          "history": 550.6
+        },
+        {
+          "header": 402.4
+        },
+        {
+          "header": 534.7,
+          "history": 559.7
+        },
+        {
+          "header": 422.8
+        },
+        {
+          "header": 539.8,
+          "history": 567.8
+        }
+      ]
+    },
+    "mail": {
+      "switches": 6,
+      "all_six_expected_bodies_visible": true,
+      "list_ready_before_first_press_ms": 303.5,
+      "body_completion_upper_bounds_ms": [
+        398.5,
+        329.9,
+        384.2,
+        367.4,
+        364.8,
+        365.3
+      ],
+      "module_initialization_measured_separately": false,
+      "module_entry_initialization_still_needs_time": true
+    },
+    "avatars": {
+      "different_member_cards": 3,
+      "all_previews_above_cards": true,
+      "overlap_pointer_hits_preview_frame": true,
+      "verification_moved_preview_to_overlap": true,
+      "production_fixed_coordinates_added": false
+    },
+    "startup": {
+      "automatic_login_restored": true,
+      "regular_launcher_tested": true,
+      "production_ime_bridge_retained": true
+    },
+    "timing_note": "Encoded frame completion is a presentation upper bound and includes desktop animation and encoding. It is not exact present timing.",
+    "main_preview_avatar_switch_verification_driver_sha256": "319b8030c6f5612c427d43b4dbcf3a90f3c55f5b484479d4bae3da541ea9f2e5",
+    "final_driver_runtime_sections_byte_identical_after_unused_debug_declaration_removal": true
+  },
+  "package": {
+    "base_package_sha256": "2bdd9ac63a0a5e1f84da752b7c90f75bab5ebb2dcf84bb92ca99bed5e63afb65",
+    "template_source": "verified public prelogin R3 DEB",
+    "account_data_from_live_prefix_used": false,
+    "host_desktop_changes_required": false,
+    "private_runtime_only": true,
+    "installed_template_helpers_used_for_existing_profiles": true,
+    "clean_prefix_startup": "passed with final R5 native module",
+    "existing_profile_upgrade": "passed with obsolete per-profile launcher ignored",
+    "template_unchanged_after_fresh_start_and_upgrade": true,
+    "packaged_gdiplus_matches_unstripped_144_pixel_cases": true,
+    "corresponding_adapter_sources_included": true,
+    "installed_files_readable_to_non_root_users": true
+  },
+  "known_limits": [
+    "StatusNotifier More actions menu placement remains excluded and may use central fallback",
+    "XWayland desktop screenshot black remains explicitly deferred",
+    "Entering the mail module, image preparation, network fetches and map animations still take time; zero-latency startup is not claimed",
+    "Attachment transfers, audio/video, approvals, read receipts and other desktop environments are not fully validated",
+    "The template defaults to 192 DPI; other actual desktop scaling needs separate validation",
+    "Application-specific shadow, first-frame and CEF/IME compatibility policies remain explicit private adaptations"
+  ],
+  "release_acceptance_complete": false,
+  "architecture_review": {
+    "history_commits": 6,
+    "files_before_cleanup": 40,
+    "files_in_final_patch": 39,
+    "native_titlebar_style_rewrite_disabled": true,
+    "native_mouse_message_replay_disabled": true,
+    "blocking_compositor_property_poll_removed": true,
+    "compositor_buffer_reused": true,
+    "same_owner_frame_restack_regression_added": true,
+    "failed_xembed_coordinate_experiment_removed": true,
+    "compatibility_policies_documented": true,
+    "no_global_desktop_changes": true,
+    "dirty_frame_state_separate_from_queued_notification": true,
+    "reentrant_message_loop_loss_fixed": true,
+    "unreferenced_intermediate_patches_removed": true,
+    "final_post_test_review_completed": true
+  },
+  "investigation_notes": [
+    "Earlier quiet-test failures are retained. A separate deterministic native-resize/reentrant-message loss was isolated and fixed; this does not uniquely attribute every earlier sample.",
+    "Two mail runs clicked during module/list initialization. Their raw records are retained and are excluded from ready-list body-switch latency acceptance.",
+    "Physical-input preflight failures and forced popup-close setup failures are retained separately from valid avatar-layering trials."
+  ],
+  "focused_scenarios_passed": true
 }

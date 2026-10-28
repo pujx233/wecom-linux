@@ -9,6 +9,7 @@ export WECOM_VPROT_FIX=0
 export WECOM_TRAY_ICON_FIX=0
 export WECOM_GNOME_MENU_FIX=0
 export WECOM_GNOME_POPUP_FIX=0
+export WINE_X11_OWNED_FRAME=1
 export WINE_WECOM_SHADOW_STACK=1
 export WINE_WECOM_FIRST_PRESENT_ARGB=1
 export WINE_X11_FIXED_TRANSIENT_ARGB=1
@@ -21,4 +22,4 @@ WINEPREFIX="$WECOM_PREFIX" WINESERVER="$WECOM_WINESERVER" WINEDEBUG=-all \
   "$WECOM_WINE_BIN" reg add \
   'HKLM\Software\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\WeMail.exe' \
   /v dpiAwareness /t REG_DWORD /d 1 /f /reg:32 >>"$log_dir/launch.log" 2>&1
-exec bash "$WECOM_PREFIX/wecom-compat/scripts/launch-wecom.sh" >>"$log_dir/launch.log" 2>&1
+exec bash "$root/template/wecom-compat/scripts/launch-wecom.sh" >>"$log_dir/launch.log" 2>&1

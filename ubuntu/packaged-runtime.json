@@ -1,9 +1,11 @@
 {
   "artifacts_sha256": {
     "wineserver": "41e1d17e3a7dd0a67caae9a4fe4aa344583504e1f579a1a7fe751f3721c7f8e0",
-    "win32u.so": "fc37ae35490f120f957b1459e950a1407bd0a7e08f447fd1f228fcb01581cd98",
-    "winex11.so": "23dacd623b7c088870c4604a15dd151eaf98d6c49855e8e2010b86f195156504",
-    "explorer.exe": "08cc8d2f854d217e724ac0e82993ec77e80b3ce2b1b87ea701912ef54f685c84"
+    "win32u.so": "d534e66ffa84c17cfeb0f78d6386fb2623a561aec546b0659744ee6abb9d85cc",
+    "winex11.so": "2357fbd516630340d1f20904307ed51e7b1317847182ff2471d244bba025695a",
+    "explorer.exe": "45fb13652014cb1d3e35057465185a6ed9ce4cc04aa22896bc4e2838864affbc",
+    "gdiplus-i386.dll": "393e4db0264782e65829399de45ba6728ac294a33e221f7daee932aa92eb7951",
+    "gdiplus-x86_64.dll": "2b5b3407640ed5b07649121f75f412b5cd257b444103d4ddf84806a115d11571"
   },
   "wine_pe_debug_removed": true,
   "non_debug_pe_sections_byte_identical": true,

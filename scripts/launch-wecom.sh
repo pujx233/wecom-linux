@@ -10,7 +10,7 @@ overrides="$(cat "$script_dir/../configs/dll-overrides.txt")"
 cd -- "$(dirname -- "$app")"
 wine_env=(env -u LC_ALL -u WINEARCH -u WINESERVER -u WINELOADER -u WINELOADERNOEXEC -u WINEDLLPATH
   LANG=zh_CN.UTF-8 LC_CTYPE=zh_CN.UTF-8 LC_MESSAGES=zh_CN.UTF-8
-  WINEPREFIX="$WECOM_PREFIX" WINEDLLOVERRIDES="$overrides" WINEDEBUG=-all)
+  WINEPREFIX="$WECOM_PREFIX" WINEDLLOVERRIDES="$overrides" WINEDEBUG="${WINEDEBUG:--all}")
 wine_bin="${WECOM_WINE_BIN:-/usr/bin/wine}"
 test -x "$wine_bin"
 if [[ -n "${WECOM_WINESERVER:-}" ]]; then
@@ -71,5 +71,8 @@ if [[ "${WECOM_IME_FIX:-1}" != 0 ]]; then
       wine_env+=(LD_PRELOAD="$ime_bridge${LD_PRELOAD:+:$LD_PRELOAD}")
     fi
   fi
+fi
+if [[ "${WINE_X11_OWNED_FRAME:-0}" == 1 ]]; then
+  exec "${wine_env[@]}" "$wine_bin" explorer.exe /desktop 'C:\Program Files (x86)\WXWork\WXWork.exe'
 fi
 exec "${wine_env[@]}" "$wine_bin" "$app"
