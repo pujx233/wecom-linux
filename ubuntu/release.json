@@ -1,7 +1,7 @@
 {
   "name": "企业微信",
   "package": "com.qq.wecom.spark",
-  "package_version": "5.0.13.6005",
+  "package_version": "5.0.13.6005-1",
   "status": "preview",
   "wecom_version": "5.0.13.6005",
   "installer_url": "https://dldir1v6.qq.com/wework/work_weixin/WeCom_5.0.13.6005.exe",
@@ -11,7 +11,7 @@
   "upstream_adapter": "tbsangel/archlinux-wine-wecom-setup@f0ad4711049476bb2d87b40acaff53ca5ee58124",
   "wine_source_sha256": "98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793",
   "prelogin_archive_sha256": "94eb246b3562e8e2e1d672a2f9c1edc91a15034a37106b6a6d7faae8dddcae62",
-  "wine_patch_sha256": "4658c328ff2721484db016583babde4a1c472a2b363529e874956f98e4426531",
+  "wine_patch_sha256": "0c83c0d6afd4a7ec892e631adfc96c30795b401c52f725788f5536e4c2d068f8",
   "wine_components": {
     "wineserver": "wine/bin/wineserver",
     "ntdll.so": "wine/lib/wine/x86_64-unix/ntdll.so",
@@ -38,7 +38,7 @@
     "wineserver": "81d3992df47db3e9c36d6400f95364703edaa7421c52106377287fa2720d6fb6",
     "ntdll.so": "70db13c547010f6ffe97ec289d32bf17ddf4a5b14358ccb5d82a672123d6b2d9",
     "win32u.so": "d314efbf63aa88a204ca2061ff6f1d089e67a55bccc011bec45e6b346dfc96d6",
-    "winex11.so": "81d269adc3e1879c8ac88eaffa3d1dce6f29545c0beaac2bd7f58f964bc9ab20",
+    "winex11.so": "2658c9ab2254c71e32d294ae10c9374bf1903bfc744ef261c4080612bc8c1cf9",
     "wineps.so": "245ced7d6f135a42dd31458c40b33768119ebe1d2263c1c1bb4c15666ec4f240",
     "imm32-i386.dll": "073ef1c5fd97b914a93e918e100e78a69e50ddef231d5fa4a5bfc6aff187b6a0",
     "imm32-x86_64.dll": "0c102cdde63075231b2bd7f465ebfdd832c93e9131cb6e36c0a3de8910b1aa45",

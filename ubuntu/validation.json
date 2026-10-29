@@ -1421,6 +1421,101 @@
         "Parent-origin geometry candidate remains excluded.",
         "No package build, commit, push or store submission."
       ]
+    },
+    "member_card_map_sync_build": {
+      "date": "2026-10-29",
+      "status": "compiled and packaged; not installed or runtime-tested this round",
+      "base_product_commit": "78683a8",
+      "changed_source_files": [
+        "dlls/winex11.drv/event.c"
+      ],
+      "change": "Post the existing stack synchronization message after a managed shared frame receives MapNotify.",
+      "source_patch_sha256": "8039cf660797f9a698335ec566d28fe26671e9ece813e223dfcccff8f31fbf9b",
+      "winex11_sha256": "6527d36365bd572267b38a7c3239e52f9727bc1f358e04011d07d5ce7b99c380",
+      "unchanged_patch_sections": 53,
+      "source_replay_exact": true,
+      "source_replay_fuzz": 0,
+      "build_exit_code": 0,
+      "build_report": "/home/sai/work/.wecom-build/card-map-sync-20261029/build-verification.json",
+      "runtime_report": "/home/sai/work/.wecom-build/card-map-sync-20261029/runtime-verification.json",
+      "new_tests_run": false,
+      "live_installed": false,
+      "live_restarted": false,
+      "limits": [
+        "This build excludes the withdrawn parent-coordinate and panel-resize changes.",
+        "Earlier isolated results do not constitute runtime or visual acceptance of this build."
+      ],
+      "package_report": "/home/sai/work/.wecom-build/card-map-sync-20261029/package-verification.json",
+      "package_sha256": "77994d904fb10be031fb217939f160e5fe14ae353294161d96b02936b003d3d5"
+    },
+    "member_card_map_sync_local_install": {
+      "date": "2026-10-29",
+      "status": "installed and restarted; awaiting user acceptance",
+      "driver_sha256": "6527d36365bd572267b38a7c3239e52f9727bc1f358e04011d07d5ce7b99c380",
+      "loaded_pid": 301833,
+      "load_verification": "All driver mappings match the installed file inode; none are deleted.",
+      "report": "/home/sai/work/.wecom-build/card-map-sync-20261029/local-install.json",
+      "runtime_tested_by_agent": false,
+      "desktop_input_used": false
+    },
+    "frame_coordinates_with_card_local_install": {
+      "date": "2026-10-29",
+      "status": "compiled and locally loaded; awaiting user acceptance",
+      "change": "Restore only the parent-frame coordinate helper and its creation/update call sites.",
+      "card_map_sync_preserved": true,
+      "panel_resize_changes_included": false,
+      "source_patch_sha256": "0c83c0d6afd4a7ec892e631adfc96c30795b401c52f725788f5536e4c2d068f8",
+      "driver_sha256": "2658c9ab2254c71e32d294ae10c9374bf1903bfc744ef261c4080612bc8c1cf9",
+      "patch_replay_exact": true,
+      "source_replay_files": 54,
+      "build_exit_code": 0,
+      "build_report": "/home/sai/work/.wecom-build/frame-card-sync-20261029/build-verification.json",
+      "load_report": "/home/sai/work/.wecom-build/frame-card-sync-20261029/local-install.json",
+      "runtime_components_verified": 19,
+      "loaded_pid": 307585,
+      "new_runtime_tests": false,
+      "desktop_input_used": false,
+      "package_built": false,
+      "limits": [
+        "The user will check actual frame behavior; compilation and load checks are not visual acceptance.",
+        "The previous white body stripe root cause remains unconfirmed."
+      ],
+      "user_card_feedback": "Card still occasionally appears behind the main window, with reduced frequency.",
+      "card_acceptance_complete": false,
+      "reviewed_remaining_gap": "Native restacking after mapping without an active-window change does not resync sibling order.",
+      "gap_reproduced_this_round": false
+    },
+    "member_card_native_restack_sync": {
+      "date": "2026-10-29",
+      "status": "rejected after user-reported drag shaking; source and on-disk driver rolled back; current process untouched",
+      "change": "Reconcile managed shared-frame order on root _NET_CLIENT_LIST_STACKING changes even without activation or geometry changes; submit only when the actual pair order disagrees with the existing Win32 sibling rule.",
+      "changed_source_files": [
+        "dlls/winex11.drv/event.c",
+        "dlls/winex11.drv/window.c",
+        "dlls/winex11.drv/x11drv.h",
+        "dlls/winex11.drv/x11drv_main.c"
+      ],
+      "source_patch_sha256": "16efe87829c52ab5e814402f019e3ee228adec6a29309491d4aa3b11d4a6689f",
+      "driver_sha256": "231e29cc4605837a13f1cb9a915c1662a480104e4cfc502d1c3c4134f7b486df",
+      "build_exit_code": 0,
+      "source_replay_files": 54,
+      "source_replay_exact": true,
+      "build_report": "/home/sai/work/.wecom-build/card-restack-sync-20261029/build-verification.json",
+      "frame_coordinates_preserved": true,
+      "panel_resize_changes_included": false,
+      "new_runtime_tests": false,
+      "desktop_input_used": false,
+      "client_restarted": false,
+      "package_built": false,
+      "card_acceptance_complete": false,
+      "limits": [
+        "The previously reported intermittent event sequence was not captured live; static review confirms and repairs the missing reconciliation path.",
+        "Compilation and patch replay are not runtime or visual acceptance."
+      ],
+      "load_report": "/home/sai/work/.wecom-build/card-restack-sync-20261029/local-install.json",
+      "runtime_components_verified": 19,
+      "user_feedback": "After restart, dragging the window causes severe shaking.",
+      "rollback_report": "/home/sai/work/.wecom-build/card-restack-sync-20261029/rollback.json"
     }
   }
 }
