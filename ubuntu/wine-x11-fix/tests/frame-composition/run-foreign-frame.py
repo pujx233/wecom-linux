@@ -22,6 +22,7 @@ subprocess.run(['x86_64-w64-mingw32-gcc', '-O2', '-Wall', '-Wextra',
 with desktop(qa) as env:
     env.update(WINEPREFIX=str(qa / 'prefix'), WINESERVER=str(qa / 'wine/bin/wineserver'),
                WINEDEBUG=os.environ.get('QA_WINEDEBUG', '-all,+x11drv'), WINE_X11_OWNED_FRAME='1',
+               WINE_X11_FRAME_ATTACHED_CLASSES='ForeignFrameRegression',
                WINEDLLOVERRIDES='winewayland.drv=d;mscoree,mshtml,winemenubuilder=')
     with recording(qa, env, name) as capture, (qa / (name + '.log')).open('w') as log:
         app = subprocess.Popen([str(qa / 'wine/bin/wine'), str(qa / 'foreign-frame.exe')],

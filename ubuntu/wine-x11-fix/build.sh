@@ -14,14 +14,15 @@ mkdir -p "$output/source" "$output/build"
 tar -xzf "$archive" --strip-components=1 -C "$output/source"
 patch -d "$output/source" -p1 < "$root/wine-11.20-x11-popups.patch"
 cd "$output/build"
-../source/configure --enable-win64 --without-mingw --without-wayland
+../source/configure --enable-win64 --without-mingw --with-wayland
 for feature in SONAME_LIBDBUS_1 SONAME_LIBXCOMPOSITE SONAME_LIBXDAMAGE SONAME_LIBXRENDER HAVE_LIBXSHAPE; do
   grep -q "^#define $feature " include/config.h
 done
 make -j "${WECOM_BUILD_JOBS:-4}" server/wineserver dlls/ntdll/ntdll.so \
-  dlls/winex11.drv/winex11.so dlls/win32u/win32u.so dlls/wineps.drv/wineps.so dlls/mountmgr.sys/mountmgr.so
+  dlls/winex11.drv/winex11.so dlls/win32u/win32u.so dlls/wineps.drv/wineps.so \
+  dlls/winewayland.drv/winewayland.so dlls/mountmgr.sys/mountmgr.so
 sha256sum server/wineserver dlls/ntdll/ntdll.so dlls/winex11.drv/winex11.so \
-  dlls/win32u/win32u.so dlls/wineps.drv/wineps.so dlls/mountmgr.sys/mountmgr.so
+  dlls/win32u/win32u.so dlls/wineps.drv/wineps.so dlls/winewayland.drv/winewayland.so dlls/mountmgr.sys/mountmgr.so
 mkdir "$output/build-explorer"
 cd "$output/build-explorer"
 ../source/configure --enable-archs=i386,x86_64 --without-x --without-wayland

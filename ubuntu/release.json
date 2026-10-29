@@ -11,7 +11,7 @@
   "upstream_adapter": "tbsangel/archlinux-wine-wecom-setup@f0ad4711049476bb2d87b40acaff53ca5ee58124",
   "wine_source_sha256": "98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793",
   "prelogin_archive_sha256": "94eb246b3562e8e2e1d672a2f9c1edc91a15034a37106b6a6d7faae8dddcae62",
-  "wine_patch_sha256": "0c83c0d6afd4a7ec892e631adfc96c30795b401c52f725788f5536e4c2d068f8",
+  "wine_patch_sha256": "9add0018e3cce77444279babe9b3ecb43e3a4222aa188bd6290309b49c6e57b1",
   "wine_components": {
     "wineserver": "wine/bin/wineserver",
     "ntdll.so": "wine/lib/wine/x86_64-unix/ntdll.so",
@@ -31,17 +31,18 @@
     "cfgmgr32.dll-x86_64-windows": "wine/lib/wine/x86_64-windows/cfgmgr32.dll",
     "setupapi.dll-x86_64-windows": "wine/lib/wine/x86_64-windows/setupapi.dll",
     "wineboot.exe-x86_64-windows": "wine/lib/wine/x86_64-windows/wineboot.exe",
-    "mountmgr.so": "wine/lib/wine/x86_64-unix/mountmgr.so"
+    "mountmgr.so": "wine/lib/wine/x86_64-unix/mountmgr.so",
+    "winewayland.so": "wine/lib/wine/x86_64-unix/winewayland.so"
   },
   "artifacts_sha256": {
     "libcef.dll": "02b6cd5185af5fa390c41116f9c4a07912dc2175c8f8a75d0ec3f41256220265",
     "wineserver": "81d3992df47db3e9c36d6400f95364703edaa7421c52106377287fa2720d6fb6",
     "ntdll.so": "70db13c547010f6ffe97ec289d32bf17ddf4a5b14358ccb5d82a672123d6b2d9",
-    "win32u.so": "d314efbf63aa88a204ca2061ff6f1d089e67a55bccc011bec45e6b346dfc96d6",
-    "winex11.so": "2658c9ab2254c71e32d294ae10c9374bf1903bfc744ef261c4080612bc8c1cf9",
-    "wineps.so": "245ced7d6f135a42dd31458c40b33768119ebe1d2263c1c1bb4c15666ec4f240",
-    "imm32-i386.dll": "073ef1c5fd97b914a93e918e100e78a69e50ddef231d5fa4a5bfc6aff187b6a0",
-    "imm32-x86_64.dll": "0c102cdde63075231b2bd7f465ebfdd832c93e9131cb6e36c0a3de8910b1aa45",
+    "win32u.so": "4525ee5182f1f8428baccef58c560c91d2ad0789d4c878daaa4f88ffe25f37a4",
+    "winex11.so": "2796ff996e8433fb56f7a4098257f66531510d4246326e052ec976097325d5d3",
+    "wineps.so": "9d6f9767d72c3d7af3e75503a33d853a8f8a655e7114d98475421e478bb9ccff",
+    "imm32-i386.dll": "2ee5fa9dab185d277184c3f8cfa2258900c5822d4195c610716d30c3d398daff",
+    "imm32-x86_64.dll": "dd2a0182b5e94eb88ead7bfe50f6bf8a1a42e92bc5b760df8d511e873894185a",
     "explorer.exe": "f4296ea6e3a3b4192d0e84c933ca5a880f97e68300fca8eac550db6089325722",
     "wine": "fa443c7a1f7d289faeffab7cf79ae2f13398bd715ab25267e725e67d6bf765a1",
     "gdiplus-i386.dll": "7638a21e0ffdef61ae77066dc5904352c60a20c64ae6a5e6d6ee896524b3be36",
@@ -53,7 +54,8 @@
     "cfgmgr32.dll-x86_64-windows": "b0de6be30b0a31919a04653c8e0615f2782c645e0efef4118db7a6c819cb6e69",
     "setupapi.dll-x86_64-windows": "fab5daaaad453a43e5bfec0c8c61a26fe599ceeab52c0b9933dbb73d5cdce11e",
     "wineboot.exe-x86_64-windows": "1de4398bdff7d352f8956fb58b7f6d119a735680946c2cbb67b29b984f88fb78",
-    "mountmgr.so": "748de97cc1dfbbb334908a17409f1ad5f4df6d07b17c830a81d8828b1c05956c"
+    "mountmgr.so": "748de97cc1dfbbb334908a17409f1ad5f4df6d07b17c830a81d8828b1c05956c",
+    "winewayland.so": "011ec6b8e4bfd6fa9326ea33e7ba787c6846569096d32f18fda55bace0781277"
   },
   "helpers_sha256": {
     "ime-bridge.so": "9a93e3f60dcc4406a45c559bf388875caff392ce540a7829ae62d238ef1d29e3",
@@ -70,7 +72,7 @@
     "packaged_components": "packaged-runtime.json",
     "template_copy_preserves_file_independence": true
   },
-  "updated": "2026-10-29",
+  "updated": "2026-10-30",
   "base_package_sha256": [
     "2bdd9ac63a0a5e1f84da752b7c90f75bab5ebb2dcf84bb92ca99bed5e63afb65",
     "02a959cb4de850df6c584e798cb73506601de019a112dea3a3b85680eb11b324"
@@ -82,7 +84,7 @@
     "tray menu positioning",
     "desktop screenshot black"
   ],
-  "focused_scenarios_passed": false,
-  "focused_scenarios_note": "Historical full scenario results apply to 5.0.12.6018; see validation followups for this candidate.",
-  "manifest_scope": "Current source patch and runtime before PE debug stripping"
+  "focused_scenarios_passed": true,
+  "focused_scenarios_note": "Four attached-coordinate cases, recorded rapid drag, maximize/restore and local IME checks passed. Full card and mixed-DPI matrices remain incomplete.",
+  "manifest_scope": "Current cumulative source patch and 20 paired runtime components before Wine PE debug stripping"
 }

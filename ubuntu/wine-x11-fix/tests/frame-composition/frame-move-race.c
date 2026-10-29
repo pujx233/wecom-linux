@@ -55,6 +55,22 @@ static LRESULT CALLBACK proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         state("owner-moved");
         return 0;
     }
+    if (msg == WM_APP + 4)
+    {
+        if (!SetWindowPos(owner, NULL, 0, 0, 600, 400,
+                          SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE)) ExitProcess(5);
+        state("owner-resized");
+        if (WaitForSingleObject(resume_owner, 10000) != WAIT_OBJECT_0) ExitProcess(4);
+        state("resumed");
+        return 0;
+    }
+    if (msg == WM_APP + 5)
+    {
+        if (!SetWindowPos(overlay, NULL, (LONG)wp, (LONG)lp, 632, 432,
+                          SWP_NOZORDER | SWP_NOACTIVATE)) ExitProcess(5);
+        state("moved");
+        return 0;
+    }
     if (msg == WM_DESTROY)
     {
         PostQuitMessage(0);
@@ -98,6 +114,8 @@ static DWORD WINAPI commands(void *unused)
         if (!strncmp(line, "pause", 5)) PostMessageA(owner, WM_APP, 0, 0);
         else if (!strncmp(line, "resume", 6)) SetEvent(resume_owner);
         else if (sscanf(line, "move-owner %d %d", &x, &y) == 2) PostMessageA(owner, WM_APP + 3, x, y);
+        else if (!strncmp(line, "resize-owner", 12)) PostMessageA(owner, WM_APP + 4, 0, 0);
+        else if (sscanf(line, "resize-overlay %d %d", &x, &y) == 2) PostMessageA(overlay, WM_APP + 5, x, y);
         else if (sscanf(line, "create %d %d", &x, &y) == 2)
         {
             overlay_x = x;

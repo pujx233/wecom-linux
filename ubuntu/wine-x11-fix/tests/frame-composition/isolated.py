@@ -31,6 +31,9 @@ def desktop(qa, size='1600x1000', bare=False, second_monitor=None):
     assert qa == Path(os.environ['WECOM_QA_ROOT']).resolve()
     assert (qa / '.wecom-frame-qa').is_file(), 'Use a marked, disposable QA directory'
     assert str(qa / 'runtime') != os.environ.get('XDG_RUNTIME_DIR')
+    socket_path = qa / 'runtime' / ('wecom-qa' if bare else 'pipewire-0-manager')
+    if len(os.fsencode(socket_path)) >= 108:
+        raise ValueError('Private Unix socket path exceeds 107 bytes; use a shorter QA directory: ' + str(qa))
     for directory in ('runtime', 'config', 'data', 'cache'):
         (qa / directory).mkdir(exist_ok=True)
     (qa / 'runtime').chmod(0o700)

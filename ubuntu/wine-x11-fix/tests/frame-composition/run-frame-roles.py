@@ -30,6 +30,7 @@ with desktop(qa) as env:
     env.update(WINEPREFIX=str(qa / 'prefix'), WINESERVER=str(qa / 'wine/bin/wineserver'),
                DBUS_SYSTEM_BUS_ADDRESS='unix:path=' + str(qa / 'no-system-bus'),
                WINEDEBUG='-all,+x11drv', WINE_X11_OWNED_FRAME='1',
+               WINE_X11_FRAME_ATTACHED_CLASSES='FrameRoleContent;FrameRoleDecoration',
                WINE_X11_FRAME_DECORATION_CLASSES='OtherDecoration;FrameRoleDecoration',
                WINE_WECOM_FIRST_PRESENT_ARGB='1', WINE_X11_FIXED_TRANSIENT_ARGB='1',
                WINE_X11_FIXED_TRANSIENT_UTILITY='1',

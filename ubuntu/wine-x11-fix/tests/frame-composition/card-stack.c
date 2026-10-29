@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static HWND main_window, card, sentinel, preview, peer;
+static HWND main_window, card, sentinel, preview, peer, helper;
 static BOOL foreign;
 static unsigned card_clicks, main_clicks;
 
@@ -24,11 +24,20 @@ static void state(const char *event)
     }
     printf("{\"event\":\"%s\",\"main\":%lu,\"card\":%lu,\"sentinel\":%lu,\"active\":%lu,"
            "\"card_above_main\":%d,\"card_owner\":%llu,\"card_exstyle\":%lu,\"main_maximized\":%d,"
-           "\"preview\":%lu,\"card_clicks\":%u,\"main_clicks\":%u,\"peer_minimized\":%d}\n",
+           "\"preview\":%lu,\"card_clicks\":%u,\"main_clicks\":%u,\"peer_minimized\":%d,"
+           "\"helper\":%lu,\"helper_owner\":%llu,\"helper_style\":%lu,\"helper_exstyle\":%lu,\"order\":[",
            event, frame(main_window), frame(card), frame(sentinel), frame(GetForegroundWindow()),
            card_index >= 0 && card_index < main_index, (unsigned long long)(ULONG_PTR)GetWindow(card, GW_OWNER),
            (unsigned long)GetWindowLongA(card, GWL_EXSTYLE), IsZoomed(main_window), frame(preview),
-           card_clicks, main_clicks, IsIconic(peer));
+           card_clicks, main_clicks, IsIconic(peer), frame(helper),
+           (unsigned long long)(ULONG_PTR)GetWindow(helper, GW_OWNER),
+           (unsigned long)GetWindowLongA(helper, GWL_STYLE), (unsigned long)GetWindowLongA(helper, GWL_EXSTYLE));
+    for (hwnd = GetTopWindow(NULL), i = 0; hwnd; hwnd = GetWindow(hwnd, GW_HWNDNEXT))
+    {
+        unsigned long window = frame(hwnd);
+        if (window) printf("%s%lu", i++ ? "," : "", window);
+    }
+    puts("]}");
     fflush(stdout);
 }
 
@@ -70,21 +79,43 @@ static LRESULT CALLBACK proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         else if (!strcmp(command, "maximize")) ShowWindow(main_window, SW_MAXIMIZE);
         else if (!strcmp(command, "restore")) ShowWindow(main_window, SW_RESTORE);
         else if (!strcmp(command, "activate")) SetForegroundWindow(main_window);
+        else if (!strcmp(command, "reshow-main"))
+        {
+            ShowWindow(main_window, SW_HIDE);
+            ShowWindow(main_window, SW_SHOWNOACTIVATE);
+        }
+        else if (!strcmp(command, "helper"))
+        {
+            ShowWindow(card, SW_HIDE);
+            ShowWindow(preview, SW_HIDE);
+            if (!helper)
+            {
+                helper = CreateWindowExA(WS_EX_NOACTIVATE | WS_EX_LAYERED | WS_EX_TOOLWINDOW,
+                                         "CardStack", "normal helper", WS_POPUP, 10, 12, 1, 1,
+                                         NULL, NULL, GetModuleHandleA(NULL), NULL);
+                SetLayeredWindowAttributes(helper, 0, 255, LWA_ALPHA);
+            }
+            SetWindowPos(helper, HWND_TOP, 0, 0, 0, 0,
+                         SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+            UpdateWindow(helper);
+        }
         else if (!strcmp(command, "repaint"))
         {
             InvalidateRect(card, NULL, FALSE);
             UpdateWindow(card);
         }
-        else if (!strcmp(command, "owned"))
+        else if (!strcmp(command, "owned") || !strcmp(command, "unowned"))
         {
+            HWND owner = !strcmp(command, "owned") ? main_window : NULL;
+            if (preview) DestroyWindow(preview);
             DestroyWindow(card);
             card = CreateWindowExA(WS_EX_NOACTIVATE, "CardStack", "owned card", WS_POPUP | WS_THICKFRAME,
-                                   400, 300, 240, 240, main_window, NULL, GetModuleHandleA(NULL),
+                                   400, 300, 240, 240, owner, NULL, GetModuleHandleA(NULL),
                                    (void *)(ULONG_PTR)RGB(0, 0, 255));
             SetWindowPos(card, HWND_TOP, 400, 300, 240, 240, SWP_NOACTIVATE | SWP_SHOWWINDOW);
             UpdateWindow(card);
             preview = CreateWindowExA(WS_EX_NOACTIVATE, "CardStack", "owned preview", WS_POPUP | WS_THICKFRAME,
-                                      400, 300, 240, 240, main_window, NULL, GetModuleHandleA(NULL),
+                                      400, 300, 240, 240, owner, NULL, GetModuleHandleA(NULL),
                                       (void *)(ULONG_PTR)RGB(0, 255, 0));
             SetWindowPos(preview, HWND_TOP, 400, 300, 240, 240, SWP_NOACTIVATE | SWP_SHOWWINDOW);
             UpdateWindow(preview);

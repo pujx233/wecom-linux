@@ -49,7 +49,8 @@ assert digest(repo / 'ubuntu/wine-x11-fix/wine-11.20-x11-popups.patch') == spec[
     'Wine patch does not match the runtime release manifest'
 required_components = ['wine/bin/wineserver', 'wine/lib/wine/x86_64-unix/ntdll.so',
                        'wine/lib/wine/x86_64-unix/win32u.so', 'wine/lib/wine/x86_64-unix/winex11.so',
-                       'wine/lib/wine/x86_64-unix/wineps.so', 'wine/lib/wine/x86_64-unix/mountmgr.so',
+                       'wine/lib/wine/x86_64-unix/wineps.so', 'wine/lib/wine/x86_64-unix/winewayland.so',
+                       'wine/lib/wine/x86_64-unix/mountmgr.so',
                        'wine/lib/wine/x86_64-windows/wineboot.exe']
 for architecture in ('i386-windows', 'x86_64-windows'):
     for name in ('imm32.dll', 'cfgmgr32.dll', 'setupapi.dll', 'ntoskrnl.exe'):

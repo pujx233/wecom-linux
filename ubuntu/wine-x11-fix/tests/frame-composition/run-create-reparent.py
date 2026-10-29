@@ -32,6 +32,7 @@ with desktop(qa) as env:
     env.update(WINEPREFIX=str(qa / 'prefix'), WINESERVER=str(qa / 'wine/bin/wineserver'),
                DBUS_SYSTEM_BUS_ADDRESS='unix:path=' + str(qa / 'no-system-bus'), WINEDEBUG='-all,+x11drv',
                WINE_X11_OWNED_FRAME='1', WINE_WINDOW_DIAGNOSTICS='0',
+               WINE_X11_FRAME_ATTACHED_CLASSES='CreateReparent',
                WINEDLLOVERRIDES='winewayland.drv=d;mscoree,mshtml,winemenubuilder=')
     try:
         for phase in (phases if args.phase == 'all' else (args.phase,)):

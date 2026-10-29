@@ -17,14 +17,33 @@ python3 run-popup-input.py
 python3 run-frame-roles.py
 python3 run-maximize.py
 python3 run-create-reparent.py
-python3 run-frame-move-race.py
-python3 run-frame-move-race.py --create-after-move
-python3 run-frame-move-race.py --pending-move
-python3 run-frame-move-race.py --pending-move --create-after-move
+python3 run-card-stack.py
 ```
 
 运行前，该目录中不能有其他测试进程。不存在 prefix 时，脚本在私有显示器中执行 wineboot。
 不要复制已登录的企业微信 prefix。`.wecom-frame-qa` 标记是对可丢弃测试目录的明确确认。
+
+附属层坐标与提交顺序使用独立的新输出目录运行；脚本自行创建标记、runtime 链接和空白 prefix：
+
+```sh
+python3 run-attached-anchor.py --runtime /absolute/private-wine --output /absolute/new-qa
+```
+
+`attached-anchor.c` 与 `run-attached-anchor.py` 复用本目录的 `isolated.py`，验证以下四种顺序：
+
+| 用例 | 检查内容 |
+| --- | --- |
+| `before` | 在 owner 的 `WM_WINDOWPOSCHANGING` 中先更新附属层，再提交 owner；最终外框和各层位置必须正确。 |
+| `after` | 在 `WM_WINDOWPOSCHANGED` 中更新附属层；正文、标题和阴影必须保持正确相对位置。 |
+| `native` | 私有 WM 先将 native owner 移至 T2，应用仍读到 Win32 T1，并按 T1 更新附属层；不得重复叠加移动。 |
+| `popup` | 未声明的独立弹窗按 `GetCursorPos` 返回的屏幕位置显示，且不能共享 owner 的原生 frame。 |
+
+脚本将 `AnchorOrderShadow;AnchorOrderTitle` 声明为 `WINE_X11_FRAME_ATTACHED_CLASSES`，
+只将 `AnchorOrderShadow` 声明为 `WINE_X11_FRAME_DECORATION_CLASSES`；标题仍在正文上方。
+`AnchorOrderIndependent` 不作 attached 声明。报告记录两种坐标、原生尺寸、runtime 和夹具指纹。
+迁入前的相同夹具 A/B 中，`e2906e21…` 在 `before` 稳定失败，外框为 656×376、正文局部位置为 `(0,0)`；
+`2796ff99…` 四项均通过，前置更新后恢复为 392×312 和 `(36,36)`。原始报告为 `qano-base2` 与 `qano2`。
+本次产品目录迁移只做编译及语法检查，没有重跑这些场景；应用在前置回调中主动重入消息循环仍未覆盖。
 
 `run-foreign-frame.py` 创建静止的主窗口和分层装饰，再让另一个进程绘制红、蓝内容。
 它同时检查 GDI 读回、原生源 pixmap 和桌面合成后的像素，防止把“已经画进后台位图”误判为“用户已经看到”。
@@ -91,7 +110,13 @@ Wine 坐标中的正、负副屏原点。标准 X11 dock strut 为两屏各保�
 直接抽取生产代码的 RECT 边长转换函数，用 UBSan 检查零值、负值、65535/65536 和 INT32 跨端边界。
 它只验证原生尺寸转换，不覆盖此前的矩形组合算术，也不能替代上面的真实窗口提升和尺寸恢复测试。
 
-`run-frame-move-race.py` 用两个 UI 线程验证共享框架的坐标同步。默认先暂停 owner 消息循环，
+`run-frame-move-race.py` 保留为历史实验，尚未迁移到显式 attached 合同，已移出上方推荐矩阵。
+它同时要求 owner 的 Win32 坐标保持旧值、另一线程按未来 native 屏幕坐标更新 overlay，并断言两者共享 frame。
+这与 attached 层按逻辑 owner 布局的合同不同，不能仅添加 `MoveRaceOverlay` 声明来沿用旧断言。
+当前 attached 跟随与独立弹窗绝对定位的边界由上面的四项回归分别检查。
+以下是该历史实验的原有行为说明，不表示已在当前候选上通过。
+
+该脚本用两个 UI 线程验证共享框架的坐标同步。默认先暂停 owner 消息循环，
 由私有窗口管理器移动 native frame，再让另一线程更新附属层；`--create-after-move` 改为首次创建该层。
 此时明确检查 Win32 owner 仍是旧坐标，附属层的原生坐标必须与请求一致。
 `--pending-move` 检查相反顺序：只暂停私有 GNOME Shell，应用先提交 owner 移动，核对 Win32 已更新、
@@ -99,3 +124,22 @@ native frame 尚未移动，再更新或创建附属层。恢复后框架、正�
 不能只修正系统先移动的路径。测试只暂停由私有环境标记识别的进程，退出时先恢复再清理。
 Wine 服务初始化单独执行并记录耗时；窗口就绪和几何断言仍有独立超时，超时不能作为通过。
 有 gdb 时，失败会在终止私有程序前尝试保存线程栈。该回归不验证真实企微正文或概览选框的视觉效果。
+
+`run-frame-sync.py --runtime /absolute/private-wine --output /absolute/new-result-dir` 验证共享外框的
+绘制完成顺序。测试在同一 128 像素分配区间内调整大小，并从该次 resize 日志确认 surface 确实复用。
+正文绘制结束后暂不处理已排队的框架合成消息：此时桌面仍须保持旧绿色，扩展 XSync 计数必须为奇数。
+处理消息后，桌面变蓝且计数变为偶数。它同时检查装饰与正文共用原生 frame，避免误测直接显示正文的路径。
+测试使用私有 GNOME 会话与空白 prefix，不运行企业微信，也不操作用户桌面。
+
+`--pending-resize` 检查混合顺序：暂停私有 WM 后，owner 只改变尺寸并阻塞消息循环；再恢复 WM，
+让它移动 frame，最后由另一线程更新阴影。此时尺寸确认尚未消费，但没有待执行的位置请求，
+阴影屏幕坐标必须立即正确；恢复 owner 后还需检查最终并集、边距和主体矩形。
+
+`run-card-stack.py` 检查普通、隐藏重显、最大化、还原及同 owner 卡片的原生层级、像素和点击归属。
+另外直接请求原生层级倒序，保持焦点不变，分别覆盖一张卡片、两张卡片以及外部应用位于顶部。
+纠正后窗口几何必须保持不变，已正确的层级不应持续产生纠正请求。外部应用在整组上方时仍须遮住卡片。
+另一例保持外部应用焦点，将组内下方卡片原生抬到它上方：修复须保留该原生位置，并把 Win32 上方的
+预览放回卡片上方，不能把整组降回去，也不能等不存在的下一次激活才收敛。
+激活回归分别从外部应用切回主窗、隐藏重显后再激活，旁边保留同进程普通层的无激活 helper。
+测试核对真实激活、原生层级和可见像素，防止主窗虽获得焦点却被同组 helper 拖到外部应用下面。
+这些请求只发往 `isolated.py` 创建并验证身份的私有 Xwayland。

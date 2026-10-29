@@ -36,6 +36,7 @@ report = {'driver_sha256': hashlib.sha256((qa / 'wine/lib/wine/x86_64-unix/winex
 with desktop(qa) as env:
     env.update(WINEPREFIX=str(qa / 'prefix'), WINESERVER=str(qa / 'wine/bin/wineserver'),
                WINEDEBUG='-all,+x11drv', WINE_X11_OWNED_FRAME='1',
+               WINE_X11_FRAME_ATTACHED_CLASSES='PopupInputRegression',
                WINE_WECOM_FIRST_PRESENT_ARGB='1', WINE_X11_FIXED_TRANSIENT_ARGB='1',
                WINE_X11_FIXED_TRANSIENT_UTILITY='1',
                WINEDLLOVERRIDES='winewayland.drv=d;mscoree,mshtml,winemenubuilder=')

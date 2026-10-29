@@ -1,6 +1,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <imm.h>
+#include <shellscalingapi.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,11 +46,15 @@ static void pump(DWORD milliseconds)
 
 static void report(const char *event, HWND hwnd, BOOL ok, POINT point, RECT area)
 {
-    POINT physical = point, lower = {area.left, area.bottom};
+    GUITHREADINFO info = {.cbSize = sizeof(info)};
+    POINT physical = point, lower = {point.x, area.bottom};
     RECT root_rect, client_rect, root_client;
-    POINT root_client_physical[2];
+    POINT root_anchor_origin = {0, 0};
+    DPI_AWARENESS_CONTEXT context;
+    UINT raw_dpi_x = 0, raw_dpi_y = 0;
     HWND root = GetAncestor(hwnd, GA_ROOT);
     DWORD root_pid, pid;
+    ok = GetGUIThreadInfo(GetCurrentThreadId(), &info) && ok;
     GetWindowThreadProcessId(root, &root_pid);
     GetWindowThreadProcessId(hwnd, &pid);
     ClientToScreen(hwnd, &physical);
@@ -59,17 +64,19 @@ static void report(const char *event, HWND hwnd, BOOL ok, POINT point, RECT area
     GetWindowRect(root, &root_rect);
     GetClientRect(hwnd, &client_rect);
     GetClientRect(root, &root_client);
-    root_client_physical[0] = (POINT){0, 0};
-    root_client_physical[1] = (POINT){root_client.right, root_client.bottom};
-    MapWindowPoints(root, NULL, root_client_physical, 2);
-    LogicalToPhysicalPointForPerMonitorDPI(root, &root_client_physical[0]);
-    LogicalToPhysicalPointForPerMonitorDPI(root, &root_client_physical[1]);
+    ClientToScreen(root, &root_anchor_origin);
+    LogicalToPhysicalPointForPerMonitorDPI(root, &root_anchor_origin);
+    context = SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
+    ok = SUCCEEDED(GetDpiForMonitor(MonitorFromWindow(root, MONITOR_DEFAULTTONEAREST), MDT_RAW_DPI,
+                                   &raw_dpi_x, &raw_dpi_y)) && ok;
+    SetThreadDpiAwarenessContext(context);
     printf("{\"event\":\"%s\",\"sequence\":%u,\"ok\":%d,\"pid\":%lu,\"root_pid\":%lu,"
            "\"hwnd\":%llu,\"root\":%llu,\"xid\":%llu,\"frame\":%llu,\"dpi\":%u,"
            "\"awareness\":\"%s\",\"client\":[%ld,%ld],\"physical\":[%ld,%ld],"
            "\"lower_physical\":[%ld,%ld],\"area\":[%ld,%ld,%ld,%ld],"
            "\"root_rect\":[%ld,%ld,%ld,%ld],\"client_size\":[%ld,%ld],"
-           "\"root_client_physical\":[%ld,%ld,%ld,%ld]}\n",
+           "\"root_client_size\":[%ld,%ld],\"root_dpi\":%u,\"root_raw_dpi\":[%u,%u],"
+           "\"root_anchor_origin\":[%ld,%ld],\"focus\":%llu,\"caret\":%llu}\n",
            event, ++sequence, ok, pid, root_pid, (unsigned long long)(UINT_PTR)hwnd,
            (unsigned long long)(UINT_PTR)root,
            (unsigned long long)(UINT_PTR)GetPropA(root, "__wine_x11_whole_window"),
@@ -78,8 +85,9 @@ static void report(const char *event, HWND hwnd, BOOL ok, POINT point, RECT area
            area.left, area.top, area.right, area.bottom,
            root_rect.left, root_rect.top, root_rect.right, root_rect.bottom,
            client_rect.right, client_rect.bottom,
-           root_client_physical[0].x, root_client_physical[0].y,
-           root_client_physical[1].x, root_client_physical[1].y);
+           root_client.right, root_client.bottom, GetDpiForWindow(root), raw_dpi_x, raw_dpi_y,
+           root_anchor_origin.x, root_anchor_origin.y,
+           (unsigned long long)(UINT_PTR)info.hwndFocus, (unsigned long long)(UINT_PTR)info.hwndCaret);
     fflush(stdout);
 }
 
@@ -115,8 +123,9 @@ static void apply(HWND hwnd, UINT operation, POINT point)
     case 8:
     case 9:
     case 10:
+    case 13:
     {
-        if (operation == 6)
+        if (operation == 6 || operation == 13)
         {
             if (!other_window)
             {
@@ -124,8 +133,8 @@ static void apply(HWND hwnd, UINT operation, POINT point)
                                               40, 50, 550, 350, root_window, NULL, GetModuleHandleW(NULL), NULL);
                 ImmAssociateContextEx(other_window, NULL, IACE_DEFAULT);
             }
-            hwnd = other_window;
-            focus_input(hwnd);
+            if (operation == 6) hwnd = other_window;
+            focus_input(other_window);
         }
         if (operation == 7) DestroyCaret();
         COMPOSITIONFORM form = {CFS_POINT, point, {0, 0, 0, 0}};
@@ -142,7 +151,24 @@ static void apply(HWND hwnd, UINT operation, POINT point)
         if (context) ImmReleaseContext(hwnd, context);
         event = operation == 6 ? "blur" : operation == 7 ? "destroy" :
                 operation == 8 ? "area" : operation == 9 ? "small-area" :
-                operation == 10 ? "force" : "composition";
+                operation == 10 ? "force" : operation == 13 ? "stale" : "composition";
+        break;
+    }
+    case 11:
+    case 12:
+    {
+        CANDIDATEFORM form = {0, CFS_CANDIDATEPOS, point, {0, 0, 0, 0}};
+        if (operation == 12)
+        {
+            area.left -= 4;
+            area.right += 40;
+            form.dwStyle = CFS_EXCLUDE;
+            form.rcArea = area;
+        }
+        context = ImmGetContext(hwnd);
+        ok = context && ImmSetCandidateWindow(context, &form);
+        if (context) ImmReleaseContext(hwnd, context);
+        event = operation == 11 ? "candidate" : "exclude";
         break;
     }
     default:
@@ -216,7 +242,9 @@ static LRESULT CALLBACK root_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM
             UINT code = !strcmp(operation, "caret") ? 1 : !strcmp(operation, "composition") ? 2 :
                         !strcmp(operation, "tall") ? 5 : !strcmp(operation, "blur") ? 6 :
                         !strcmp(operation, "destroy") ? 7 : !strcmp(operation, "area") ? 8 :
-                        !strcmp(operation, "small-area") ? 9 : !strcmp(operation, "force") ? 10 : 0;
+                        !strcmp(operation, "small-area") ? 9 : !strcmp(operation, "force") ? 10 :
+                        !strcmp(operation, "candidate") ? 11 : !strcmp(operation, "exclude") ? 12 :
+                        !strcmp(operation, "stale") ? 13 : 0;
             SendMessageW(input_window, WM_APPLY, code, MAKELPARAM(x, y));
         }
         return 0;

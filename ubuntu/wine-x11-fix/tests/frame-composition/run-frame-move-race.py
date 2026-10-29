@@ -17,9 +17,12 @@ import time
 from isolated import desktop, processes
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--pending-move', action='store_true', help='Stop only the private WM during an app move')
+pending = parser.add_mutually_exclusive_group()
+pending.add_argument('--pending-move', action='store_true', help='Stop only the private WM during an app move')
+pending.add_argument('--pending-resize', action='store_true', help='Move the frame before a resize acknowledgement')
 parser.add_argument('--create-after-move', action='store_true', help='Create the overlay after the owner moves')
 args = parser.parse_args()
+assert not args.pending_resize or not args.create_after_move
 qa = Path(os.environ['WECOM_QA_ROOT']).resolve()
 assert (qa / '.wecom-frame-qa').is_file()
 name = 'frame-move-race-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
@@ -31,7 +34,7 @@ files = {'driver': qa / 'wine/lib/wine/x86_64-unix/winex11.so',
          'core': qa / 'wine/lib/wine/x86_64-unix/win32u.so', 'server': qa / 'wine/bin/wineserver',
          'fixture': source, 'runner': Path(__file__), 'exe': exe}
 report = {'host_desktop_used': False, 'account_data_used': False, 'events': [], 'passed': False,
-          'mode': 'pending-move' if args.pending_move else 'external-move',
+          'mode': 'pending-resize' if args.pending_resize else 'pending-move' if args.pending_move else 'external-move',
           'create_after_move': args.create_after_move,
           'before': {key: hashlib.sha256(path.read_bytes()).hexdigest() for key, path in files.items()}}
 with desktop(qa) as env:
@@ -91,14 +94,16 @@ with desktop(qa) as env:
                 assert time.monotonic() < deadline, initial
                 time.sleep(.02)
             report['initial'] = initial
-            if args.pending_move:
+            if args.pending_move or args.pending_resize:
                 private_wm = [pid for pid, argv in processes(qa) if argv and Path(os.fsdecode(argv[0])).name ==
                               'gnome-shell']
                 assert len(private_wm) == 1, private_wm
                 wm_pid = private_wm[0]
                 os.kill(wm_pid, signal.SIGSTOP)
-                command('move-owner 500 300'); paused = wait('owner-moved')
-                assert paused['owner'] == [500, 300, 1000, 700], paused
+                command('resize-owner' if args.pending_resize else 'move-owner 500 300')
+                paused = wait('owner-resized' if args.pending_resize else 'owner-moved')
+                expected = [200, 200, 800, 600] if args.pending_resize else [500, 300, 1000, 700]
+                assert paused['owner'] == expected, paused
                 assert geometry(state['frame']) == initial['frame'], 'WM applied move before requested barrier'
             else:
                 command('pause'); paused = wait('paused')
@@ -115,13 +120,16 @@ with desktop(qa) as env:
             target = [initial['frame'][0] + 300, initial['frame'][1] + 100]
             if not args.pending_move:
                 x.XMoveWindow(display, state['frame'], *target); x.XSync(display, False)
+                if args.pending_resize:
+                    os.kill(wm_pid, signal.SIGCONT); wm_pid = None
                 deadline = time.monotonic() + 3
                 while geometry(state['frame'])[:2] != target:
                     assert time.monotonic() < deadline, 'WM did not move the frame'
                     time.sleep(.02)
             report['moved_frame'] = geometry(state['frame'])
             requested = [184 + 300, 184 + 100]
-            command(('create' if args.create_after_move else 'move') + ' %d %d' % tuple(requested))
+            action = 'resize-overlay' if args.pending_resize else 'create' if args.create_after_move else 'move'
+            command(action + ' %d %d' % tuple(requested))
             moved = wait('ready' if args.create_after_move else 'moved')
             state = moved
             assert state['frame'] == state['overlay_frame'], state
@@ -136,7 +144,7 @@ with desktop(qa) as env:
                     time.sleep(.02)
             else:
                 command('resume'); wait('resumed')
-            expected_owner = [500, 300, 1000, 700]
+            expected_owner = [500, 300, 1100, 700] if args.pending_resize else [500, 300, 1000, 700]
             deadline = time.monotonic() + 3
             while True:
                 command('owner-state'); state = wait('owner-state')
@@ -150,11 +158,13 @@ with desktop(qa) as env:
             extents = subprocess.run(['xprop', '-id', str(state['frame']), '_GTK_FRAME_EXTENTS'], env=env,
                                      capture_output=True, text=True, check=True, timeout=3).stdout
             report['resumed_extents'] = [int(value) for value in extents.partition('=')[2].split(',')]
-            report['size_passed'] = (report['resumed_snapshot']['frame'] == [*requested, 532, 432] and
-                                     report['resumed_snapshot']['body'] == [*requested, 532, 432] and
+            width = 632 if args.pending_resize else 532
+            report['size_passed'] = (report['resumed_snapshot']['frame'] == [*requested, width, 432] and
+                                     report['resumed_snapshot']['body'] == [*requested, width, 432] and
                                      report['resumed_extents'] == [16, 16, 16, 16])
-            report['passed'] = report['size_passed'] and (args.pending_move or
+            report['passed'] = report['size_passed'] and (args.pending_move or args.pending_resize or
                                                         report['stale_owner_confirmed'] and report['position_passed'])
+            if args.pending_resize: report['passed'] &= report['position_passed']
         except Exception as error:
             report['error'] = str(error) or type(error).__name__
             if app.poll() is None and shutil.which('gdb'):

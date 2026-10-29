@@ -70,6 +70,7 @@ with desktop(qa, '3200x2000', second_monitor='3840x2160') as env:
         Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT | Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION,
         None, None)
     env.update(WINEPREFIX=str(qa / 'prefix'), WINESERVER=str(qa / 'wine/bin/wineserver'),
+               WINE_X11_FRAME_ATTACHED_CLASSES='MaximizeRegressionShadow',
                WINE_X11_FRAME_DECORATION_CLASSES='MaximizeRegressionShadow',
                WINEDEBUG='-all', WINEDLLOVERRIDES='winewayland.drv=d;mscoree,mshtml,winemenubuilder=')
     wine, server = str(qa / 'wine/bin/wine'), str(qa / 'wine/bin/wineserver')
