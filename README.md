@@ -3,6 +3,7 @@
 版本
 
 企业微信 5.0.13.6005，内置 Wine 11.20，Linux 社区适配版。
+DEB 修订 5.0.13.6005-2，glibc 最低要求为 2.38，兼容 t64 与非 t64 运行库包名。
 已在 Ubuntu 26.04 amd64 平台验证。
 
 修复问题
@@ -24,11 +25,11 @@
 
 安装
 
-从 [Releases](https://github.com/pujx233/wecom-linux/releases/tag/v5.0.13.6005) 下载 DEB 和 SHA256SUMS，执行：
+从 [Releases](https://github.com/pujx233/wecom-linux/releases/tag/v5.0.13.6005-2) 下载 DEB 和 SHA256SUMS，执行：
 
 ```sh
 sha256sum -c SHA256SUMS
-sudo apt install ./com.qq.wecom.spark_5.0.13.6005_amd64.deb
+sudo apt install ./com.qq.wecom.spark_5.0.13.6005-2_amd64.deb
 ```
 
 在应用菜单启动“企业微信”。升级保留账号和聊天记录，用户数据位于 `~/.local/share/wecom/prefix`。

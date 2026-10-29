@@ -1,7 +1,7 @@
 {
   "name": "企业微信",
   "package": "com.qq.wecom.spark",
-  "package_version": "5.0.13.6005-1",
+  "package_version": "5.0.13.6005-2",
   "status": "preview",
   "wecom_version": "5.0.13.6005",
   "installer_url": "https://dldir1v6.qq.com/wework/work_weixin/WeCom_5.0.13.6005.exe",

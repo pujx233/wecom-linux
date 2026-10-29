@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import stat
 import struct
@@ -260,6 +261,17 @@ for path in args.stage.rglob('*'):
         info = path.stat()
         inodes[(info.st_dev, info.st_ino)] = (info.st_size + 1023) // 1024
 installed = sum(inodes.values())
+# Use the shipped ELF symbol requirements, not the build host's libc package version.
+glibc_versions = set()
+for path in files.rglob('*'):
+    if not path.is_file() or path.is_symlink():
+        continue
+    with path.open('rb') as stream:
+        if stream.read(4) != b'\x7fELF':
+            continue
+    versions = subprocess.check_output(['readelf', '--version-info', '--wide', str(path)], text=True)
+    glibc_versions.update(tuple(map(int, version.split('.'))) for version in re.findall(r'GLIBC_(\d[\d.]*)', versions))
+glibc_minimum = '.'.join(map(str, max(glibc_versions)))
 control = args.stage / 'DEBIAN/control'
 control.parent.mkdir()
 control.write_text(f'''Package: com.qq.wecom.spark
@@ -269,13 +281,24 @@ Maintainer: pujx233 <pujx0415@qq.com>
 Section: non-free/net
 Priority: optional
 Installed-Size: {installed}
-Depends: bash, coreutils, util-linux, python3, libpython3-stdlib, libc6 (>= 2.43), libx11-6,
+Depends: bash, coreutils, util-linux, python3, libc6 (>= {glibc_minimum}), libgcc-s1 (>= 3.0), libx11-6,
  libxext6, libfreetype6, libfontconfig1, libdbus-1-3, libxrandr2, libxrender1,
- libxcursor1, libxi6, libxfixes3, libxcomposite1, libxdamage1, libxinerama1, libglib2.0-0t64
-Recommends: xwayland, libasound2t64, libpulse0, libvulkan1
+ libxcursor1, libxi6, libxfixes3, libxcomposite1, libxdamage1, libxinerama1,
+ libgnutls30t64 | libgnutls30, ca-certificates,
+ libpulse0 (>= 0.99.1) | libasound2t64 (>= 1.0.16) | libasound2 (>= 1.0.16)
+Recommends: xwayland, python3-gi, libgl1, libegl1, libvulkan1, libxkbregistry0,
+ libudev1 (>= 183), libusb-1.0-0 (>= 2:1.0.21), libv4l-0, libcups2t64 | libcups2,
+ libkrb5-3 (>= 1.8+dfsg), libgssapi-krb5-2 (>= 1.17),
+ libglib2.0-0t64 (>= 2.80) | libglib2.0-0 (>= 2.80),
+ libgstreamer1.0-0 (>= 1.14), libgstreamer-plugins-base1.0-0 (>= 1.18),
+ gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-libav,
+ libavformat62, libavcodec62, libavutil60
+Suggests: libsane1, libgphoto2-6, libgphoto2-port12, libpcsclite1,
+ libpcap0.8t64 | libpcap0.8, ocl-icd-libopencl1 | libopencl1,
+ libnetapi1, libodbc2, libsdl2-2.0-0
 Homepage: https://github.com/pujx233/wecom-linux
 Description: 企业微信
- 企业微信 {spec['wecom_version']}，内置私有 Wine 11.20 的 Ubuntu 26.04 amd64 适配测试版。
+ 企业微信 {spec['wecom_version']}，内置私有 Wine 11.20 的 Linux amd64 适配版。
  包含透明窗口合成、拖动、图片缩放、聊天记录绘制及邮件光标修订。
  已知托盘“更多操作”定位仍有限制，完整功能及其他桌面尚未全面验收。
  不需要额外桌面，不修改 GNOME、Mutter、系统 Wine 或桌面设置。

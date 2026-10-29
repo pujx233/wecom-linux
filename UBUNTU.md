@@ -1,6 +1,6 @@
 # Ubuntu 使用、复用与重建
 
-当前版本为企业微信 5.0.13.6005 / 私有 Wine 11.20（2026-10-30，DEB 5.0.13.6005-1）。
+当前版本为企业微信 5.0.13.6005 / 私有 Wine 11.20（2026-10-30，DEB 5.0.13.6005-2）。
 验收环境为 Ubuntu 26.04.1 amd64、GNOME 50.1 Wayland/XWayland、双屏 200%、IBus/Rime。
 其他发行版、桌面和缩放比例需要另行验证。
 
@@ -8,6 +8,28 @@
 用户 prefix 位于 `${XDG_DATA_HOME:-$HOME/.local/share}/wecom/prefix`，日志在相邻的 `logs` 目录。
 首次启动按当前 Linux 用户重定位模板，升级沿用账号目录并使用安装包内的启动器、助手。
 企微的配置修改只作用于该 prefix，不改系统 Wine 或桌面全局设置。
+
+## 运行库依赖
+
+`package.py` 从包内 ELF 的 `GLIBC_*` 符号计算 libc6 下限，当前为 **2.38**。
+构建机的 glibc 版本不作为安装门槛。全部 Unix 模块均为 amd64，32 位 Windows 程序通过 WoW64 运行，
+无需安装 i386 系统库，也无需安装系统 Wine。
+
+| 分类 | 依赖与用途 |
+| --- | --- |
+| Depends | 启动脚本、Python、libc/libgcc、X11、字体、DBus、GnuTLS 和 CA 证书；声音使用 PulseAudio 或 ALSA 其一 |
+| Recommends | XWayland、GNOME Python 绑定、OpenGL/Vulkan、设备与摄像头、打印、Kerberos 和 Wine 多媒体后端 |
+| Suggests | 扫描仪、相机导入、智能卡、抓包、OpenCL、SMB、ODBC 和 SDL 等通用 Wine 扩展 |
+
+`t64` 与非 `t64` 的同 ABI 包名用替代依赖表示，不绑定 Ubuntu 的包名。
+企微和会议组件自带 Windows 编解码库；Wine 多媒体后端仍按其实际链接关系声明：
+`winegstreamer.so` 需要 GLib 2.80、GStreamer 1.14 和 base 库 1.18，
+`winedmo.so` 需要 FFmpeg 8 的 `libavformat.so.62`、`libavcodec.so.62`、`libavutil.so.60`。
+旧版 FFmpeg 不能替代这些 SONAME。缺少推荐库时，对应 Wine 后端不可用，不代表全部音视频功能已兼容。
+
+默认保留安装推荐依赖。Ubuntu 24.04、Deepin 23/25 等系统满足核心 glibc 门槛，
+但各发行版是否提供可选后端及实际功能仍需分别确认。
+模板固定使用 X11；未启用的原生 Wine Wayland 驱动不额外引入 Wayland 1.23 的安装要求。
 
 ## 修复与边界
 
@@ -61,7 +83,7 @@ python3 ubuntu/package.py \
   --wine-source /absolute/wine-11.20.tar.gz \
   --installer /absolute/WeCom_5.0.13.6005.exe \
   --stage /absolute/new-stage \
-  --output /absolute/com.qq.wecom.spark_5.0.13.6005_amd64.deb
+  --output /absolute/com.qq.wecom.spark_5.0.13.6005-2_amd64.deb
 ```
 
 自行构建后更新 `release.json` 中的组件指纹，再运行打包。
