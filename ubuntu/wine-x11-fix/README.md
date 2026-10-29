@@ -39,12 +39,12 @@ XIM 定位保留 IMM32 的请求类型：仅当前焦点的自动 caret 更新�
 应用指定的点和区域保留原锚点，position 模式保持顶边。在原生几何改变后刷新现有 XIC 的屏幕位置，
 不再按矩形大小推断请求来源；切换输入框后的旧 caret 更新不能覆盖新输入框的位置。
 这修复逐次定位请求和窗口几何刷新，不等同于实现全部 IMC 持久定位策略或宿主 IME 的完整区域布局。
-输入法、绘制完成和窗口角色修订已加载到真实企微；未重建 DEB，`release.json` 的组件哈希仍是历史记录。
+输入法、绘制完成和窗口角色修订已打包，完整组件清单见 `release.json`。
 测试使用的具体组合见 `validation.json` 后续条目，不能用旧加载记录代表新源码。
 
 双屏修订统一了共享框架的配置确认流程、最大化坐标换算和最小化恢复时的普通位置保护。
 真实企微内外屏的最大化、托盘恢复和普通尺寸还原已复测；仍不代表所有闪动或 fullscreen 模式已解决。
-原因、回归边界及未发布状态见 [代码审查](CODE-REVIEW.md#双屏最大化与恢复修订)。
+原因与回归记录见 [代码审查](CODE-REVIEW.md#双屏最大化与恢复修订)。
 
 Ubuntu 启动器为 `WeMail.exe` 和 `FlutterPlugins.exe` 设置 IFEO `dpiAwareness=1`，
 在初始化时与 SYSTEM_AWARE 宿主保持一致，避免跨进程嵌入被拒后独立开窗。用户已确认机器人内容回到主窗口。
@@ -58,7 +58,7 @@ Ubuntu 启动器为 `WeMail.exe` 和 `FlutterPlugins.exe` 设置 IFEO `dpiAwaren
 详细归因及历史结论的更新见 [CODE-REVIEW.md](CODE-REVIEW.md)。
 
 最新源码复审修正 USER/surface 锁序，并使共享框架的纯层级请求不再重排成员几何。
-这两项已编译并安装到测试运行时，等待下次启动；本轮按用户要求没有重启客户端或再操作桌面验收。
+这两项已编译并打包，待实际使用复测。
 源码与构建结果不能替代真实场景通过，之前的客户端验收记录不自动覆盖这次修改。
 
 ## 构建
@@ -100,7 +100,7 @@ build-explorer/programs/wineboot/x86_64-windows/wineboot.exe
 输入法接口修订使用 GDI 驱动 ABI 111，`win32u.so`、`winex11.so`、`wineps.so` 和两份 IMM32 必须配套，
 否则可能出现驱动拒绝加载、打印失败或旧 IMM32 仍调用丢失请求类型的入口。X11 启动器继续禁用 Wayland 驱动。
 打包入口要求清单列出这些组件及设备管理、Wineboot 组件，并覆盖模板中的对应模块。
-发布时应更新完整组件清单；当前历史 `release.json` 会被源码指纹校验拒绝，不能直接打包。
+当前源码补丁和配套组件清单见 `release.json`。
 编译路径和工具链不同会改变二进制哈希，不要混用系统 Wine 或其他候选中的组件。
 当前未整合本地有符号 DPI / XSETTINGS 实验。
 
@@ -148,4 +148,4 @@ i686-w64-mingw32-g++ -O2 -std=c++11 -static-libstdc++ -static-libgcc \
 共享框架通过 `WINE_X11_FRAME_DECORATION_CLASSES` 接收应用声明的装饰类，使用分号分隔的完整 UTF-8 类名。
 Ubuntu 启动器设置 `PerryShadowWnd`；其他应用应只声明实际装饰，未声明的内容窗口不会因可缩放样式被压到主体后方。
 本轮绘制完成和窗口角色修订的构建、负对照及隔离回归见 `CODE-REVIEW.md` 和 `../validation.json` 的对应后续条目。
-这些修订已随输入法组件加载；`release.json` 的旧运行时清单不会自动代表新源码，打包遇到补丁指纹不一致会拒绝继续。
+这些修订已随输入法组件打包；当前安装包与源码使用同一份净补丁，组件清单见 `release.json`。

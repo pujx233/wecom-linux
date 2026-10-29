@@ -1,8 +1,8 @@
 {
   "name": "企业微信",
   "package": "com.qq.wecom.spark",
-  "package_version": "5.0.13.6005-1~preview20261028",
-  "status": "historical runtime manifest; current source review followup is built and isolated-tested but not loaded or packaged",
+  "package_version": "5.0.13.6005",
+  "status": "preview",
   "wecom_version": "5.0.13.6005",
   "installer_url": "https://dldir1v6.qq.com/wework/work_weixin/WeCom_5.0.13.6005.exe",
   "installer_sha256": "5df50a240038a2de7c3b17e4f25f4747e74d97f9028be9baec6f7379fc97e1be",
@@ -11,27 +11,53 @@
   "upstream_adapter": "tbsangel/archlinux-wine-wecom-setup@f0ad4711049476bb2d87b40acaff53ca5ee58124",
   "wine_source_sha256": "98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793",
   "prelogin_archive_sha256": "94eb246b3562e8e2e1d672a2f9c1edc91a15034a37106b6a6d7faae8dddcae62",
-  "wine_patch_sha256": "ad85163e6620b02d12d09e6f59d7d8c665f100aab8a6264883cc3e033625f729",
+  "wine_patch_sha256": "4658c328ff2721484db016583babde4a1c472a2b363529e874956f98e4426531",
   "wine_components": {
     "wineserver": "wine/bin/wineserver",
+    "ntdll.so": "wine/lib/wine/x86_64-unix/ntdll.so",
     "win32u.so": "wine/lib/wine/x86_64-unix/win32u.so",
     "winex11.so": "wine/lib/wine/x86_64-unix/winex11.so",
+    "wineps.so": "wine/lib/wine/x86_64-unix/wineps.so",
+    "imm32-i386.dll": "wine/lib/wine/i386-windows/imm32.dll",
+    "imm32-x86_64.dll": "wine/lib/wine/x86_64-windows/imm32.dll",
     "explorer.exe": "wine/lib/wine/x86_64-windows/explorer.exe",
+    "wine": "wine/bin/wine",
     "gdiplus-i386.dll": "wine/lib/wine/i386-windows/gdiplus.dll",
-    "gdiplus-x86_64.dll": "wine/lib/wine/x86_64-windows/gdiplus.dll"
+    "gdiplus-x86_64.dll": "wine/lib/wine/x86_64-windows/gdiplus.dll",
+    "ntoskrnl.exe-i386-windows": "wine/lib/wine/i386-windows/ntoskrnl.exe",
+    "cfgmgr32.dll-i386-windows": "wine/lib/wine/i386-windows/cfgmgr32.dll",
+    "setupapi.dll-i386-windows": "wine/lib/wine/i386-windows/setupapi.dll",
+    "ntoskrnl.exe-x86_64-windows": "wine/lib/wine/x86_64-windows/ntoskrnl.exe",
+    "cfgmgr32.dll-x86_64-windows": "wine/lib/wine/x86_64-windows/cfgmgr32.dll",
+    "setupapi.dll-x86_64-windows": "wine/lib/wine/x86_64-windows/setupapi.dll",
+    "wineboot.exe-x86_64-windows": "wine/lib/wine/x86_64-windows/wineboot.exe",
+    "mountmgr.so": "wine/lib/wine/x86_64-unix/mountmgr.so"
   },
   "artifacts_sha256": {
-    "wineserver": "41e1d17e3a7dd0a67caae9a4fe4aa344583504e1f579a1a7fe751f3721c7f8e0",
-    "win32u.so": "9eac924a591fcceb495666d9a1f502e3de908178c7e3bcfb0bba7a8dbc764fd5",
-    "winex11.so": "a1751ab4c4343b9bc05e2482985f4b0f830e9f2c47a49bc9a34ec33025d8937d",
-    "explorer.exe": "005dbf5f71b8d69f0748aa5ae544829d262e67617f65fb8672d28368753e49ce",
     "libcef.dll": "02b6cd5185af5fa390c41116f9c4a07912dc2175c8f8a75d0ec3f41256220265",
+    "wineserver": "81d3992df47db3e9c36d6400f95364703edaa7421c52106377287fa2720d6fb6",
+    "ntdll.so": "70db13c547010f6ffe97ec289d32bf17ddf4a5b14358ccb5d82a672123d6b2d9",
+    "win32u.so": "d314efbf63aa88a204ca2061ff6f1d089e67a55bccc011bec45e6b346dfc96d6",
+    "winex11.so": "81d269adc3e1879c8ac88eaffa3d1dce6f29545c0beaac2bd7f58f964bc9ab20",
+    "wineps.so": "245ced7d6f135a42dd31458c40b33768119ebe1d2263c1c1bb4c15666ec4f240",
+    "imm32-i386.dll": "073ef1c5fd97b914a93e918e100e78a69e50ddef231d5fa4a5bfc6aff187b6a0",
+    "imm32-x86_64.dll": "0c102cdde63075231b2bd7f465ebfdd832c93e9131cb6e36c0a3de8910b1aa45",
+    "explorer.exe": "f4296ea6e3a3b4192d0e84c933ca5a880f97e68300fca8eac550db6089325722",
+    "wine": "fa443c7a1f7d289faeffab7cf79ae2f13398bd715ab25267e725e67d6bf765a1",
     "gdiplus-i386.dll": "7638a21e0ffdef61ae77066dc5904352c60a20c64ae6a5e6d6ee896524b3be36",
-    "gdiplus-x86_64.dll": "1c07e1c7ff5ab9b88f190b9a528e65566a981f8667a84fee29e350aaf1137d38"
+    "gdiplus-x86_64.dll": "1c07e1c7ff5ab9b88f190b9a528e65566a981f8667a84fee29e350aaf1137d38",
+    "ntoskrnl.exe-i386-windows": "32fd0a2a4064f9558e717f133e977949228dd74829243bd032163ba7df7c98fa",
+    "cfgmgr32.dll-i386-windows": "919dd528c560ff7c0827c4007bf8a0233ce757b9feaad6a8d52b053a6daf08d4",
+    "setupapi.dll-i386-windows": "c4a12bdeae8e9e4c60ee60fa7d8ae19b212ca56fef33c24ad77dd2954961b622",
+    "ntoskrnl.exe-x86_64-windows": "0e5f86d6f0fbb09ccdefca0f908f56261ead7fc93abba322da2cdca0176af727",
+    "cfgmgr32.dll-x86_64-windows": "b0de6be30b0a31919a04653c8e0615f2782c645e0efef4118db7a6c819cb6e69",
+    "setupapi.dll-x86_64-windows": "fab5daaaad453a43e5bfec0c8c61a26fe599ceeab52c0b9933dbb73d5cdce11e",
+    "wineboot.exe-x86_64-windows": "1de4398bdff7d352f8956fb58b7f6d119a735680946c2cbb67b29b984f88fb78",
+    "mountmgr.so": "748de97cc1dfbbb334908a17409f1ad5f4df6d07b17c830a81d8828b1c05956c"
   },
   "helpers_sha256": {
     "ime-bridge.so": "9a93e3f60dcc4406a45c559bf388875caff392ce540a7829ae62d238ef1d29e3",
-    "titlebar-managed.exe": "3c3f826051c9e9449df33cd2cf7330801aa8f1f6c704710f763ffa81a8323a41",
+    "titlebar-managed.exe": "9318ff56fb11f94c68e837246c925aa0f913cb614c0a89a9a21f6547e60018ae",
     "set-status-font.exe": "a1cd85a2b3ba68de50bd569e051254be27d09916ef16b312409c87a6205d5de1"
   },
   "release_acceptance_complete": false,
@@ -44,7 +70,7 @@
     "packaged_components": "packaged-runtime.json",
     "template_copy_preserves_file_independence": true
   },
-  "updated": "2026-10-28",
+  "updated": "2026-10-29",
   "base_package_sha256": [
     "2bdd9ac63a0a5e1f84da752b7c90f75bab5ebb2dcf84bb92ca99bed5e63afb65",
     "02a959cb4de850df6c584e798cb73506601de019a112dea3a3b85680eb11b324"
@@ -58,5 +84,5 @@
   ],
   "focused_scenarios_passed": false,
   "focused_scenarios_note": "Historical full scenario results apply to 5.0.12.6018; see validation followups for this candidate.",
-  "manifest_scope": "Artifact hashes below describe the earlier recorded runtime, not the current source patch; see validation.followups.independent_review_completion_and_roles."
+  "manifest_scope": "Current source patch and runtime before PE debug stripping"
 }

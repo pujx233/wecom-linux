@@ -1,15 +1,14 @@
 # 企业微信
 
 企业微信 Linux 适配，内置独立 Wine **11.20**，适用于 **Ubuntu 26.04 amd64**。
-当前源码使用企业微信 **5.0.13.6005**，最新改动尚未重新打包。
-已发布安装包仍为 **5.0.12.6018 R5**。
-[下载安装包与校验和](https://github.com/pujx233/wecom-linux/releases/tag/v5.0.12.6018-r5-preview.20261028)。
+当前版本为企业微信 **5.0.13.6005（2026-10-29）**。
+[下载安装包与校验和](https://github.com/pujx233/wecom-linux/releases/tag/v5.0.13.6005)。
 
 取得 DEB 和对应 SHA256SUMS 后执行：
 
 ```sh
 sha256sum -c SHA256SUMS
-sudo apt install ./com.qq.wecom.spark_5.0.12.6018-5.preview20261028_amd64.deb
+sudo apt install ./com.qq.wecom.spark_5.0.13.6005_amd64.deb
 ```
 
 在应用菜单启动“企业微信”。用户数据保存在 `~/.local/share/wecom/prefix`。
@@ -31,7 +30,7 @@ sudo apt install ./com.qq.wecom.spark_5.0.12.6018-5.preview20261028_amd64.deb
 - Wine 蓝牙模块有一处名称字符串泄漏，修复尚未合入。
 
 本机使用 GNOME 50.1 Wayland 会话中的 **X11/XWayland**，双屏、200% 缩放。
-最新锁顺序和层级修订已编译并安装，待下次启动复测。附件、审批、音视频等功能尚未全面验证。
+最新锁顺序和层级修订已编译并打包，待实际使用复测。附件、审批、音视频等功能尚未全面验证。
 
 安装、升级、重建及独立测试见 [Ubuntu 说明](UBUNTU.md)和
 [Wine 构建说明](ubuntu/wine-x11-fix/README.md)。DEB 的 `/usr/share/doc/com.qq.wecom.spark/`
