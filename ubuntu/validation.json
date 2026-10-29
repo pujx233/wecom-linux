@@ -1,5 +1,5 @@
 {
-  "status": "R5 requested rendering, input and layering scenarios passed; broad product acceptance remains incomplete",
+  "status": "Historical release evidence retained; current loaded runtime is in followups.native_frame_lifecycle_and_embedded_ui",
   "sanitized": true,
   "environment": "Ubuntu 26.04.1 amd64, GNOME 50.1 Wayland/XWayland, 200% displays, IBus/Rime",
   "runtime_sha256": {
@@ -235,5 +235,1192 @@
     "Two mail runs clicked during module/list initialization. Their raw records are retained and are excluded from ready-list body-switch latency acceptance.",
     "Physical-input preflight failures and forced popup-close setup failures are retained separately from valid avatar-layering trials."
   ],
-  "focused_scenarios_passed": true
+  "focused_scenarios_passed": true,
+  "baseline_wecom_version": "5.0.12.6018",
+  "followups": {
+    "dual_monitor_maximize_restore": {
+      "wecom_version": "5.0.13.6005",
+      "tested_at": "2026-10-28",
+      "environment": "Ubuntu 26.04.1 GNOME 50.1 Wayland/XWayland; external primary 3840x2160 and internal secondary 3200x2000, both 200%",
+      "runtime_sha256": {
+        "win32u.so": "d70b12529d4424dc75f5645b67cede3d5dc83e92ff374c9ece48f0763047c0f5",
+        "winex11.so": "67c5b8b9de0b0d1f04f660d99a1545e6c444ac5738ca9650f279f4cee5329f25"
+      },
+      "source_patch_replay": {
+        "files": 41,
+        "patch_sha256": "d4e770eba4f55565bf5c5c4948763cc65f934ef0ba85ea6dd5fceac64c6eb06e",
+        "clean_replay_matches_build_source": true
+      },
+      "source_build": {
+        "native_driver_and_core_built": true,
+        "required_features": [
+          "DBus",
+          "XComposite",
+          "XDamage",
+          "XRender",
+          "XShape"
+        ]
+      },
+      "live": {
+        "both_monitors_maximize_and_tray_restore_stay_on_original_monitor": true,
+        "normal_position_and_size_restored_on_both_monitors": true,
+        "external_late_minimize_then_host_restore_branch_observed_before_and_after": true,
+        "loaded_modules_verified_in_main_process": true,
+        "diagnostic_tracing_disabled": true,
+        "messages_or_emails_sent": false
+      },
+      "boundaries": [
+        "Default-limits borderless fullscreen observation remains failed and is not a gate; baseline also failed.",
+        "Transient frame extent changes and late host-state events remain observable; no claim that all flicker is fixed.",
+        "Saved-max-position/default-value collision was source-reviewed but lacks a valid dedicated runtime case.",
+        "Mixed DPI, rotated displays, hotplug and other desktops were not covered by this maximize followup.",
+        "Tray menu positioning and black desktop screenshots remain excluded."
+      ],
+      "package_rebuilt": false,
+      "committed": false,
+      "pushed": false,
+      "store_submission": false,
+      "isolated": {
+        "maximize": {
+          "passed": true,
+          "gating_cases": 11,
+          "cases": [
+            {
+              "name": "negative-secondary-shadow",
+              "gating": true,
+              "passed": true
+            },
+            {
+              "name": "negative-primary-shadow",
+              "gating": true,
+              "passed": true
+            },
+            {
+              "name": "negative-secondary-boundary",
+              "gating": true,
+              "passed": true
+            },
+            {
+              "name": "negative-disabled",
+              "gating": true,
+              "passed": true
+            },
+            {
+              "name": "negative-primary-disabled",
+              "gating": true,
+              "passed": true
+            },
+            {
+              "name": "negative-no-shadow",
+              "gating": true,
+              "passed": true
+            },
+            {
+              "name": "negative-secondary-overlapped",
+              "gating": true,
+              "passed": true
+            },
+            {
+              "name": "negative-primary-overlapped",
+              "gating": true,
+              "passed": true
+            },
+            {
+              "name": "negative-secondary-offset",
+              "gating": true,
+              "passed": true
+            },
+            {
+              "name": "negative-default-limits",
+              "gating": false,
+              "passed": false
+            },
+            {
+              "name": "positive-secondary-shadow",
+              "gating": true,
+              "passed": true
+            },
+            {
+              "name": "positive-primary-shadow",
+              "gating": true,
+              "passed": true
+            }
+          ],
+          "proposal_contract_checked": true,
+          "stable_geometry_seconds": 0.4,
+          "report": "maximize-20261028T053346347977Z.json",
+          "sha256": "33c9ff6fe78a7015686933e5ff1bc0113ef090e0991dd22aa17733bfb63f0dd9"
+        },
+        "foreign_frame": {
+          "passed": true,
+          "samples": 8,
+          "max_sample_ms": 76.5335319993028,
+          "latency_limit_ms": 1000,
+          "report": "foreign-frame-20261028T053953334848Z.json",
+          "sha256": "e1b8757a3d0a223ef4781c0ed1e6a2ad418df3c95dd07c1a92a2cd89f73f1dcb"
+        },
+        "popup_input": {
+          "passed": true,
+          "style_cases": 3,
+          "click_pairs_per_case": 3,
+          "owned_preview_and_sibling_restack": true,
+          "report": "popup-input-20261028T053959914089Z.json",
+          "sha256": "f7160adb02810bbbc0f2c977eaea5685b328a6cf136be0431b52c8906e7c47e2"
+        }
+      },
+      "negative_controls": {
+        "prior_core_proposed_primary_coordinates_on_secondary_monitor": true,
+        "final_geometry_alone_hid_that_failure": true,
+        "live_host_restore_overwrote_normal_geometry_before_guard": true
+      },
+      "post_test_source_review_complete": true
+    },
+    "maximized_drag_and_restore_flicker": {
+      "wecom_version": "5.0.13.6005",
+      "tested_at": "2026-10-28",
+      "status": "source candidate built, isolated regressions passed and loaded; user visual acceptance pending",
+      "classification": {
+        "maximized_mouse_drag": "Wine X11 SysCommand restriction",
+        "maximized_frame_oversize": "private shared-frame owner target geometry",
+        "restore_frame_collapse": "Wine activating iconic restore remapped and lost Mutter normal geometry",
+        "ime_position_after_maximize_restore": "private XIM refresh before native geometry acknowledgement"
+      },
+      "candidate_runtime_sha256": {
+        "winex11.so": "a1751ab4c4343b9bc05e2482985f4b0f830e9f2c47a49bc9a34ec33025d8937d",
+        "win32u.so": "9eac924a591fcceb495666d9a1f502e3de908178c7e3bcfb0bba7a8dbc764fd5"
+      },
+      "source_patch_replay": {
+        "files": 41,
+        "patch_sha256": "ad85163e6620b02d12d09e6f59d7d8c665f100aab8a6264883cc3e033625f729",
+        "clean_replay_matches_integrated_source": true,
+        "private_source_matches": true,
+        "mismatches": [],
+        "private_mismatches": []
+      },
+      "source_build": {
+        "native_driver_built": true,
+        "core_preserved_from_validated_ime_fix": true,
+        "temporary_layout_rewrite_and_delay_experiments_removed": true
+      },
+      "isolated": {
+        "maximize": {
+          "report": "maximize-20261028T073630725850Z.json",
+          "sha256": "ab9393ee387dd97211256fb34fa474c55a8b32bfa06bf37b9db2c8dcad27ebc3",
+          "passed": true,
+          "driver_sha256": "d836b6ecc816fcc9801d2c76c89cb4c71f5f4e1a9ed166b485652b5d1486f7eb",
+          "gating_cases": 11,
+          "gating_state_samples": 85,
+          "cases": [
+            {
+              "name": "negative-secondary-shadow",
+              "gating": true,
+              "passed": true
+            },
+            {
+              "name": "negative-primary-shadow",
+              "gating": true,
+              "passed": true
+            },
+            {
+              "name": "negative-secondary-boundary",
+              "gating": true,
+              "passed": true
+            },
+            {
+              "name": "negative-disabled",
+              "gating": true,
+              "passed": true
+            },
+            {
+              "name": "negative-primary-disabled",
+              "gating": true,
+              "passed": true
+            },
+            {
+              "name": "negative-no-shadow",
+              "gating": true,
+              "passed": true
+            },
+            {
+              "name": "negative-secondary-overlapped",
+              "gating": true,
+              "passed": true
+            },
+            {
+              "name": "negative-primary-overlapped",
+              "gating": true,
+              "passed": true
+            },
+            {
+              "name": "negative-secondary-offset",
+              "gating": true,
+              "passed": true
+            },
+            {
+              "name": "negative-default-limits",
+              "gating": false,
+              "passed": false
+            },
+            {
+              "name": "positive-secondary-shadow",
+              "gating": true,
+              "passed": true
+            },
+            {
+              "name": "positive-primary-shadow",
+              "gating": true,
+              "passed": true
+            }
+          ]
+        },
+        "final_binary_maximize": {
+          "report": "maximize-20261028T074024100769Z.json",
+          "sha256": "c750f007d06368fb0451b312eb4d62a68bd07ff4db6141960841f1f0e67840c2",
+          "passed": true,
+          "driver_sha256": "a1751ab4c4343b9bc05e2482985f4b0f830e9f2c47a49bc9a34ec33025d8937d",
+          "state_samples": 18
+        },
+        "foreign_frame": {
+          "report": "foreign-frame-20261028T073737330588Z.json",
+          "sha256": "4c2931826ea86117ec323c59cb3d2ec95aaa077b417c30e190ac0d3938e63b64",
+          "passed": true,
+          "driver_sha256": "d836b6ecc816fcc9801d2c76c89cb4c71f5f4e1a9ed166b485652b5d1486f7eb",
+          "samples": 8,
+          "max_sample_ms": 163.1232950003323
+        },
+        "popup_input": {
+          "report": "popup-input-20261028T073915078403Z.json",
+          "sha256": "3f734e40a2635d3383abdc142008e9f5a36873d49ccf74c8bd477b30dc7fb520",
+          "passed": true,
+          "driver_sha256": "d836b6ecc816fcc9801d2c76c89cb4c71f5f4e1a9ed166b485652b5d1486f7eb",
+          "style_cases": 3,
+          "owned_preview_and_sibling_restack": true
+        },
+        "ime": {
+          "report": "formatted-pm192x86.json",
+          "sha256": "90357c71401f7112552864dbb4eff71ede39d57dc473cb5ce14ed2b5392e0049",
+          "passed": true,
+          "cases": 16,
+          "configuration": "32-bit per-monitor aware, 192 DPI, native client-coordinate oracle",
+          "driver_sha256": "a1751ab4c4343b9bc05e2482985f4b0f830e9f2c47a49bc9a34ec33025d8937d",
+          "win32u_sha256": "9eac924a591fcceb495666d9a1f502e3de908178c7e3bcfb0bba7a8dbc764fd5"
+        }
+      },
+      "format_only_build_equivalence": {
+        "before_sha256": "d836b6ecc816fcc9801d2c76c89cb4c71f5f4e1a9ed166b485652b5d1486f7eb",
+        "after_sha256": "a1751ab4c4343b9bc05e2482985f4b0f830e9f2c47a49bc9a34ec33025d8937d",
+        "allocated_sections_except_build_id_identical": true,
+        "section_hashes": {
+          ".gnu.hash": "3e44105df5aed5ef65e03a7a4624d5ed1b3068e8dbf92aa6a83f7efd410b8d16",
+          ".dynsym": "36252cf3729f6fd9a06e158d0245b05787b8eb72d0d5ef9ec56f3e6f9606da99",
+          ".dynstr": "8c48c3c2bf16134da77b77854783c1f188fe67f1326483002dd50abe61110428",
+          ".gnu.version": "c5eb9ff2025799fa4b9dd9c8d3f59bcbad04dba6146f9f21d6f5eba56875fcb0",
+          ".gnu.version_r": "d6e47fad07aa9da18bddd6f55c12385de72a729ef524f6358ec9447b8404ceff",
+          ".rela.dyn": "53fa87db8be1803774f20380f32ca8074ac2e19f062f2eb6ca49ddfccfc63ba7",
+          ".rela.plt": "bd0d144e404160ec5319941f385aa59b39188fc9d2b079ce3cae23efcd87cc29",
+          ".init": "d2e696872b9010ab21fbdb990f0747faea1b70ccb4a9196a43aa535f511015fb",
+          ".plt": "a5d95398e41fe6ad00e6e0ddd15407367a4b8c93ba04baa4e01cefefbdcad01a",
+          ".plt.got": "4dd73f070224dd59b6a2735f5f4ebc2c99b79c48ea359b4e40b0c8aad8f7872d",
+          ".text": "5e6dbf12165bc57c65d2df7cc77ec5d7bd8643ff366f61e7630b3eb6894be78a",
+          ".fini": "6a4f3e5efc7c1f7ee7d6f21afd9ed040ba1d7f0b97bb12b016f5b176cc558bd8",
+          ".rodata": "a1c919b6f21bc8ffb2052d24a08b29ed23237bca1d273200113300062ed23866",
+          ".eh_frame_hdr": "1f2f7cfae1c91ec11481fa7c774c6d341d710ed6efc2a4c7bf1592fe9e5b0771",
+          ".eh_frame": "ae7d27d14ad0b891360599ee15b8b2b02fc0b82a3bb834a71e90b70708cb563e",
+          ".init_array": "242a9ec89bde2e02e6377178e3cf1567d773a62440aeec381193cda48a12f04b",
+          ".fini_array": "f2cca66909f594547d293617a2915e86b20bae0940cd2df78a594d159d463313",
+          ".data.rel.ro": "3f14ff8ccb11e290c05301f7a16da20d1b2f9bafb8c8202b604f970d0ceb8a2f",
+          ".dynamic": "817e929f4b1999cbae505cd783b97e84bc8926ed14af29671a4eb0243dc07049",
+          ".got": "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925",
+          ".got.plt": "2c58a33e9dfbe48e4e0f01681108cced5338b82c83800380b0a59a03252948c0",
+          ".data": "6496d275acc5f0285262c122202c5914fe9b0288f2a90f8e4fdcc3a67e8d617a",
+          ".bss": "80419a136f033d8f4838bb27ae6844195772adecf61c3e0e8033090939a0961c"
+        },
+        "different_sections": []
+      },
+      "negative_controls": {
+        "old_restore_sequence_configured_visible_16_by_16_frame": true,
+        "old_ime_maximize_and_restore_failed": true,
+        "padding_retention_and_extra_layout_deferral_did_not_fix_collapse_and_were_removed": true
+      },
+      "live": {
+        "runtime_files_sha256": {
+          "winex11.so": "a1751ab4c4343b9bc05e2482985f4b0f830e9f2c47a49bc9a34ec33025d8937d",
+          "win32u.so": "9eac924a591fcceb495666d9a1f502e3de908178c7e3bcfb0bba7a8dbc764fd5"
+        },
+        "final_candidate_loaded": true,
+        "reason": "Loaded at user request; user will perform visual tests; no automated desktop input after loading.",
+        "earlier_maximized_mouse_drag_validated_before_user_stop": true,
+        "final_real_client_visual_acceptance_complete": false,
+        "messages_or_emails_sent": false,
+        "loaded_modules_verified_in_main_process": true,
+        "main_process_pids": [
+          339320
+        ],
+        "mapping_report": "reviewed-live-mappings.json",
+        "mapping_report_sha256": "813563afc8529e5c1102f1b6a0903163eb77bd247dbfa6b237667fe4dbb0aa71"
+      },
+      "boundaries": [
+        "No claim that every real WeCom restore, image or history flicker is gone; final visual acceptance is left to the user.",
+        "Maximized person-card invisibility was not reproduced reliably and was deferred at user request.",
+        "Non-activating restore retains the existing remap fallback; no focus-stealing workaround was added.",
+        "Default-limits borderless fullscreen remains a failed non-gating observation.",
+        "Mixed DPI, rotation, hotplug and other desktops are not covered by this maximize matrix.",
+        "Tray menu positioning and black desktop screenshots remain excluded."
+      ],
+      "post_test_source_review_complete": true,
+      "package_rebuilt": false,
+      "committed": false,
+      "pushed": false,
+      "store_submission": false
+    },
+    "independent_review_completion_and_roles": {
+      "status": "source fixes integrated; isolated regressions passed; not loaded into live WeCom",
+      "tested_at": "2026-10-28",
+      "changes": {
+        "dc_completion": "separate internal caret drawing and DC release from application pending completion",
+        "native_restore": "disable legacy asynchronous SC_RESTORE in native-frame helper mode",
+        "frame_roles": "explicit application decoration declaration; preserve independent topmost layer",
+        "startup": "idle-lock recovery precedes Wine commands; isolate inherited bootstrap environment",
+        "packaging": "reject source patch inconsistent with runtime manifest"
+      },
+      "source_replay": {
+        "baseline_commit": "7298a818b79446bae153b8d5aa27235ab3703bf9",
+        "merged_tray_patch_sha256": "1636b249fdb852ede5b4a74ae338a5e76cca48152d13cfb02cc6a5985efcb379",
+        "patch_sha256": "8d3992a3977f1b3876beb8d8b912ea64424c07261e90fa650d2ea172d807e068",
+        "clean_replay_matches_all_files": true,
+        "files": 46,
+        "loaded_to_live": false
+      },
+      "runtime_sha256": {
+        "winex11.so": "118c2f631d316ce1bbef64588b2234147ca2eb99686bc2f851379f70f1f5336e",
+        "win32u.so": "1bbd731a1020c77a6e635dda4310018e2d9d18e71e3b302811bafc07ad40e2a1",
+        "wineserver": "fa84113d2eb27f0c38b9caf237a7105af55e52efb16b4f08daf9d7bcc953820a",
+        "ntdll.so": "927009570dffd32821c4702e3790159ce571ff8f8119ba5d740fe7148a0fc8e0"
+      },
+      "helper_sha256": "148a4e4208223a3530b9b9dc0875a85054d0a40275a23f4aa5ac28c1cfea1311",
+      "tests": {
+        "dc": {
+          "report": "/home/sai/work/.wecom-build/review-followup/dc-candidate-checked/result.json",
+          "sha256": "f9e0f8ed0cd6d8d3bde10ee1f9aaa5d8ac6ab6f560bbbc7a3c4e79391a7e25ac",
+          "passed": true,
+          "cases": 4,
+          "test_sha256": {
+            "own-dc-caret.c": "59bd8c8a323d8bf3f5ca2d3e6542c7f39e2cc04c507153fc292c001d43bb39d2",
+            "run-own-dc-caret.py": "261e947c4cf171003469084d109184e0ad59b52fce24c30e9ba50edc2bf98ba8"
+          }
+        },
+        "dc_negative": {
+          "report": "/home/sai/work/.wecom-build/review-followup/dc-baseline-checked/result.json",
+          "sha256": "17130619a046cbeae5765cf979d4dc4b7ceb53c48f91dd61bbb1f7407abea123",
+          "passed": false,
+          "cases": 4,
+          "test_sha256": {
+            "own-dc-caret.c": "59bd8c8a323d8bf3f5ca2d3e6542c7f39e2cc04c507153fc292c001d43bb39d2",
+            "run-own-dc-caret.py": "261e947c4cf171003469084d109184e0ad59b52fce24c30e9ba50edc2bf98ba8"
+          }
+        },
+        "frame_roles": {
+          "report": "/home/sai/work/.wecom-build/review-followup/roles-fixed/frame-roles-20261028T084040388829Z.json",
+          "sha256": "4a440a117cd55060cc2a84eebe3d1dc07ca04e4e7d3e0696606b5567bdc5bf3b",
+          "passed": true,
+          "cases": 6
+        },
+        "frame_roles_negative": {
+          "report": "/home/sai/work/.wecom-build/review-followup/roles-baseline/frame-roles-20261028T083708902743Z.json",
+          "sha256": "cb9c0ac869224a91354441a73df10ea41812c404108a2df70c9357f678a2ee82",
+          "passed": false
+        },
+        "maximize": {
+          "report": "/home/sai/work/.wecom-build/review-followup/qa-maximize/maximize-20261028T084118601527Z.json",
+          "sha256": "d5fec78efa579415403083f469ba29e4e0589173d58905e99b8b75ff191a5bf7",
+          "passed": true,
+          "gating_cases": 11,
+          "gating_samples": 85,
+          "excluded_failed": [
+            "negative-default-limits"
+          ]
+        },
+        "foreign_frame": {
+          "report": "/home/sai/work/.wecom-build/review-followup/qa-foreign/foreign-frame-20261028T084239472909Z.json",
+          "sha256": "b505247411e7e39acf592dea8b1a2574b5fc55026e01c7fc2d8e86833eecb4f4",
+          "passed": true,
+          "samples": 8
+        },
+        "popup_input": {
+          "report": "/home/sai/work/.wecom-build/review-followup/qa-popup/popup-input-20261028T084250953253Z.json",
+          "sha256": "819a986286a2d57f0219a9f1aa5f5137f5eb9d37bdcae675522a03d691ddbfe8",
+          "passed": true
+        },
+        "ime": {
+          "report": "/home/sai/work/.wecom-build/review-followup/ime/final-pm192x86.json",
+          "sha256": "98dd3357898a26079fbf188574dc35cc55566f3837a30575035a714be9b5f554",
+          "passed": true,
+          "cases": 16
+        },
+        "launcher": {
+          "report": "/home/sai/work/.wecom-build/launcher-review/launcher-current.json",
+          "sha256": "8b449721f5d6bcf1f90e679012bdd6f54e6af543202fb420bd376361432f5aca",
+          "passed": true
+        },
+        "launcher_negative": {
+          "report": "/home/sai/work/.wecom-build/launcher-review/negative-controls.json",
+          "sha256": "81dd3622acfebe1fc1325c825f7332d04c95bc8cd254fa6890fc44fd35a37fd4",
+          "passed": null
+        },
+        "package_source_guard": {
+          "report": "/home/sai/work/.wecom-build/review-followup/package-source-guard.json",
+          "sha256": "57204c5175b57ab0dd9da868adca56f5d68f4da24f72fdb4e56ee96b2cab9b1c",
+          "passed": true
+        }
+      },
+      "boundaries": [
+        "Actual WeCom visual acceptance was not run; no live restart or input.",
+        "Default-limits borderless fullscreen observation remains failed and excluded.",
+        "Decoration class declaration remains an explicit application compatibility policy.",
+        "IME request-type preservation was not redesigned; existing caret geometry inference remains.",
+        "Tray internals remain under separate work; only existing latest tray changes were merged."
+      ],
+      "post_test_source_review_complete": true,
+      "live_loaded": false,
+      "package_rebuilt": false,
+      "committed": false,
+      "pushed": false,
+      "store_submission": false
+    },
+    "ime_semantics_after_sni_rollback": {
+      "patch_sha256": "e1e07ba60205df767a9ee98f3e16764b4c45b5bba81128f4bb793e114c4a5f39",
+      "live_load": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/live-load.json",
+        "sha256": "1a504bf6d57ff600889fb7b0bd04a3c2ebf210a05aa6e1f46dd74fac1dc2d669"
+      },
+      "runtime_manifest": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/runtime-manifest.json",
+        "sha256": "0e737fd8de82418b6f5041f6b8aa8f2dfc7f43943e8712cc7fa3e64e59b68301"
+      },
+      "source_replay": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/source-replay.json",
+        "sha256": "7b290d9a9e1cd7704062017764aa93b017a8d9e0c43debb9bb1af90a927c886a"
+      },
+      "ime": {
+        "callbacks32-pm192": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/ime-final/callbacks32-pm192/checked-callbacks32.json",
+          "sha256": "829b8e83ab47280f07a90c06a1125fb88380e6f4142fbe68857a5a5cb21d0748",
+          "passed": true
+        },
+        "ordinary96": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/ime-final/ordinary96/checked-ordinary96.json",
+          "sha256": "1d9debb38f01531413338d371e006156c2d40ba66ae7981ae31431de07d1d1cb",
+          "passed": true
+        },
+        "mixed-scale": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/ime-final/mixed-scale/checked-mixed-scale.json",
+          "sha256": "8de197a577ab43a771761541ce1d0acc976f1960a53a1d40b9297a452f351996",
+          "passed": true
+        },
+        "unaware192": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/ime-final/unaware192/checked-unaware.json",
+          "sha256": "34a717f3b3a98c6800ada99e4bfeba60d8eea5a66cf1fca477d81e3e2d481c34"
+        },
+        "position-pm192": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/ime-final/position-pm192/checked-position.json",
+          "sha256": "d0d77863c6235ddf724e32530141247e74781b94606b3ce33af96863122f3fc0",
+          "passed": true
+        },
+        "callbacks-pm192": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/ime-final/callbacks-pm192/checked-callbacks.json",
+          "sha256": "46474625628ef15fd18b3282b42e80aadf547cc3d13c1e6de5db86c0a3cb070f",
+          "passed": true
+        }
+      },
+      "passed_coordinate_checks": 111,
+      "gdi_driver_version": 111,
+      "server_protocol": 964,
+      "cursor": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/cursor-final/focus-candidate/result.json",
+        "sha256": "622949dd282515180dbded780021da6189b8b54368714885a1f36904a1757a85",
+        "passed": true
+      },
+      "cursor_wrong_manifest_rejected": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/cursor-final/mismatch/result.json",
+        "sha256": "7fb92b7cda1679b1649552cb6bd20d2db38866bcdb421f8fb53e1f60a2d8e029",
+        "passed": false
+      },
+      "frame_dc_roles": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/frame-focus-regressions.json",
+        "sha256": "cd531c218caab0e075d6e57defc61ac8079800dd0c297acd0ff7e72614038816"
+      },
+      "limits": [
+        "unaware192 latest run stopped on maximized geometry assertion; not accepted",
+        "persistent IMC composition policy beyond individual request semantics is not implemented",
+        "This was loaded before the later PnP and zero-sized-frame fixes; it is not the final runtime"
+      ]
+    },
+    "pnp_registry_stall_and_native_frame_size": {
+      "date": "2026-10-28",
+      "source_baseline": "7298a818b79446bae153b8d5aa27235ab3703bf9",
+      "source_patch_sha256": "74f7107dd6a753255d63bef3a3563bff214c4d7bce584bd7ec79b2ec24798ff3",
+      "runtime_components": {
+        "wineserver": "bin/wineserver",
+        "ntdll.so": "lib/wine/x86_64-unix/ntdll.so",
+        "win32u.so": "lib/wine/x86_64-unix/win32u.so",
+        "winex11.so": "lib/wine/x86_64-unix/winex11.so",
+        "wineps.so": "lib/wine/x86_64-unix/wineps.so",
+        "imm32-i386.dll": "lib/wine/i386-windows/imm32.dll",
+        "imm32-x86_64.dll": "lib/wine/x86_64-windows/imm32.dll",
+        "explorer.exe": "lib/wine/x86_64-windows/explorer.exe",
+        "wine": "bin/wine",
+        "gdiplus-i386.dll": "lib/wine/i386-windows/gdiplus.dll",
+        "gdiplus-x86_64.dll": "lib/wine/x86_64-windows/gdiplus.dll",
+        "ntoskrnl.exe-i386-windows": "lib/wine/i386-windows/ntoskrnl.exe",
+        "cfgmgr32.dll-i386-windows": "lib/wine/i386-windows/cfgmgr32.dll",
+        "setupapi.dll-i386-windows": "lib/wine/i386-windows/setupapi.dll",
+        "ntoskrnl.exe-x86_64-windows": "lib/wine/x86_64-windows/ntoskrnl.exe",
+        "cfgmgr32.dll-x86_64-windows": "lib/wine/x86_64-windows/cfgmgr32.dll",
+        "setupapi.dll-x86_64-windows": "lib/wine/x86_64-windows/setupapi.dll",
+        "wineboot.exe-x86_64-windows": "lib/wine/x86_64-windows/wineboot.exe",
+        "mountmgr.so": "lib/wine/x86_64-unix/mountmgr.so"
+      },
+      "runtime_sha256": {
+        "wineserver": "81d3992df47db3e9c36d6400f95364703edaa7421c52106377287fa2720d6fb6",
+        "ntdll.so": "70db13c547010f6ffe97ec289d32bf17ddf4a5b14358ccb5d82a672123d6b2d9",
+        "win32u.so": "e8e1314101f216538054b62a17ef05e4f55e4ea672074bb457dc30052c49c6af",
+        "winex11.so": "b192135d1a049f0608b833fdf1f4c3c184b30082e70937cf5bf68230cba824b9",
+        "wineps.so": "245ced7d6f135a42dd31458c40b33768119ebe1d2263c1c1bb4c15666ec4f240",
+        "imm32-i386.dll": "073ef1c5fd97b914a93e918e100e78a69e50ddef231d5fa4a5bfc6aff187b6a0",
+        "imm32-x86_64.dll": "0c102cdde63075231b2bd7f465ebfdd832c93e9131cb6e36c0a3de8910b1aa45",
+        "explorer.exe": "f4296ea6e3a3b4192d0e84c933ca5a880f97e68300fca8eac550db6089325722",
+        "wine": "fa443c7a1f7d289faeffab7cf79ae2f13398bd715ab25267e725e67d6bf765a1",
+        "gdiplus-i386.dll": "7638a21e0ffdef61ae77066dc5904352c60a20c64ae6a5e6d6ee896524b3be36",
+        "gdiplus-x86_64.dll": "1c07e1c7ff5ab9b88f190b9a528e65566a981f8667a84fee29e350aaf1137d38",
+        "ntoskrnl.exe-i386-windows": "32fd0a2a4064f9558e717f133e977949228dd74829243bd032163ba7df7c98fa",
+        "cfgmgr32.dll-i386-windows": "919dd528c560ff7c0827c4007bf8a0233ce757b9feaad6a8d52b053a6daf08d4",
+        "setupapi.dll-i386-windows": "c4a12bdeae8e9e4c60ee60fa7d8ae19b212ca56fef33c24ad77dd2954961b622",
+        "ntoskrnl.exe-x86_64-windows": "0e5f86d6f0fbb09ccdefca0f908f56261ead7fc93abba322da2cdca0176af727",
+        "cfgmgr32.dll-x86_64-windows": "b0de6be30b0a31919a04653c8e0615f2782c645e0efef4118db7a6c819cb6e69",
+        "setupapi.dll-x86_64-windows": "fab5daaaad453a43e5bfec0c8c61a26fe599ceeab52c0b9933dbb73d5cdce11e",
+        "wineboot.exe-x86_64-windows": "1de4398bdff7d352f8956fb58b7f6d119a735680946c2cbb67b29b984f88fb78",
+        "mountmgr.so": "748de97cc1dfbbb334908a17409f1ad5f4df6d07b17c830a81d8828b1c05956c"
+      },
+      "source_replay": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/final-source-replay.json",
+        "sha256": "dd0dcfb86c73c8f4ca11186465706cf10bdfbce4a768697daf8617be63bdbc86",
+        "exact_replay": true,
+        "file_count": 54
+      },
+      "initial_load_and_cache_migration": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/pnp-live-load.json",
+        "sha256": "cc013069bc350cca446b1e9bf11f114c2fb7e04b37e15e3afa526001c4a08340"
+      },
+      "final_load": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/pnp-frame-live-load.json",
+        "sha256": "c743d9ff75bb2577894a6ca493025dd78e03236426a4b95a4d706e8a96a4f748"
+      },
+      "tests": {
+        "pnp_api32": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/pnp-properties32-complete/result.json",
+          "sha256": "7f548e1ebb9403be323ba7ec51b71e86b908b549dfb80551b01b412389a9f418",
+          "passed": true,
+          "bits": "32"
+        },
+        "pnp_api64": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/pnp-properties64-complete/result.json",
+          "sha256": "dd56d234bcab270f7e109a277651553ea9d223f17c07923d2cd3d4f6f355f8b5",
+          "passed": true,
+          "bits": "64"
+        },
+        "pnp_old_negative": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/pnp-properties64-old-negative/result.json",
+          "sha256": "1c36726e97bf52ab357fe652ffa518dbf8b6d37259351d94f4ab61da467cbb49",
+          "passed": false,
+          "bits": "64"
+        },
+        "queue": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/pnp-queue-final/result.json",
+          "sha256": "e1e064c1af9e3a2d03a91849440497b364ef4eaaea588c24f061241e2d6b49b8",
+          "passed": true
+        },
+        "queue_old_negative": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/pnp-queue-baseline-final/result.json",
+          "sha256": "c8fbe2653b4c4a1925d26375172f2226e89d1d008d89d68fd202fc91eb363c61",
+          "passed": false
+        },
+        "cache_migration": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/live-incident/migration-test/result.json",
+          "sha256": "fb62468b59f390e40c9112b9ec8d0a4d19ea53f2bda449ab2e22739ef639cfa2",
+          "passed": true
+        },
+        "cache_real_prefix": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/live-incident/registry-migration-live.json",
+          "sha256": "221df541a8dddb9a209ff9e7d752bb9eca3f9def7adea513b47338c4b39092cb"
+        },
+        "native_size_boundary": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/live-incident/native-size-boundary/result.json",
+          "sha256": "ba54ee16cd34ea867d27467958df711f7d2e8fe7fed212f952894f24b70fa351",
+          "passed": true
+        },
+        "zero_frame_positive": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/zero-frame-new/frame-roles-20261028T102230266480Z.json",
+          "sha256": "c757c2e11bdb69b8ea9e2549d6d1e7fe4632622d757236c5ab1da2cab72b2423",
+          "passed": true
+        },
+        "zero_frame_old_negative": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/zero-frame-old/frame-roles-20261028T102258246716Z.json",
+          "sha256": "f4614e0ef1169c7080d0b2c08f1e26706bff4cd402f34701959dbdcea36016bf",
+          "passed": false
+        },
+        "foreign": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/frame-final/foreign-frame-20261028T102339002261Z.json",
+          "sha256": "6ef641459a166c75285c71ba4be4901e11c08d82ed398a242dc23d7c4edfb86f",
+          "passed": true,
+          "samples": [
+            {
+              "sequence": 1,
+              "draw": {
+                "event": "draw",
+                "sequence": 1,
+                "tick": 21780706,
+                "pixel": 255
+              },
+              "native_source_pixel": 16711680,
+              "pixel": [
+                255,
+                0,
+                0
+              ],
+              "expected": [
+                255,
+                0,
+                0
+              ],
+              "trigger": "direct-event",
+              "passed": true,
+              "elapsed_ms": 68.76882600045064
+            },
+            {
+              "sequence": 2,
+              "draw": {
+                "event": "draw",
+                "sequence": 2,
+                "tick": 21780776,
+                "pixel": 16711680
+              },
+              "native_source_pixel": 255,
+              "pixel": [
+                0,
+                0,
+                255
+              ],
+              "expected": [
+                0,
+                0,
+                255
+              ],
+              "trigger": "direct-event",
+              "passed": true,
+              "elapsed_ms": 63.994544001616305
+            },
+            {
+              "sequence": 3,
+              "draw": {
+                "event": "draw",
+                "sequence": 3,
+                "tick": 21780843,
+                "pixel": 255
+              },
+              "native_source_pixel": 16711680,
+              "pixel": [
+                255,
+                0,
+                0
+              ],
+              "expected": [
+                255,
+                0,
+                0
+              ],
+              "trigger": "direct-event",
+              "passed": true,
+              "elapsed_ms": 64.09738000002108
+            },
+            {
+              "sequence": 4,
+              "draw": {
+                "event": "draw",
+                "sequence": 4,
+                "tick": 21780909,
+                "pixel": 16711680
+              },
+              "native_source_pixel": 255,
+              "pixel": [
+                0,
+                0,
+                255
+              ],
+              "expected": [
+                0,
+                0,
+                255
+              ],
+              "trigger": "direct-event",
+              "passed": true,
+              "elapsed_ms": 63.76832599926274
+            },
+            {
+              "sequence": 5,
+              "draw": {
+                "event": "draw",
+                "sequence": 5,
+                "tick": 21780983,
+                "pixel": 255
+              },
+              "native_source_pixel": 16711680,
+              "pixel": [
+                255,
+                0,
+                0
+              ],
+              "expected": [
+                255,
+                0,
+                0
+              ],
+              "trigger": "nested-resize",
+              "passed": true,
+              "elapsed_ms": 61.58533000052557
+            },
+            {
+              "sequence": 6,
+              "draw": {
+                "event": "draw",
+                "sequence": 6,
+                "tick": 21781304,
+                "pixel": 16711680
+              },
+              "native_source_pixel": 255,
+              "pixel": [
+                0,
+                0,
+                255
+              ],
+              "expected": [
+                0,
+                0,
+                255
+              ],
+              "trigger": "direct-event",
+              "passed": true,
+              "elapsed_ms": 61.900660999526735
+            },
+            {
+              "sequence": 7,
+              "draw": {
+                "event": "draw",
+                "sequence": 7,
+                "tick": 21781368,
+                "pixel": 255
+              },
+              "native_source_pixel": 16711680,
+              "pixel": [
+                255,
+                0,
+                0
+              ],
+              "expected": [
+                255,
+                0,
+                0
+              ],
+              "trigger": "direct-event",
+              "passed": true,
+              "elapsed_ms": 61.073388998920564
+            },
+            {
+              "sequence": 8,
+              "draw": {
+                "event": "draw",
+                "sequence": 8,
+                "tick": 21781431,
+                "pixel": 16711680
+              },
+              "native_source_pixel": 255,
+              "pixel": [
+                0,
+                0,
+                255
+              ],
+              "expected": [
+                0,
+                0,
+                255
+              ],
+              "trigger": "direct-event",
+              "passed": true,
+              "elapsed_ms": 61.99413599824766
+            }
+          ]
+        },
+        "popup": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/frame-final/popup-input-20261028T102343734844Z.json",
+          "sha256": "0478b35bbc9e600153370ee6f6cb505dac7dc774e4b920e2af9a075630a36557",
+          "passed": true
+        },
+        "maximize": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/frame-final/maximize-20261028T102356283885Z.json",
+          "sha256": "ee8c31f7799f1f58685c1419b8cead4b78811e9d0c6cad9e1be2ecea8efc08d0",
+          "passed": true
+        },
+        "real_loaded_modules": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/live-incident/after-fixes/live-maps.json",
+          "sha256": "7769bb8e146246ac4b94323de4bcf2e3ccf91c743cd30c310da56eabed2dbec2"
+        },
+        "before_latency": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/live-incident/server-latency-summary.json",
+          "sha256": "f17db9d6378c9b888f84d8aac9cb1de1a361b0f8ca375db42e1c06b9f80e15d2",
+          "samples": 1635,
+          "median_ms": 0.051,
+          "p99_ms": 0.339,
+          "max_ms": 7008.601
+        },
+        "after_latency": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/live-incident/after-fixes/server-latency-summary.json",
+          "sha256": "7c56992b318a4509597bc83d94ba456cdc9bd185863304f2ed76b3591dc1a8d4",
+          "samples": 1972,
+          "median_ms": 0.058,
+          "p99_ms": 0.557,
+          "max_ms": 106.652
+        },
+        "before_after_cpu_io": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/live-incident/performance-before-after.json",
+          "sha256": "f0b9398cbaf36dccbe019c7f5ce5922a4c72d5649eb5b08e7466f2127e0089f6"
+        },
+        "udisks_rules": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/live-incident/udisks-match-full/result.json",
+          "sha256": "af686958c10f273e6ecd74c79721b309f5a42e71129e12a8c34b5b7d550b99ea",
+          "passed": true
+        },
+        "udisks_old_negative": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/live-incident/udisks-match-full-old-negative/result.json",
+          "sha256": "ba4e46b7f62496dc027bca74e78c39b11129cd34c19eacce10cb4515a34be4ac",
+          "passed": false
+        },
+        "final_loaded_modules": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/live-incident/final/live-maps.json",
+          "sha256": "e5facfbd61d987eef1ed47d47fa1f90705f400d3a8756cac1732f5ab081e7926"
+        },
+        "final_latency": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/live-incident/final/server-latency-summary.json",
+          "sha256": "988980a57b7f6740f24f147d1e2c09b04d10c00d5b996123fb8fbc5c1df122a1",
+          "samples": 1976,
+          "max_ms": 114.889,
+          "p99_ms": 0.424
+        },
+        "final_cpu_io": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/live-incident/final-performance-comparison.json",
+          "sha256": "8286ee4b22096f04d6e57b7cda72551631cf3cf96539b444e5fc66930df7ade9"
+        },
+        "post_sample_observation": {
+          "report": "/home/sai/work/.wecom-build/semantic-review/live-incident/final/post-sample-observation.json",
+          "sha256": "9f349b5bfb5055767b84324754aaa89619713deed00dd350b791cca1e7b2d9ff"
+        }
+      },
+      "classification": {
+        "upstream_wine": [
+          "PnP persisted quadratic per-device Siblings lists",
+          "Duplicate pending BusRelations work and queue object lifetime",
+          "Parent Children property not cleared for an empty relation list",
+          "Mountmgr subscribed to unrelated system D-Bus PropertiesChanged signals"
+        ],
+        "private_adaptation": [
+          "Shared frame management transition created illegal native 0 by 0 windows"
+        ],
+        "unconfirmed": [
+          "robot white screen",
+          "WXDrive frontend disappearance / alleged crash",
+          "historical CEF CreateWindowEx fatal parent lifecycle"
+        ]
+      },
+      "actual_desktop_input_used": false,
+      "post_test_source_review_complete": true,
+      "live_loaded": true,
+      "tray_backend": "SNI preserved from the coordinated full XEmbed rollback",
+      "limits": [
+        "Synchronous registry save still produces roughly 0.1 second spikes in this sample",
+        "No repeated real mail/robot/drive click acceptance was performed",
+        "Default-limits borderless fullscreen observation remains failed and excluded",
+        "Latest DPI-unaware maximized IME geometry run is not accepted",
+        "No claim of full PnP lifetime redesign or all RECT arithmetic overflow handling",
+        "UDisks bus reconnection and preexisting Drive-to-Block refresh semantics were not redesigned",
+        "Persistent historical device registry entries still grow; quadratic Siblings duplication is removed",
+        "After the bounded sample, the main process changed from 646832 to 649435; cause unconfirmed, current driver still matches. This is not long-duration stability acceptance."
+      ],
+      "package_rebuilt": false,
+      "committed": false,
+      "pushed": false,
+      "store_submission": false,
+      "intermediate_runtime_patch_sha256": "0eae5519f9b643b9bfadeeb15e4949f23501726eff1f795cf35f2aad270cc22a",
+      "mountmgr_load": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/final-live-load.json",
+        "sha256": "03b381c1b754e90b13855e9389e4d21bc4f0bb13f4e6c423431d123534e7dbf1"
+      }
+    },
+    "native_frame_lifecycle_and_embedded_ui": {
+      "date": "2026-10-28",
+      "status": "loaded; microdrive and robot confirmed by user; geometry candidate under isolated review",
+      "source_baseline": "7298a818b79446bae153b8d5aa27235ab3703bf9",
+      "source_patch_sha256": "4ae0fb05a2e97d7b6fb84bd7666d9377436a5d94d41fd49c5b23f93e57c0d3a7",
+      "runtime_components": {
+        "wineserver": "bin/wineserver",
+        "ntdll.so": "lib/wine/x86_64-unix/ntdll.so",
+        "win32u.so": "lib/wine/x86_64-unix/win32u.so",
+        "winex11.so": "lib/wine/x86_64-unix/winex11.so",
+        "wineps.so": "lib/wine/x86_64-unix/wineps.so",
+        "imm32-i386.dll": "lib/wine/i386-windows/imm32.dll",
+        "imm32-x86_64.dll": "lib/wine/x86_64-windows/imm32.dll",
+        "explorer.exe": "lib/wine/x86_64-windows/explorer.exe",
+        "wine": "bin/wine",
+        "gdiplus-i386.dll": "lib/wine/i386-windows/gdiplus.dll",
+        "gdiplus-x86_64.dll": "lib/wine/x86_64-windows/gdiplus.dll",
+        "ntoskrnl.exe-i386-windows": "lib/wine/i386-windows/ntoskrnl.exe",
+        "cfgmgr32.dll-i386-windows": "lib/wine/i386-windows/cfgmgr32.dll",
+        "setupapi.dll-i386-windows": "lib/wine/i386-windows/setupapi.dll",
+        "ntoskrnl.exe-x86_64-windows": "lib/wine/x86_64-windows/ntoskrnl.exe",
+        "cfgmgr32.dll-x86_64-windows": "lib/wine/x86_64-windows/cfgmgr32.dll",
+        "setupapi.dll-x86_64-windows": "lib/wine/x86_64-windows/setupapi.dll",
+        "wineboot.exe-x86_64-windows": "lib/wine/x86_64-windows/wineboot.exe",
+        "mountmgr.so": "lib/wine/x86_64-unix/mountmgr.so"
+      },
+      "runtime_sha256": {
+        "wineserver": "81d3992df47db3e9c36d6400f95364703edaa7421c52106377287fa2720d6fb6",
+        "ntdll.so": "70db13c547010f6ffe97ec289d32bf17ddf4a5b14358ccb5d82a672123d6b2d9",
+        "win32u.so": "e8e1314101f216538054b62a17ef05e4f55e4ea672074bb457dc30052c49c6af",
+        "winex11.so": "2aed00b7d569cc36948559745b91adb8208da12547a9c06f2d3826f88bd925fa",
+        "wineps.so": "245ced7d6f135a42dd31458c40b33768119ebe1d2263c1c1bb4c15666ec4f240",
+        "imm32-i386.dll": "073ef1c5fd97b914a93e918e100e78a69e50ddef231d5fa4a5bfc6aff187b6a0",
+        "imm32-x86_64.dll": "0c102cdde63075231b2bd7f465ebfdd832c93e9131cb6e36c0a3de8910b1aa45",
+        "explorer.exe": "f4296ea6e3a3b4192d0e84c933ca5a880f97e68300fca8eac550db6089325722",
+        "wine": "fa443c7a1f7d289faeffab7cf79ae2f13398bd715ab25267e725e67d6bf765a1",
+        "gdiplus-i386.dll": "7638a21e0ffdef61ae77066dc5904352c60a20c64ae6a5e6d6ee896524b3be36",
+        "gdiplus-x86_64.dll": "1c07e1c7ff5ab9b88f190b9a528e65566a981f8667a84fee29e350aaf1137d38",
+        "ntoskrnl.exe-i386-windows": "32fd0a2a4064f9558e717f133e977949228dd74829243bd032163ba7df7c98fa",
+        "cfgmgr32.dll-i386-windows": "919dd528c560ff7c0827c4007bf8a0233ce757b9feaad6a8d52b053a6daf08d4",
+        "setupapi.dll-i386-windows": "c4a12bdeae8e9e4c60ee60fa7d8ae19b212ca56fef33c24ad77dd2954961b622",
+        "ntoskrnl.exe-x86_64-windows": "0e5f86d6f0fbb09ccdefca0f908f56261ead7fc93abba322da2cdca0176af727",
+        "cfgmgr32.dll-x86_64-windows": "b0de6be30b0a31919a04653c8e0615f2782c645e0efef4118db7a6c819cb6e69",
+        "setupapi.dll-x86_64-windows": "fab5daaaad453a43e5bfec0c8c61a26fe599ceeab52c0b9933dbb73d5cdce11e",
+        "wineboot.exe-x86_64-windows": "1de4398bdff7d352f8956fb58b7f6d119a735680946c2cbb67b29b984f88fb78",
+        "mountmgr.so": "748de97cc1dfbbb334908a17409f1ad5f4df6d07b17c830a81d8828b1c05956c"
+      },
+      "source_replay": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/robot-drive-followup/source-replay.json",
+        "sha256": "d884f1487ffde3f10fe6c89e379a15e4b0fcbddf494e327c297cdce6c79a6fcb"
+      },
+      "independent_review": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/robot-drive-followup/final-independent-review.json",
+        "sha256": "472951c4732786c07e21c206e9fcf5f8346f03aed93d8894931176b96b07727f"
+      },
+      "native_lifecycle_negative_positive": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/robot-drive-followup/create-reparent-summary.json",
+        "sha256": "a85f9d565419047ea1209e6b5dfd0eea2586d39587c5933757293be3b04fd224"
+      },
+      "live_load": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/robot-drive-followup/clean-live-load.json",
+        "sha256": "dde9715b1c4eac9a2553151b5c8378c672b379be513b884ca0b8859ca1362f5d"
+      },
+      "live_runtime_check": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/robot-drive-followup/clean-runtime-check.json",
+        "sha256": "620bc43e3cb6cdacc549e1526956afa0a20249b65a78ffa05c5fb6526cafb29b"
+      },
+      "embedded_ui": {
+        "classification": "application compatibility configuration for Wine cross-process DPI reset gap",
+        "images": [
+          "WeMail.exe",
+          "FlutterPlugins.exe"
+        ],
+        "awareness": "SYSTEM_AWARE",
+        "runtime_parent_verified": true,
+        "user_confirmed_robot": true,
+        "user_confirmed_microdrive": true
+      },
+      "startup_review": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/robot-drive-followup/login-network-and-mail-review.md",
+        "sha256": "09ca451b81076415027a8e0a4c5fc38dc8f2295c84120960196a4348f2f913a4"
+      },
+      "white_border": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/robot-drive-followup/WHITE-BORDER.md",
+        "sha256": "934e8b1e14731bf257892e58fa24ee313659d7dfdf18f134dd80b50d54a48a74"
+      },
+      "popup_geometry": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/robot-drive-followup/POPUP-GEOMETRY.md",
+        "sha256": "6e74222924726f847054c4b67277cbe8498f993c323b4448fd003641e5f99b79"
+      },
+      "limits": [
+        "Generic cross-process DPI reset is not implemented.",
+        "Three 5-second login TLS timeouts were measured; network path root cause remains unconfirmed.",
+        "Mail click-to-account-login was 4.160 seconds, not the 234ms container-show event.",
+        "White body stripe root cause is not confirmed.",
+        "Shared history popup size and overview frame bounds are not yet accepted.",
+        "Tray menu positioning and screenshot black screen remain deferred.",
+        "No package build, commit, push or store submission in this followup."
+      ]
+    },
+    "ownerless_card_stacking": {
+      "date": "2026-10-28",
+      "status": "loaded; group card displayed above maximized and normal main windows; intermittent avatar loading deferred by user",
+      "source_patch_sha256": "03f148a5250eca019b7263ece2edd65605ae889096cf9f81cd493a02bcd1d428",
+      "runtime_sha256": {
+        "wineserver": "81d3992df47db3e9c36d6400f95364703edaa7421c52106377287fa2720d6fb6",
+        "ntdll.so": "70db13c547010f6ffe97ec289d32bf17ddf4a5b14358ccb5d82a672123d6b2d9",
+        "win32u.so": "e8e1314101f216538054b62a17ef05e4f55e4ea672074bb457dc30052c49c6af",
+        "winex11.so": "4948fe875762ff07e23a997d0a6696efa818047944bf5322cbff0cbbc4653673",
+        "wineps.so": "245ced7d6f135a42dd31458c40b33768119ebe1d2263c1c1bb4c15666ec4f240",
+        "imm32-i386.dll": "073ef1c5fd97b914a93e918e100e78a69e50ddef231d5fa4a5bfc6aff187b6a0",
+        "imm32-x86_64.dll": "0c102cdde63075231b2bd7f465ebfdd832c93e9131cb6e36c0a3de8910b1aa45",
+        "explorer.exe": "f4296ea6e3a3b4192d0e84c933ca5a880f97e68300fca8eac550db6089325722",
+        "wine": "fa443c7a1f7d289faeffab7cf79ae2f13398bd715ab25267e725e67d6bf765a1",
+        "gdiplus-i386.dll": "7638a21e0ffdef61ae77066dc5904352c60a20c64ae6a5e6d6ee896524b3be36",
+        "gdiplus-x86_64.dll": "1c07e1c7ff5ab9b88f190b9a528e65566a981f8667a84fee29e350aaf1137d38",
+        "ntoskrnl.exe-i386-windows": "32fd0a2a4064f9558e717f133e977949228dd74829243bd032163ba7df7c98fa",
+        "cfgmgr32.dll-i386-windows": "919dd528c560ff7c0827c4007bf8a0233ce757b9feaad6a8d52b053a6daf08d4",
+        "setupapi.dll-i386-windows": "c4a12bdeae8e9e4c60ee60fa7d8ae19b212ca56fef33c24ad77dd2954961b622",
+        "ntoskrnl.exe-x86_64-windows": "0e5f86d6f0fbb09ccdefca0f908f56261ead7fc93abba322da2cdca0176af727",
+        "cfgmgr32.dll-x86_64-windows": "b0de6be30b0a31919a04653c8e0615f2782c645e0efef4118db7a6c819cb6e69",
+        "setupapi.dll-x86_64-windows": "fab5daaaad453a43e5bfec0c8c61a26fe599ceeab52c0b9933dbb73d5cdce11e",
+        "wineboot.exe-x86_64-windows": "1de4398bdff7d352f8956fb58b7f6d119a735680946c2cbb67b29b984f88fb78",
+        "mountmgr.so": "748de97cc1dfbbb334908a17409f1ad5f4df6d07b17c830a81d8828b1c05956c"
+      },
+      "source_replay": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/robot-drive-followup/card-stack-source-replay.json",
+        "sha256": "231cc471bbefc484b59e5524371aee361b971172841cd3fea57f5b72279c1ec3"
+      },
+      "review": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/robot-drive-followup/card-stack-review.md",
+        "sha256": "9f2198960153c7e91083ec87979063a57f7f18a4615fcc72e585469f38ba015b"
+      },
+      "negative_control": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/frame-move-race-old/card-stack-20261028T124643031919Z.json",
+        "sha256": "ca86fdae04330164df2745edefaa0e20727772052a789d32cdcb2260832ecc53"
+      },
+      "isolated_card": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/frame-move-race-new/card-stack-20261028T124624866359Z.json",
+        "sha256": "1e7e7f2ba20f0e8447c7f85cdd9c0684b287c80844f6bdf246a9326fdbee840a"
+      },
+      "isolated_popup": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/frame-move-race-new/popup-input-20261028T124648831516Z.json",
+        "sha256": "ee4ca2e88c2cd3bbd2ae7a9e3fcfa34fd699faa084018d852322ca16aa0d2554"
+      },
+      "load": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/robot-drive-followup/card-stack-live-load.json",
+        "sha256": "e0ab9df021ee1ea645eb897fc0f0d2fa938b9fb9fd81c5004a3ef96126e69118"
+      },
+      "gpu_teardown_observation": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/robot-drive-followup/card-load-gpu-observation.json",
+        "sha256": "6075d096b3b296ca9ab7128eadeec0beea4f2837f97fb1197b95275b6434018c"
+      },
+      "actual_maximized_card": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/robot-drive-followup/card-recurrence-fixed-maximized.jsonl",
+        "sha256": "2b7abde04d33bbd93111c1e0515aa25757d42244725bd045a92c50f9effcbb7c"
+      },
+      "actual_avatar_one_success": {
+        "report": "/home/sai/work/.wecom-build/semantic-review/robot-drive-followup/avatar-live-normal-click.jsonl",
+        "sha256": "1a9ab2e4587dbc3ab7ec5028d12b21541cc71c8125099e6248721b6592e80ee4"
+      },
+      "limits": [
+        "Intermittent first avatar preview loading remains unconfirmed and deferred by user.",
+        "Further shadow maximize fixture was blocked before test startup by GPU driver wait.",
+        "Shared history geometry and USER/surface lock candidates remain unshipped.",
+        "No package, commit, push or store submission."
+      ]
+    },
+    "root_review_current_code": {
+      "recorded_at": "2026-10-28T22:28:20.675897+08:00",
+      "status": "source-reviewed, compiled and installed for next launch; no current GUI acceptance",
+      "changed_wine_files": [
+        "dlls/win32u/window.c",
+        "dlls/winex11.drv/window.c"
+      ],
+      "other_patch_sections_unchanged": 52,
+      "source_baseline": "7298a818b79446bae153b8d5aa27235ab3703bf9",
+      "patch_sha256": "4658c328ff2721484db016583babde4a1c472a2b363529e874956f98e4426531",
+      "runtime_sha256": {
+        "wineserver": "81d3992df47db3e9c36d6400f95364703edaa7421c52106377287fa2720d6fb6",
+        "ntdll.so": "70db13c547010f6ffe97ec289d32bf17ddf4a5b14358ccb5d82a672123d6b2d9",
+        "win32u.so": "d314efbf63aa88a204ca2061ff6f1d089e67a55bccc011bec45e6b346dfc96d6",
+        "winex11.so": "81d269adc3e1879c8ac88eaffa3d1dce6f29545c0beaac2bd7f58f964bc9ab20",
+        "wineps.so": "245ced7d6f135a42dd31458c40b33768119ebe1d2263c1c1bb4c15666ec4f240",
+        "imm32-i386.dll": "073ef1c5fd97b914a93e918e100e78a69e50ddef231d5fa4a5bfc6aff187b6a0",
+        "imm32-x86_64.dll": "0c102cdde63075231b2bd7f465ebfdd832c93e9131cb6e36c0a3de8910b1aa45",
+        "explorer.exe": "f4296ea6e3a3b4192d0e84c933ca5a880f97e68300fca8eac550db6089325722",
+        "wine": "fa443c7a1f7d289faeffab7cf79ae2f13398bd715ab25267e725e67d6bf765a1",
+        "gdiplus-i386.dll": "7638a21e0ffdef61ae77066dc5904352c60a20c64ae6a5e6d6ee896524b3be36",
+        "gdiplus-x86_64.dll": "1c07e1c7ff5ab9b88f190b9a528e65566a981f8667a84fee29e350aaf1137d38",
+        "ntoskrnl.exe-i386-windows": "32fd0a2a4064f9558e717f133e977949228dd74829243bd032163ba7df7c98fa",
+        "cfgmgr32.dll-i386-windows": "919dd528c560ff7c0827c4007bf8a0233ce757b9feaad6a8d52b053a6daf08d4",
+        "setupapi.dll-i386-windows": "c4a12bdeae8e9e4c60ee60fa7d8ae19b212ca56fef33c24ad77dd2954961b622",
+        "ntoskrnl.exe-x86_64-windows": "0e5f86d6f0fbb09ccdefca0f908f56261ead7fc93abba322da2cdca0176af727",
+        "cfgmgr32.dll-x86_64-windows": "b0de6be30b0a31919a04653c8e0615f2782c645e0efef4118db7a6c819cb6e69",
+        "setupapi.dll-x86_64-windows": "fab5daaaad453a43e5bfec0c8c61a26fe599ceeab52c0b9933dbb73d5cdce11e",
+        "wineboot.exe-x86_64-windows": "1de4398bdff7d352f8956fb58b7f6d119a735680946c2cbb67b29b984f88fb78",
+        "mountmgr.so": "748de97cc1dfbbb334908a17409f1ad5f4df6d07b17c830a81d8828b1c05956c"
+      },
+      "runtime_installed": true,
+      "client_launched": false,
+      "gui_tested": false,
+      "fixes": {
+        "surface_region_lock_order": "release both USER lock scopes before surface operations; retain strong reference",
+        "stack_only_requests": "do not recalculate native group geometry for pure Z order",
+        "history_window_size_state": "backed up and removed only two stored full-workarea size keys; other bytes preserved"
+      },
+      "history_geometry_cause": {
+        "classification": "application persistence and existing configuration",
+        "saved_logical_size": [
+          1600,
+          917
+        ],
+        "observed_raw_size": [
+          3200,
+          1834
+        ],
+        "scale": 2,
+        "keys": [
+          "kForwardDetailWindowWidthKey",
+          "kForwardDetailWindowHeightKey"
+        ],
+        "wm_size_updates_saved_size_without_maximize_filter": true,
+        "original_writer_action_known": false
+      },
+      "checks": {
+        "source_baseline": "7298a818b79446bae153b8d5aa27235ab3703bf9",
+        "patch_sha256": "4658c328ff2721484db016583babde4a1c472a2b363529e874956f98e4426531",
+        "files": 54,
+        "exact_replay": true,
+        "mismatches": [],
+        "runtime_components": 19,
+        "runtime_mismatches": {
+          "live": [],
+          "shared": []
+        },
+        "compile": {
+          "win32u.so": true,
+          "winex11.so": true
+        },
+        "helper_contract_cases": 13,
+        "live_gui_tested": false,
+        "client_restarted": false
+      },
+      "evidence": {
+        "install": "/home/sai/work/.wecom-build/semantic-review/robot-drive-followup/root-review-install.json",
+        "source_replay": "/home/sai/work/.wecom-build/semantic-review/robot-drive-followup/root-review-verification.json",
+        "lock_contract": "/home/sai/work/.wecom-build/semantic-review/robot-drive-followup/surface-lock-current-contract.json",
+        "config_repair": "/home/sai/work/.wecom-build/semantic-review/robot-drive-followup/history-size/config-repair.json"
+      },
+      "limits": [
+        "No live desktop interaction after user stopped testing.",
+        "Helper API-substitute checks do not prove the observed multi-second freezes have this cause.",
+        "First-present ARGB, shadow stacking, frame grouping and embedded UI DPI remain explicit application compatibility strategies.",
+        "Login network timeout cause and deferred first-avatar behavior remain unresolved.",
+        "Parent-origin geometry candidate remains excluded.",
+        "No package build, commit, push or store submission."
+      ]
+    }
+  }
 }

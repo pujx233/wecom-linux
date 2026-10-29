@@ -6,6 +6,10 @@ static BOOL foreign;
 
 static LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 {
+    if (message == WM_APP && !foreign) {
+        printf("{\"xid\":%lu}\n", (unsigned long)(ULONG_PTR)GetPropA(window, "__wine_x11_whole_window"));
+        return 0;
+    }
     if (message == WM_SETCURSOR && LOWORD(lparam) == HTCLIENT) {
         POINT point;
         GetCursorPos(&point);
@@ -40,10 +44,9 @@ int main(int argc, char **argv)
     if (!window) return 2;
     if (!foreign) {
         GetModuleFileNameA(NULL, exe, sizeof(exe));
-        snprintf(command, sizeof(command), "\"%s\" 0x%lx", exe, (unsigned long)window);
+        snprintf(command, sizeof(command), "\"%s\" 0x%lx", exe, (unsigned long)(ULONG_PTR)window);
         if (!CreateProcessA(exe, command, NULL, NULL, FALSE, 0, NULL, NULL, &startup, &process)) return 3;
-        printf("{\"xid\":%lu}\n", (unsigned long)GetPropA(window, "__wine_x11_whole_window"));
-    }
+    } else if (!PostMessageA(GetParent(window), WM_APP, 0, 0)) return 4;
     end = GetTickCount() + 15000;
     while ((LONG)(GetTickCount() - end) < 0) {
         while (PeekMessageA(&message, NULL, 0, 0, PM_REMOVE)) DispatchMessageA(&message);

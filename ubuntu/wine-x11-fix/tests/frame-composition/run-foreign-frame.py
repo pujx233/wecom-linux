@@ -92,16 +92,19 @@ with desktop(qa) as env:
                 report['samples'].append(dict(sequence=sequence, draw=event, native_source_pixel=native_pixel,
                                               pixel=pixel, expected=expected,
                                               trigger='nested-resize' if sequence == 5 else 'direct-event',
-                                              passed=pixel == expected and source_rgb == expected and event['pixel'] == gdi_pixel,
+                                              passed=elapsed_ms <= 1000 and pixel == expected and
+                                                     source_rgb == expected and event['pixel'] == gdi_pixel,
                                               elapsed_ms=elapsed_ms))
             x.XCloseDisplay(display)
         finally:
             if app.poll() is None:
                 app.stdin.write('quit\n'); app.stdin.flush()
                 app.wait(timeout=10)
+            report['application_exit_code'] = app.returncode
             subprocess.run([env['WINESERVER'], '-k'], env=env, check=True)
             subprocess.run([env['WINESERVER'], '-w'], env=env, check=True, timeout=8)
-report['passed'] = report['application_source_unchanged'] and all(sample['passed'] for sample in report['samples'])
+report['passed'] = (report['application_exit_code'] == 0 and report['application_source_unchanged'] and
+                    all(sample['passed'] for sample in report['samples']))
 report['timing_note'] = 'Sample five starts timing after the artificial nested loop returns; other samples start at draw acknowledgement.'
 path = qa / (name + '.json')
 path.write_text(json.dumps(report, indent=2) + '\n')

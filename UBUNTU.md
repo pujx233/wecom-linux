@@ -1,6 +1,7 @@
 # Ubuntu 使用、复用与重建
 
-当前候选为企业微信 5.0.12.6018 R5 / 私有 Wine 11.20，2026-10-28。
+当前源码使用企业微信 5.0.13.6005 / 私有 Wine 11.20，后续修订尚未重新打包。
+已发布安装包为企业微信 5.0.12.6018 R5（2026-10-28）。
 验收环境为 Ubuntu 26.04.1 amd64、GNOME 50.1 Wayland/XWayland、双屏 200%、IBus/Rime。
 其他发行版、桌面和缩放比例需要另行验证。
 
@@ -43,8 +44,8 @@ docker run --rm --network none --user "$(id -u):$(id -g)" \
 bash ubuntu/build-helpers.sh /absolute/helper-output
 ```
 
-运行时必须配套部署 wineserver、win32u.so、winex11.so、x64 explorer.exe 和两个架构的 gdiplus.dll。
-完整构建命令和组件路径见 `ubuntu/wine-x11-fix/README.md`；不要混用其他 Wine 版本的组件。
+运行时需配套部署核心、图形、输入法和设备管理组件，完整清单及构建命令见
+`ubuntu/wine-x11-fix/README.md`。
 当前二进制来自已记录的 SDK 构建，干净源码重建另有验证；不同编译路径和工具链会改变二进制哈希。
 
 ## 重建未登录安装包
@@ -59,11 +60,12 @@ python3 ubuntu/package.py \
   --runtime /absolute/verified-wine-runtime \
   --helpers /absolute/verified-helpers \
   --wine-source /absolute/wine-11.20.tar.gz \
+  --installer /absolute/WeCom_5.0.13.6005.exe \
   --stage /absolute/new-stage \
-  --output /absolute/com.qq.wecom.spark_5.0.12.6018-5.preview20261028_amd64.deb
+  --output /absolute/com.qq.wecom.spark_5.0.13.6005-1.preview20261028_amd64.deb
 ```
 
-自行构建时，应先记录配套组件的新指纹并更新 `release.json`，再运行打包和验收。
+`release.json` 仍保存历史运行时清单；自行构建后需更新组件指纹，再运行打包。
 公开基包必须匹配元数据中的 SHA256，不能换成任意已登录的账号目录。
 基础安装器、运行库与字体来源保存在 `materials/`，仍须遵循原许可。
 这套流程可重建 Wine 与适配包，不等于从零重现所有第三方安装器的安装过程。

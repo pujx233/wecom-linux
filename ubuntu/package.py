@@ -10,6 +10,7 @@ import stat
 import struct
 import subprocess
 import tempfile
+import zipfile
 
 parser = argparse.ArgumentParser(description=__doc__)
 source = parser.add_mutually_exclusive_group(required=True)
@@ -19,6 +20,7 @@ parser.add_argument('--baseline-manifest', type=Path)
 parser.add_argument('--runtime', required=True, type=Path)
 parser.add_argument('--helpers', required=True, type=Path)
 parser.add_argument('--wine-source', required=True, type=Path)
+parser.add_argument('--installer', required=True, type=Path)
 parser.add_argument('--stage', required=True, type=Path)
 parser.add_argument('--output', required=True, type=Path)
 parser.add_argument('--stage-only', action='store_true')
@@ -43,11 +45,23 @@ def overlay(source, target):
 
 
 assert not args.stage.exists(), 'Use a new staging directory'
+assert digest(repo / 'ubuntu/wine-x11-fix/wine-11.20-x11-popups.patch') == spec['wine_patch_sha256'], \
+    'Wine patch does not match the runtime release manifest'
+required_components = ['wine/bin/wineserver', 'wine/lib/wine/x86_64-unix/ntdll.so',
+                       'wine/lib/wine/x86_64-unix/win32u.so', 'wine/lib/wine/x86_64-unix/winex11.so',
+                       'wine/lib/wine/x86_64-unix/wineps.so', 'wine/lib/wine/x86_64-unix/mountmgr.so',
+                       'wine/lib/wine/x86_64-windows/wineboot.exe']
+for architecture in ('i386-windows', 'x86_64-windows'):
+    for name in ('imm32.dll', 'cfgmgr32.dll', 'setupapi.dll', 'ntoskrnl.exe'):
+        required_components.append(f'wine/lib/wine/{architecture}/{name}')
+for relative in required_components:
+    assert relative in spec['wine_components'].values(), 'Incomplete Wine component manifest: ' + relative
 args.stage.parent.mkdir(parents=True, exist_ok=True)
 assert digest(args.wine_source) == spec['wine_source_sha256']
+assert digest(args.installer) == spec['installer_sha256'], 'Unsupported application installer'
 base_files = None
 if args.base_package:
-    assert digest(args.base_package) == spec['base_package_sha256'], 'Unsupported base package'
+    assert digest(args.base_package) in spec['base_package_sha256'], 'Unsupported base package'
     base_package = tempfile.TemporaryDirectory(prefix='wecom-prelogin-', dir=args.stage.parent)
     extracted = Path(base_package.name)
     subprocess.run(['dpkg-deb', '--extract', str(args.base_package), str(extracted)], check=True)
@@ -84,13 +98,6 @@ files.mkdir(parents=True)
 shutil.copytree(template_source, files / 'template', symlinks=True)
 shutil.copytree(args.runtime, files / 'wine', symlinks=True)
 template = files / 'template'
-for path in list(template.rglob('*')):
-    if path.is_symlink():
-        target = os.readlink(path)
-        if '/home/' in target or path.name.startswith('com'):
-            path.unlink()
-    elif path.is_file() and path.suffix.lower() in ('.log', '.dmp', '.mdmp', '.lock', '.pyc'):
-        path.unlink()
 if args.baseline:
     profile = template / 'drive_c/users/sai'
     profile.rename(profile.with_name('wecom'))
@@ -100,6 +107,41 @@ if args.baseline:
         temporary = path.with_suffix('.packaging')
         temporary.write_text(text)
         os.replace(temporary, path)
+application = template / 'drive_c/Program Files (x86)/WXWork'
+with tempfile.TemporaryDirectory(prefix='wecom-installer-', dir=args.stage.parent) as temporary:
+    vendor = Path(temporary)
+    subprocess.run(['7zz', 'x', '-y', '-o' + str(vendor), str(args.installer)], check=True)
+    assert (vendor / spec['wecom_version']).is_dir(), 'Installer version mismatch'
+    shutil.rmtree(application)
+    shutil.copytree(vendor / '$PROGRAMFILES/WXWork', application)
+    shutil.copytree(vendor / spec['wecom_version'], application / spec['wecom_version'])
+    for name in ('WXWork.exe', 'Uninstall.exe'):
+        overlay(vendor / name, application / name)
+    versioned = application / spec['wecom_version']
+    for archive, directory in (('wemeet.zip', 'WeMeet'), ('FlutterPlugins.zip', 'FlutterPlugins'),
+                               ('dict.zip', 'hotword'),
+                               ('wecomagent-runtime-python-windows-x86-3.10.zip', 'WeComAgent')):
+        with zipfile.ZipFile(versioned / archive) as source:
+            source.extractall(versioned / directory)
+        if archive != 'wemeet.zip':
+            (versioned / archive).unlink()
+    overlay(versioned / 'WeComAgent/wecom-agent.exe', versioned / 'WeComAgent/wecom.exe')
+    backup = Path('Tencent/WeMail/WeMailBak/Base')
+    shutil.copytree(vendor / '$APPDATA' / backup,
+                    template / 'drive_c/users/wecom/AppData/Roaming' / backup, dirs_exist_ok=True)
+settings = (template / 'user.reg').read_text().split(r'[Software\\Tencent\\WXWork]', 1)[1].split('\n\n', 1)[0]
+previous = next(line.split('"')[3] for line in settings.splitlines() if line.startswith('"Version"='))
+for name in ('user.reg', 'system.reg'):
+    path = template / name
+    text = path.read_text()
+    path.write_text(text.replace(previous, spec['wecom_version']))
+for path in list(template.rglob('*')):
+    if path.is_symlink():
+        target = os.readlink(path)
+        if '/home/' in target or path.name.startswith('com'):
+            path.unlink()
+    elif path.is_file() and path.suffix.lower() in ('.log', '.dmp', '.mdmp', '.lock', '.pyc'):
+        path.unlink()
 compat = template / 'wecom-compat'
 shutil.rmtree(compat)
 for directory in ('scripts', 'configs'):
@@ -108,7 +150,7 @@ for directory in ('scripts', 'configs'):
 for name in ('ime-bridge.so', 'titlebar-managed.exe', 'set-status-font.exe'):
     assert digest(args.helpers / name) == spec['helpers_sha256'][name], name
     overlay(args.helpers / name, compat / 'scripts' / name)
-cef = template / 'drive_c/Program Files (x86)/WXWork/5.0.12.6018/compatible_web/libcef.dll'
+cef = template / 'drive_c/Program Files (x86)/WXWork' / spec['wecom_version'] / 'compatible_web/libcef.dll'
 if digest(cef) != spec['artifacts_sha256']['libcef.dll']:
     temporary = cef.with_suffix('.packaging')
     subprocess.run(['python3', str(repo / 'ubuntu/patch-cef-x86.py'), '--source', str(cef),
@@ -119,6 +161,10 @@ for name, relative in spec['wine_components'].items():
     assert digest(files / relative) == spec['artifacts_sha256'][name], name
 for relative in ('drive_c/windows/explorer.exe', 'drive_c/windows/system32/explorer.exe'):
     overlay(files / 'wine/lib/wine/x86_64-windows/explorer.exe', template / relative)
+overlay(files / 'wine/lib/wine/x86_64-windows/wineboot.exe', template / 'drive_c/windows/system32/wineboot.exe')
+for architecture, directory in (('x86_64-windows', 'system32'), ('i386-windows', 'syswow64')):
+    for name in ('imm32.dll', 'cfgmgr32.dll', 'setupapi.dll', 'ntoskrnl.exe'):
+        overlay(files / 'wine/lib/wine' / architecture / name, template / 'drive_c/windows' / directory / name)
 
 # Strip only Wine's PE debug data. Keep every application and vendor DLL byte-for-byte.
 original_wine_files = {}
@@ -179,11 +225,14 @@ for name, target in (('launch.sh', 'launch.sh'), ('package-launch.sh', 'start.sh
                      ('relocate-prefix.py', 'relocate-prefix.py')):
     overlay(repo / 'ubuntu' / name, files / target)
     (files / target).chmod(0o755)
+(files / 'application-version').write_text(spec['wecom_version'] + ' ' + spec['package_version'] + '\n')
+(template / '.wecom-application').write_text(spec['package_version'] + '\n')
 doc = args.stage / 'usr/share/doc/com.qq.wecom.spark'
 doc.mkdir(parents=True)
 overlay(args.wine_source, doc / 'wine-11.20.tar.gz')
 for name in ('README.md', 'CODE-REVIEW.md', 'build.sh', 'Dockerfile', 'wine-11.20-x11-popups.patch'):
     overlay(repo / 'ubuntu/wine-x11-fix' / name, doc / name)
+assert digest(doc / 'wine-11.20-x11-popups.patch') == spec['wine_patch_sha256'], 'Wine patch changed during packaging'
 overlay(repo / 'ubuntu/release.json', doc / 'release.json')
 overlay(repo / 'ubuntu/validation.json', doc / 'validation.json')
 overlay(repo / 'ubuntu/wine-x11-fix/tests/gdiplus-render-check.cpp', doc / 'tests/gdiplus-render-check.cpp')
@@ -225,7 +274,7 @@ Depends: bash, coreutils, util-linux, python3, libpython3-stdlib, libc6 (>= 2.43
 Recommends: xwayland, libasound2t64, libpulse0, libvulkan1
 Homepage: https://github.com/pujx233/wecom-linux
 Description: 企业微信
- 企业微信 5.0.12.6018，内置私有 Wine 11.20 的 Ubuntu 26.04 amd64 适配测试版。
+ 企业微信 {spec['wecom_version']}，内置私有 Wine 11.20 的 Ubuntu 26.04 amd64 适配测试版。
  包含透明窗口合成、拖动、图片缩放、聊天记录绘制及邮件光标修订。
  已知托盘“更多操作”定位仍有限制，完整功能及其他桌面尚未全面验收。
  不需要额外桌面，不修改 GNOME、Mutter、系统 Wine 或桌面设置。

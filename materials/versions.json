@@ -1,10 +1,10 @@
 {
   "status": "normal-use",
   "wine": "11.20",
-  "wecom": "5.0.12.6018",
+  "wecom": "5.0.13.6005",
   "installer": {
-    "path": "assets/WeCom_5.0.12.6018.exe",
-    "sha256": "61ec2507ba8a579bfdb95c459da12d3d745b43f4f4c3e45fa87979410b6d1af1"
+    "path": "assets/WeCom_5.0.13.6005.exe",
+    "sha256": "5df50a240038a2de7c3b17e4f25f4747e74d97f9028be9baec6f7379fc97e1be"
   },
   "cef": {
     "component": "5.0.79.5483",

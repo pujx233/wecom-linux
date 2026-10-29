@@ -26,7 +26,7 @@ def processes(qa):
 
 
 @contextmanager
-def desktop(qa, size='1600x1000', bare=False):
+def desktop(qa, size='1600x1000', bare=False, second_monitor=None):
     qa = qa.resolve()
     assert qa == Path(os.environ['WECOM_QA_ROOT']).resolve()
     assert (qa / '.wecom-frame-qa').is_file(), 'Use a marked, disposable QA directory'
@@ -36,9 +36,11 @@ def desktop(qa, size='1600x1000', bare=False):
     (qa / 'runtime').chmod(0o700)
     assert not processes(qa), 'another private test is running'
     assert size in ('1600x1000', '3200x2000')
+    assert second_monitor in (None, '3840x2160')
     env = os.environ.copy()
     for name in ('DISPLAY', 'XAUTHORITY', 'WAYLAND_DISPLAY', 'DBUS_SESSION_BUS_ADDRESS', 'LD_PRELOAD',
-                 'LD_LIBRARY_PATH', 'WINEDLLPATH', 'WINELOADER', 'WINELOADERNOEXEC', 'WINEARCH'):
+                 'LD_LIBRARY_PATH', 'WINEDLLPATH', 'WINELOADER', 'WINELOADERNOEXEC', 'WINEARCH',
+                 'WINESERVERSOCKET'):
         env.pop(name, None)
     env.update(XDG_RUNTIME_DIR=str(qa / 'runtime'), XDG_CONFIG_HOME=str(qa / 'config'),
                XDG_DATA_HOME=str(qa / 'data'), XDG_CACHE_HOME=str(qa / 'cache'),
@@ -47,7 +49,8 @@ def desktop(qa, size='1600x1000', bare=False):
     shell_log = (qa / 'gnome-shell.log').open('a')
     pipewire_log = (qa / 'pipewire.log').open('a')
     shell = subprocess.Popen(['dbus-run-session', '--', sys.executable, str(Path(__file__).resolve()),
-                              str(qa), '--bare' if bare else '--shell', size],
+                              str(qa), '--bare' if bare else '--shell', size,
+                              *([second_monitor] if second_monitor else [])],
                              env=env, stdout=shell_log, stderr=subprocess.STDOUT,
                              start_new_session=True)
     try:
@@ -129,10 +132,13 @@ def desktop(qa, size='1600x1000', bare=False):
         prefix = qa / 'prefix'
         if not (prefix / 'system.reg').exists():
             boot_env = env | {'WINEPREFIX': str(prefix), 'WINESERVER': str(qa / 'wine/bin/wineserver'),
+                              'DBUS_SYSTEM_BUS_ADDRESS': 'unix:path=' + str(qa / 'no-system-bus'),
                               'WINEDEBUG': '-all', 'WINEDLLOVERRIDES': 'mscoree,mshtml,winemenubuilder='}
             with (qa / 'wineboot.log').open('w') as log:
                 subprocess.run([str(qa / 'wine/bin/wine'), 'wineboot.exe', '-u'],
                                env=boot_env, stdout=log, stderr=log, check=True, timeout=60)
+        # The private compositor needs the host bus; Wine fixtures must not enumerate host Bluetooth devices.
+        env['DBUS_SYSTEM_BUS_ADDRESS'] = 'unix:path=' + str(qa / 'no-system-bus')
         yield env
     finally:
         # Let Mutter close Xwayland; killing both at once can create a host crash dialog.
@@ -170,8 +176,9 @@ if __name__ == '__main__':
     qa = Path(sys.argv[1])
     assert sys.argv[2] in ('--shell', '--bare')
     (qa / 'bus-address').write_text(os.environ['DBUS_SESSION_BUS_ADDRESS'] + '\n')
+    monitors = ['--virtual-monitor=' + size for size in sys.argv[3:]]
     if sys.argv[2] == '--shell':
-        os.execlp('gnome-shell', 'gnome-shell', '--headless', '--wayland', '--virtual-monitor=' + sys.argv[3],
+        os.execlp('gnome-shell', 'gnome-shell', '--headless', '--wayland', *monitors,
                   '--wayland-display=wecom-qa')
     import gi
     repository = gi.Repository.get_default()
@@ -201,7 +208,7 @@ if __name__ == '__main__':
     context = Meta.create_context('WeCom isolated Wine unit tests')
     context.set_plugin_gtype(UnitTestPlugin.__gtype__)
     assert context.configure(['wecom-unit-tests', '--headless', '--wayland',
-                              '--virtual-monitor=' + sys.argv[3], '--wayland-display=wecom-qa'])[0]
+                              *monitors, '--wayland-display=wecom-qa'])[0]
     assert context.setup()
     assert context.start()
     assert context.run_main_loop()

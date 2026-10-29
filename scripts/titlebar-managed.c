@@ -222,7 +222,10 @@ static BOOL __stdcall menu_contains_click(HANDLE w,long unused){
     return 1;
 }
 static void restore_foreground_main(HANDLE w){
-    /* KDE can activate the X11 window while Wine still has WS_MINIMIZE set.
+    /* Native frames restore through Wine's host-state synchronization. A second
+       queued SC_RESTORE can undo that restore after it reaches maximized state. */
+    if(native_frames)return;
+    /* Legacy Wine/KDE can activate the X11 window while Wine still has WS_MINIMIZE set.
        Wine then sends IconicState back before its host-state restore finishes.
        Queue the app's normal restore after that transition. Only a current
        foreground event for this prefix's visible, enabled main window counts;

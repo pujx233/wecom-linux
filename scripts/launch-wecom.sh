@@ -9,6 +9,7 @@ test -f "$app"
 overrides="$(cat "$script_dir/../configs/dll-overrides.txt")"
 cd -- "$(dirname -- "$app")"
 wine_env=(env -u LC_ALL -u WINEARCH -u WINESERVER -u WINELOADER -u WINELOADERNOEXEC -u WINEDLLPATH
+  -u WINESERVERSOCKET
   LANG=zh_CN.UTF-8 LC_CTYPE=zh_CN.UTF-8 LC_MESSAGES=zh_CN.UTF-8
   WINEPREFIX="$WECOM_PREFIX" WINEDLLOVERRIDES="$overrides" WINEDEBUG="${WINEDEBUG:--all}")
 wine_bin="${WECOM_WINE_BIN:-/usr/bin/wine}"
@@ -36,6 +37,15 @@ fi
 if command -v python3 >/dev/null && [[ -f "$script_dir/prepare-startup.py" ]]; then
   python3 "$script_dir/prepare-startup.py" --prefix "$WECOM_PREFIX" \
     >>"$WECOM_PREFIX/wecom-startup.log" 2>&1
+fi
+if [[ "${WECOM_EMBEDDED_UI_DPI_FIX:-0}" == 1 ]]; then
+  # Wine does not implement Windows' cross-process SetParent DPI reset. Start these
+  # embedded UIs SYSTEM_AWARE like their WeCom host, after idle-prefix recovery.
+  for image in WeMail.exe FlutterPlugins.exe; do
+    "${wine_env[@]}" "$wine_bin" reg add \
+      "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\$image" \
+      /v dpiAwareness /t REG_DWORD /d 1 /f /reg:32
+  done
 fi
 if [[ "${WECOM_TRAY_ICON_FIX:-1}" != 0 ]] && command -v python3 >/dev/null && [[ -f "$script_dir/tray-icon.py" ]]; then
   python3 "$script_dir/tray-icon.py" --prefix "$WECOM_PREFIX" \

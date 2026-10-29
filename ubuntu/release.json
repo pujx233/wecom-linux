@@ -1,15 +1,17 @@
 {
   "name": "企业微信",
   "package": "com.qq.wecom.spark",
-  "package_version": "5.0.12.6018-5~preview20261028",
-  "status": "local R5 preview; requested rendering, input and layering scenarios passed with review and reuse checks",
-  "wecom_version": "5.0.12.6018",
+  "package_version": "5.0.13.6005-1~preview20261028",
+  "status": "historical runtime manifest; current source review followup is built and isolated-tested but not loaded or packaged",
+  "wecom_version": "5.0.13.6005",
+  "installer_url": "https://dldir1v6.qq.com/wework/work_weixin/WeCom_5.0.13.6005.exe",
+  "installer_sha256": "5df50a240038a2de7c3b17e4f25f4747e74d97f9028be9baec6f7379fc97e1be",
   "wine_version": "11.20",
   "tested_environment": "Ubuntu 26.04.1 amd64, GNOME 50.1 Wayland/XWayland, 200% displays, IBus/Rime",
   "upstream_adapter": "tbsangel/archlinux-wine-wecom-setup@f0ad4711049476bb2d87b40acaff53ca5ee58124",
   "wine_source_sha256": "98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793",
   "prelogin_archive_sha256": "94eb246b3562e8e2e1d672a2f9c1edc91a15034a37106b6a6d7faae8dddcae62",
-  "wine_patch_sha256": "2aeb86055dd92da37ee52dd58605580a5cc6463a8863e3555ea1784dafc99a35",
+  "wine_patch_sha256": "ad85163e6620b02d12d09e6f59d7d8c665f100aab8a6264883cc3e033625f729",
   "wine_components": {
     "wineserver": "wine/bin/wineserver",
     "win32u.so": "wine/lib/wine/x86_64-unix/win32u.so",
@@ -20,8 +22,8 @@
   },
   "artifacts_sha256": {
     "wineserver": "41e1d17e3a7dd0a67caae9a4fe4aa344583504e1f579a1a7fe751f3721c7f8e0",
-    "win32u.so": "d534e66ffa84c17cfeb0f78d6386fb2623a561aec546b0659744ee6abb9d85cc",
-    "winex11.so": "2357fbd516630340d1f20904307ed51e7b1317847182ff2471d244bba025695a",
+    "win32u.so": "9eac924a591fcceb495666d9a1f502e3de908178c7e3bcfb0bba7a8dbc764fd5",
+    "winex11.so": "a1751ab4c4343b9bc05e2482985f4b0f830e9f2c47a49bc9a34ec33025d8937d",
     "explorer.exe": "005dbf5f71b8d69f0748aa5ae544829d262e67617f65fb8672d28368753e49ce",
     "libcef.dll": "02b6cd5185af5fa390c41116f9c4a07912dc2175c8f8a75d0ec3f41256220265",
     "gdiplus-i386.dll": "7638a21e0ffdef61ae77066dc5904352c60a20c64ae6a5e6d6ee896524b3be36",
@@ -43,7 +45,10 @@
     "template_copy_preserves_file_independence": true
   },
   "updated": "2026-10-28",
-  "base_package_sha256": "2bdd9ac63a0a5e1f84da752b7c90f75bab5ebb2dcf84bb92ca99bed5e63afb65",
+  "base_package_sha256": [
+    "2bdd9ac63a0a5e1f84da752b7c90f75bab5ebb2dcf84bb92ca99bed5e63afb65",
+    "02a959cb4de850df6c584e798cb73506601de019a112dea3a3b85680eb11b324"
+  ],
   "wine_driver": "winex11.drv on X11/XWayland",
   "installed_compat_scripts": "immutable package template; existing profile uses updated helpers without replacing account data",
   "architecture_review": "wine-x11-fix/CODE-REVIEW.md",
@@ -51,5 +56,7 @@
     "tray menu positioning",
     "desktop screenshot black"
   ],
-  "focused_scenarios_passed": true
+  "focused_scenarios_passed": false,
+  "focused_scenarios_note": "Historical full scenario results apply to 5.0.12.6018; see validation followups for this candidate.",
+  "manifest_scope": "Artifact hashes below describe the earlier recorded runtime, not the current source patch; see validation.followups.independent_review_completion_and_roles."
 }
