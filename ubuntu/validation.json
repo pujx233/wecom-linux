@@ -1,12 +1,12 @@
 {
-  "status": "2026-11-02 local runtime accepted for the listed scenarios",
+  "status": "2026-11-02 isolated root-fix checks passed; actual client restart/retest pending",
   "sanitized": true,
   "environment": "Ubuntu 26.04.1 amd64, GNOME 50.1 Wayland/XWayland, 200% displays, IBus/Rime",
   "runtime_sha256": {
     "wineserver": "81d3992df47db3e9c36d6400f95364703edaa7421c52106377287fa2720d6fb6",
     "ntdll.so": "70db13c547010f6ffe97ec289d32bf17ddf4a5b14358ccb5d82a672123d6b2d9",
     "win32u.so": "4525ee5182f1f8428baccef58c560c91d2ad0789d4c878daaa4f88ffe25f37a4",
-    "winex11.so": "4d5473d7aad4d5b1d551d7e444fd90807215697bdf085f3948fcf85794c821b1",
+    "winex11.so": "e047b59ef4e010efd280b2db912b2a4f86d4a2ea345831fbac64f271681bb172",
     "wineps.so": "9d6f9767d72c3d7af3e75503a33d853a8f8a655e7114d98475421e478bb9ccff",
     "imm32-i386.dll": "2ee5fa9dab185d277184c3f8cfa2258900c5822d4195c610716d30c3d398daff",
     "imm32-x86_64.dll": "dd2a0182b5e94eb88ead7bfe50f6bf8a1a42e92bc5b760df8d511e873894185a",
@@ -26,10 +26,11 @@
   },
   "source_patch_replay": {
     "source_archive_sha256": "98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793",
-    "patch_sha256": "8c61bb8539eeabae937e7b8dc6fd61ae563199a7e315a3e385df44fea74681e6",
+    "patch_sha256": "5695c3708c521b42a3c30ff8caa99b85b156d67e094f324b2da93a20d70a9367",
     "modified_files": 55,
-    "replay_tree": "a5953a24c001e819c0110fa41c68b82cab8014a2",
-    "exact_content_and_modes": true
+    "replay_tree": "b037f031571a000230fc074790eaa540b729d219",
+    "exact_content_and_modes": true,
+    "patched_source_archive_sha256": "460d46ee37ebd894c0ea08d2070b0eb772c7ccfa7e331d9cae4274aca71a89ef"
   },
   "isolated": {
     "attached_coordinates": {
@@ -43,7 +44,7 @@
     },
     "first_frame_transaction": {
       "old_driver_sha256": "2a70b52fab829a8d5e685efa270fd4f287cf721442a10c15644e3d209d44b2b5",
-      "new_driver_sha256": "4d5473d7aad4d5b1d551d7e444fd90807215697bdf085f3948fcf85794c821b1",
+      "new_driver_sha256": "e047b59ef4e010efd280b2db912b2a4f86d4a2ea345831fbac64f271681bb172",
       "old_counter_before_after_paint": [
         4,
         4
@@ -66,7 +67,113 @@
       "popup_200_percent": {
         "passed": true,
         "visible_opens": 6,
-        "wrong_bounds": 0
+        "wrong_bounds": 0,
+        "driver_sha256": "e047b59ef4e010efd280b2db912b2a4f86d4a2ea345831fbac64f271681bb172"
+      }
+    },
+    "owner_and_resize_root_fixes": {
+      "date": "2026-11-02",
+      "driver_sha256": "e047b59ef4e010efd280b2db912b2a4f86d4a2ea345831fbac64f271681bb172",
+      "previous_driver_sha256": "4d5473d7aad4d5b1d551d7e444fd90807215697bdf085f3948fcf85794c821b1",
+      "host_desktop_used": false,
+      "account_data_used": false,
+      "actual_client_retested": false,
+      "owner_chain": {
+        "unowned_and_owned_tool_cases_passed": true,
+        "managed_preview_owners_promoted": true,
+        "preview_pixels_visible": true
+      },
+      "resize_transaction": {
+        "client_size": [
+          1600,
+          968
+        ],
+        "native_drawable_matches_before_drawing": true,
+        "frame_geometry_held_until_paint_completed": true,
+        "new_drawable_region_painted": true,
+        "new_frame_region_presented": true,
+        "geometry_only_candidate_rejected": true,
+        "native_cycles": [
+          {
+            "fixture": "native-max-staged-six.json",
+            "driver": "4d5473d7aad4d5b1d551d7e444fd90807215697bdf085f3948fcf85794c821b1",
+            "restore_positions_equal": true,
+            "state_changes": 12,
+            "frames": 192,
+            "minimum_body_width": 688,
+            "undersized_frames": 2
+          },
+          {
+            "fixture": "native-max-staged-six.json",
+            "driver": "e047b59ef4e010efd280b2db912b2a4f86d4a2ea345831fbac64f271681bb172",
+            "restore_positions_equal": true,
+            "state_changes": 12,
+            "frames": 192,
+            "minimum_body_width": 1000,
+            "undersized_frames": 0
+          },
+          {
+            "fixture": "native-max-staged-title-six.json",
+            "driver": "4d5473d7aad4d5b1d551d7e444fd90807215697bdf085f3948fcf85794c821b1",
+            "restore_positions_equal": true,
+            "state_changes": 12,
+            "frames": 192,
+            "minimum_body_width": 1000,
+            "undersized_frames": 0
+          },
+          {
+            "fixture": "native-max-staged-title-six.json",
+            "driver": "e047b59ef4e010efd280b2db912b2a4f86d4a2ea345831fbac64f271681bb172",
+            "restore_positions_equal": true,
+            "state_changes": 12,
+            "frames": 192,
+            "minimum_body_width": 1000,
+            "undersized_frames": 0
+          }
+        ]
+      },
+      "regressions": {
+        "first_frame_passed": true,
+        "cancel_reopen_passed": true,
+        "five_phase_sync_passed": true,
+        "attached_coordinates_passed": true,
+        "frame_role_cases_passed": 10,
+        "maximize_gating_cases_passed": 11,
+        "maximize_nongating_failures": [
+          "negative-default-limits"
+        ],
+        "full_card_suite_passed": false,
+        "card_failures_also_observed_on_previous_driver": [
+          "foreign-between-native-restack"
+        ],
+        "popup_200_percent_visible_opens": 6,
+        "popup_200_percent_wrong_bounds": 0
+      },
+      "source": {
+        "patched_tree": "b037f031571a000230fc074790eaa540b729d219",
+        "patch_sha256": "5695c3708c521b42a3c30ff8caa99b85b156d67e094f324b2da93a20d70a9367",
+        "modified_wine_files_this_round": [
+          "dlls/winex11.drv/window.c",
+          "dlls/winex11.drv/x11drv.h",
+          "dlls/winex11.drv/xrender.c"
+        ],
+        "full_patch_files": 55,
+        "full_replay_exact": true,
+        "patched_source_archive_sha256": "460d46ee37ebd894c0ea08d2070b0eb772c7ccfa7e331d9cae4274aca71a89ef"
+      },
+      "dependencies": {
+        "unchanged": true,
+        "glibc_minimum": "2.38"
+      },
+      "deployment": {
+        "scope": "WeCom private Wine only",
+        "restart_required": true,
+        "system_changes": false,
+        "uploaded": false,
+        "new_package_built": false,
+        "installed_driver_sha256": "e047b59ef4e010efd280b2db912b2a4f86d4a2ea345831fbac64f271681bb172",
+        "installed": true,
+        "activation_verified": false
       }
     }
   },
@@ -115,7 +222,9 @@
       "user_reported_no_jump": true,
       "new_driver_activation_verified": true,
       "driver_sha256": "4d5473d7aad4d5b1d551d7e444fd90807215697bdf085f3948fcf85794c821b1"
-    }
+    },
+    "current_driver_retested": false,
+    "last_accepted_driver_sha256": "4d5473d7aad4d5b1d551d7e444fd90807215697bdf085f3948fcf85794c821b1"
   },
   "known_limits": [
     "Tray menu placement and XWayland desktop screenshot black remain unresolved.",
@@ -150,6 +259,8 @@
         1140,
         1260
       ]
-    }
+    },
+    "runtime_driver_sha256": "4d5473d7aad4d5b1d551d7e444fd90807215697bdf085f3948fcf85794c821b1",
+    "matches_current_runtime": false
   }
 }

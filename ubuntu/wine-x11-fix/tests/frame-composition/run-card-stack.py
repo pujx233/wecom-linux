@@ -210,6 +210,18 @@ with desktop(qa) as env:
             report['cases'].append(dict(name='card-input', win32=state, active=active, passed=passed))
             native_restack_case('same-focus-native-restack', state['main'], state['card'],
                                 active, (0, 0, 255))
+            for ownership in ('unowned-tool', 'owned-tool'):
+                command(app, ownership); time.sleep(.5)
+                command(app, 'state'); state = lines.get(timeout=5)
+                order, active = native()
+                target = qa / (name + '-' + ownership + '-preview.png'); capture(target)
+                pixel = Image.open(target).convert('RGB').getpixel((1100, 400))
+                passed = (active == state['main'] and pixel == (0, 255, 0) and
+                          state['order'].index(state['preview']) < state['order'].index(state['card']) and
+                          state['card'] in order and state['preview'] in order and
+                          order.index(state['preview']) > order.index(state['card']))
+                report['cases'].append(dict(name=ownership + '-preview', win32=state,
+                                            native_order=order, active=active, pixel=pixel, passed=passed))
             command(app, 'owned'); time.sleep(.5)
             command(app, 'state'); state = lines.get(timeout=5)
             order, active = native()
@@ -282,7 +294,7 @@ with desktop(qa) as env:
                     command(app, 'quit'); app.wait(timeout=10)
             subprocess.run([env['WINESERVER'], '-k'], env=env)
             subprocess.run([env['WINESERVER'], '-w'], env=env, check=True, timeout=10)
-report['passed'] = len(report['cases']) == 14 and 'error' not in report and all(c['passed'] for c in report['cases'])
+report['passed'] = len(report['cases']) == 16 and 'error' not in report and all(c['passed'] for c in report['cases'])
 path = qa / (name + '.json')
 path.write_text(json.dumps(report, indent=2) + '\n')
 print(path); print(json.dumps(report))

@@ -104,20 +104,25 @@ static LRESULT CALLBACK proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
             InvalidateRect(card, NULL, FALSE);
             UpdateWindow(card);
         }
-        else if (!strcmp(command, "owned") || !strcmp(command, "unowned"))
+        else if (!strcmp(command, "owned") || !strcmp(command, "unowned") ||
+                 !strcmp(command, "owned-tool") || !strcmp(command, "unowned-tool"))
         {
-            HWND owner = !strcmp(command, "owned") ? main_window : NULL;
+            BOOL tool = strstr(command, "-tool") != NULL;
+            HWND owner = !strncmp(command, "owned", 5) ? main_window : NULL;
+            /* The tool pair overlaps outside the main window, so its pixels test only their relative order. */
+            int x = tool ? 1000 : 400;
             if (preview) DestroyWindow(preview);
             DestroyWindow(card);
-            card = CreateWindowExA(WS_EX_NOACTIVATE, "CardStack", "owned card", WS_POPUP | WS_THICKFRAME,
-                                   400, 300, 240, 240, owner, NULL, GetModuleHandleA(NULL),
+            card = CreateWindowExA(WS_EX_NOACTIVATE | (tool ? WS_EX_TOOLWINDOW : 0), "CardStack", "owned card",
+                                   WS_POPUP | (tool ? 0 : WS_THICKFRAME),
+                                   x, 300, 240, 240, owner, NULL, GetModuleHandleA(NULL),
                                    (void *)(ULONG_PTR)RGB(0, 0, 255));
-            SetWindowPos(card, HWND_TOP, 400, 300, 240, 240, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+            SetWindowPos(card, HWND_TOP, x, 300, 240, 240, SWP_NOACTIVATE | SWP_SHOWWINDOW);
             UpdateWindow(card);
             preview = CreateWindowExA(WS_EX_NOACTIVATE, "CardStack", "owned preview", WS_POPUP | WS_THICKFRAME,
-                                      400, 300, 240, 240, owner, NULL, GetModuleHandleA(NULL),
+                                      x, 300, 240, 240, tool ? card : owner, NULL, GetModuleHandleA(NULL),
                                       (void *)(ULONG_PTR)RGB(0, 255, 0));
-            SetWindowPos(preview, HWND_TOP, 400, 300, 240, 240, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+            SetWindowPos(preview, HWND_TOP, x, 300, 240, 240, SWP_NOACTIVATE | SWP_SHOWWINDOW);
             UpdateWindow(preview);
         }
         else if (!strcmp(command, "minimize-peer"))
