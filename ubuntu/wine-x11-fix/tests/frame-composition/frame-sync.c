@@ -1,4 +1,4 @@
-/* Hold the message loop after painting a resized, reused backing surface. */
+/* Hold the message loop between layout, painting, and the final shared-frame copy. */
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <stdio.h>
@@ -43,6 +43,7 @@ int main(void)
     HWND decoration;
     char command[32], guard[8];
     POINT point = {100, 100};
+    POINT edge = {312, 224};
     if (!GetEnvironmentVariableA("WECOM_FRAME_SYNC_FIXTURE", guard, sizeof(guard)) || strcmp(guard, "1"))
         return 2;
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
@@ -60,9 +61,12 @@ int main(void)
     paint(RGB(48, 176, 96));
     pump();
     ClientToScreen(window, &point);
-    printf("{\"phase\":\"ready\",\"frame\":%llu,\"decoration_frame\":%llu,\"point\":[%ld,%ld]}\n",
+    ClientToScreen(window, &edge);
+    printf("{\"phase\":\"ready\",\"frame\":%llu,\"decoration_frame\":%llu,"
+           "\"point\":[%ld,%ld],\"edge\":[%ld,%ld]}\n",
            (unsigned long long)(UINT_PTR)GetPropW(window, L"__wine_x11_wm_window"),
-           (unsigned long long)(UINT_PTR)GetPropW(decoration, L"__wine_x11_wm_window"), point.x, point.y);
+           (unsigned long long)(UINT_PTR)GetPropW(decoration, L"__wine_x11_wm_window"),
+           point.x, point.y, edge.x, edge.y);
     fflush(stdout);
     while (fgets(command, sizeof(command), stdin))
     {
@@ -80,7 +84,18 @@ int main(void)
             fflush(stderr);
             /* No message dispatch here: the frame copy is still queued. */
         }
-        else if (!strcmp(command, "dispatch")) pump();
+        else if (!strcmp(command, "layout"))
+        {
+            MSG message;
+            RECT rect;
+            GetWindowRect(window, &rect);
+            SetWindowPos(decoration, NULL, rect.left - 48, rect.top - 48,
+                         rect.right - rect.left + 96, rect.bottom - rect.top + 96,
+                         SWP_NOZORDER | SWP_NOACTIVATE);
+            /* Service WM_X11DRV_SYNC_OWNED_FRAME without consuming its later native acknowledgement. */
+            PeekMessageW(&message, window, 0x80001006, 0x80001006, PM_REMOVE);
+        }
+        else if (!strcmp(command, "dispatch") || !strcmp(command, "layout-dispatch")) pump();
         else return 5;
         printf("{\"phase\":\"%s\"}\n", command);
         fflush(stdout);

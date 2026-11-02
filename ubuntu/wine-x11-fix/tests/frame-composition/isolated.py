@@ -28,6 +28,8 @@ def processes(qa):
 @contextmanager
 def desktop(qa, size='1600x1000', bare=False, second_monitor=None):
     qa = qa.resolve()
+    if os.environ.get('WECOM_QA_SCALE') == '2':
+        size = '3200x2000'
     assert qa == Path(os.environ['WECOM_QA_ROOT']).resolve()
     assert (qa / '.wecom-frame-qa').is_file(), 'Use a marked, disposable QA directory'
     assert str(qa / 'runtime') != os.environ.get('XDG_RUNTIME_DIR')
@@ -126,6 +128,19 @@ def desktop(qa, size='1600x1000', bare=False, second_monitor=None):
                                      'Set', GLib.Variant('(ssv)', ('org.gnome.Shell', 'OverviewActive',
                                                                   GLib.Variant('b', False))),
                                      None, Gio.DBusCallFlags.NONE, 5000, None)
+                if os.environ.get('WECOM_QA_SCALE') == '2':
+                    service = 'org.gnome.Mutter.DisplayConfig'
+                    path = '/org/gnome/Mutter/DisplayConfig'
+                    config = connection.call_sync(service, path, service, 'GetCurrentState', None, None,
+                                                  Gio.DBusCallFlags.NONE, 10000, None).unpack()
+                    assert len(config[1]) == 1
+                    spec, modes, properties = config[1][0]
+                    mode = next(mode for mode in modes if mode[6].get('is-current'))
+                    logical = [(0, 0, 2.0, 0, True, [(spec[0], mode[0], {})])]
+                    connection.call_sync(service, path, service, 'ApplyMonitorsConfig',
+                                         GLib.Variant('(uua(iiduba(ssa{sv}))a{sv})', (config[0], 1, logical, {})),
+                                         None, Gio.DBusCallFlags.NONE, 10000, None)
+                    (qa / 'display-scale.json').write_text(json.dumps(logical) + '\n')
             finally:
                 connection.close_sync(None)
             deadline = time.monotonic() + 5

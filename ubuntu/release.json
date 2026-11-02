@@ -1,7 +1,7 @@
 {
   "name": "企业微信",
   "package": "com.qq.wecom.spark",
-  "package_version": "5.0.13.6005-2",
+  "package_version": "5.0.13.6005-3",
   "status": "preview",
   "wecom_version": "5.0.13.6005",
   "installer_url": "https://dldir1v6.qq.com/wework/work_weixin/WeCom_5.0.13.6005.exe",
@@ -11,7 +11,7 @@
   "upstream_adapter": "tbsangel/archlinux-wine-wecom-setup@f0ad4711049476bb2d87b40acaff53ca5ee58124",
   "wine_source_sha256": "98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793",
   "prelogin_archive_sha256": "94eb246b3562e8e2e1d672a2f9c1edc91a15034a37106b6a6d7faae8dddcae62",
-  "wine_patch_sha256": "9add0018e3cce77444279babe9b3ecb43e3a4222aa188bd6290309b49c6e57b1",
+  "wine_patch_sha256": "8c61bb8539eeabae937e7b8dc6fd61ae563199a7e315a3e385df44fea74681e6",
   "wine_components": {
     "wineserver": "wine/bin/wineserver",
     "ntdll.so": "wine/lib/wine/x86_64-unix/ntdll.so",
@@ -39,7 +39,7 @@
     "wineserver": "81d3992df47db3e9c36d6400f95364703edaa7421c52106377287fa2720d6fb6",
     "ntdll.so": "70db13c547010f6ffe97ec289d32bf17ddf4a5b14358ccb5d82a672123d6b2d9",
     "win32u.so": "4525ee5182f1f8428baccef58c560c91d2ad0789d4c878daaa4f88ffe25f37a4",
-    "winex11.so": "2796ff996e8433fb56f7a4098257f66531510d4246326e052ec976097325d5d3",
+    "winex11.so": "4d5473d7aad4d5b1d551d7e444fd90807215697bdf085f3948fcf85794c821b1",
     "wineps.so": "9d6f9767d72c3d7af3e75503a33d853a8f8a655e7114d98475421e478bb9ccff",
     "imm32-i386.dll": "2ee5fa9dab185d277184c3f8cfa2258900c5822d4195c610716d30c3d398daff",
     "imm32-x86_64.dll": "dd2a0182b5e94eb88ead7bfe50f6bf8a1a42e92bc5b760df8d511e873894185a",
@@ -72,10 +72,11 @@
     "packaged_components": "packaged-runtime.json",
     "template_copy_preserves_file_independence": true
   },
-  "updated": "2026-10-30",
+  "updated": "2026-11-02",
   "base_package_sha256": [
     "2bdd9ac63a0a5e1f84da752b7c90f75bab5ebb2dcf84bb92ca99bed5e63afb65",
-    "02a959cb4de850df6c584e798cb73506601de019a112dea3a3b85680eb11b324"
+    "02a959cb4de850df6c584e798cb73506601de019a112dea3a3b85680eb11b324",
+    "a12d2542a4248eb476574e7b861d4fea4265c4d31a21a998e0bf645d3d56df9f"
   ],
   "wine_driver": "winex11.drv on X11/XWayland",
   "installed_compat_scripts": "immutable package template; existing profile uses updated helpers without replacing account data",
@@ -85,6 +86,6 @@
     "desktop screenshot black"
   ],
   "focused_scenarios_passed": true,
-  "focused_scenarios_note": "Four attached-coordinate cases, recorded rapid drag, maximize/restore and local IME checks passed. Full card and mixed-DPI matrices remain incomplete.",
+  "focused_scenarios_note": "First-frame, cancel/reopen, five-phase sync, six 200% opens and activated user retest passed",
   "manifest_scope": "Current cumulative source patch and 20 paired runtime components before Wine PE debug stripping"
 }

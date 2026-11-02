@@ -4,6 +4,15 @@
 PipeWire、D-Bus、Wine prefix 与配置都在独立目录和私有会话中运行，测试结果写入该目录。
 输入测试只向私有虚拟显示器发送鼠标事件。退出时先关闭私有 Mutter，再清理其子进程。
 
+首帧事务使用 `first-transaction.c`，让正文绘制晚于阴影布局，读取实际 XSync 计数和桌面像素。
+旧版在正文绘制前就提交偶数 4，首次绘制后仍为 4；修复版保持奇数 3，上传并合成后才提交到 4。
+`--cancel` 覆盖首帧未画即关闭、重开后再绘制，预期计数为 3 → 4 → 5 → 6。
+
+```sh
+WECOM_QA_SCALE=2 python3 run-first-transaction.py /absolute/new-qa /absolute/private-wine first
+WECOM_QA_SCALE=2 python3 run-first-transaction.py /absolute/new-qa /absolute/private-wine cancel --cancel
+```
+
 需要 GNOME Shell/Mutter、Xwayland、PipeWire 命令行工具、GStreamer 的 PipeWire/PNG 插件、
 Python 的 PyGObject/Pillow，以及 `x86_64-w64-mingw32-gcc`。使用完整的私有 Wine WoW64 runtime。
 

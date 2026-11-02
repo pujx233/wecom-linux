@@ -1,6 +1,6 @@
 # Wine 11.20 企业微信修订
 
-企业微信 5.0.13.6005 / Ubuntu 26.04 amd64，2026-10-30。
+企业微信 5.0.13.6005 / Ubuntu 26.04 amd64，2026-11-02。
 当前源码与本地使用的最终组件一致，完整清单见 [release.json](../release.json)。
 实现说明见 [CODE-REVIEW.md](CODE-REVIEW.md)，测试摘要见 [validation.json](../validation.json)。
 

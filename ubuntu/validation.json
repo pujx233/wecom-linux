@@ -1,12 +1,12 @@
 {
-  "status": "2026-10-30 local runtime accepted for the listed scenarios",
+  "status": "2026-11-02 local runtime accepted for the listed scenarios",
   "sanitized": true,
   "environment": "Ubuntu 26.04.1 amd64, GNOME 50.1 Wayland/XWayland, 200% displays, IBus/Rime",
   "runtime_sha256": {
     "wineserver": "81d3992df47db3e9c36d6400f95364703edaa7421c52106377287fa2720d6fb6",
     "ntdll.so": "70db13c547010f6ffe97ec289d32bf17ddf4a5b14358ccb5d82a672123d6b2d9",
     "win32u.so": "4525ee5182f1f8428baccef58c560c91d2ad0789d4c878daaa4f88ffe25f37a4",
-    "winex11.so": "2796ff996e8433fb56f7a4098257f66531510d4246326e052ec976097325d5d3",
+    "winex11.so": "4d5473d7aad4d5b1d551d7e444fd90807215697bdf085f3948fcf85794c821b1",
     "wineps.so": "9d6f9767d72c3d7af3e75503a33d853a8f8a655e7114d98475421e478bb9ccff",
     "imm32-i386.dll": "2ee5fa9dab185d277184c3f8cfa2258900c5822d4195c610716d30c3d398daff",
     "imm32-x86_64.dll": "dd2a0182b5e94eb88ead7bfe50f6bf8a1a42e92bc5b760df8d511e873894185a",
@@ -25,10 +25,10 @@
     "winewayland.so": "011ec6b8e4bfd6fa9326ea33e7ba787c6846569096d32f18fda55bace0781277"
   },
   "source_patch_replay": {
-    "baseline_commit": "7298a818b79446bae153b8d5aa27235ab3703bf9",
-    "patch_sha256": "9add0018e3cce77444279babe9b3ecb43e3a4222aa188bd6290309b49c6e57b1",
+    "source_archive_sha256": "98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793",
+    "patch_sha256": "8c61bb8539eeabae937e7b8dc6fd61ae563199a7e315a3e385df44fea74681e6",
     "modified_files": 55,
-    "replay_tree": "54daf05ca5b7d57e63f26de0654dce4698c71f22",
+    "replay_tree": "a5953a24c001e819c0110fa41c68b82cab8014a2",
     "exact_content_and_modes": true
   },
   "isolated": {
@@ -40,6 +40,34 @@
         "native_ahead_of_win32",
         "independent_popup_absolute"
       ]
+    },
+    "first_frame_transaction": {
+      "old_driver_sha256": "2a70b52fab829a8d5e685efa270fd4f287cf721442a10c15644e3d209d44b2b5",
+      "new_driver_sha256": "4d5473d7aad4d5b1d551d7e444fd90807215697bdf085f3948fcf85794c821b1",
+      "old_counter_before_after_paint": [
+        4,
+        4
+      ],
+      "new_counter_before_after_paint": [
+        3,
+        4
+      ],
+      "native_opacity_gate_used": false,
+      "loaded_driver_verified": true,
+      "first_transaction_passed": true,
+      "cancel_reopen_passed": true,
+      "cancel_reopen_counters": [
+        3,
+        4,
+        5,
+        6
+      ],
+      "five_phase_sync_passed": true,
+      "popup_200_percent": {
+        "passed": true,
+        "visible_opens": 6,
+        "wrong_bounds": 0
+      }
     }
   },
   "actual": {
@@ -81,6 +109,12 @@
     "member_card": {
       "previous_live_open_passed": true,
       "full_matrix_retested_on_final": false
+    },
+    "read_receipt_popup": {
+      "date": "2026-11-02",
+      "user_reported_no_jump": true,
+      "new_driver_activation_verified": true,
+      "driver_sha256": "4d5473d7aad4d5b1d551d7e444fd90807215697bdf085f3948fcf85794c821b1"
     }
   },
   "known_limits": [
@@ -90,5 +124,32 @@
     "Rare card stacking, CFS_RECT candidate positioning and mixed-DPI scenarios remain incomplete.",
     "Audio/video, approvals, attachments and other desktop environments are not fully validated."
   ],
-  "release_acceptance_complete": false
+  "release_acceptance_complete": false,
+  "package_validation": {
+    "package_version": "5.0.13.6005-3",
+    "base_version": "5.0.13.6005-2",
+    "dependency_fields_identical": [
+      "Depends",
+      "Recommends",
+      "Suggests"
+    ],
+    "glibc_minimum": "2.38",
+    "packaging_script_unchanged": true,
+    "packaged_runtime_first_frame_transaction": {
+      "passed": true,
+      "scale": 2,
+      "loaded_driver_verified": true,
+      "counter_before_after_paint": [
+        3,
+        4
+      ],
+      "native_opacity_gate_used": false,
+      "painted_bounds": [
+        500,
+        300,
+        1140,
+        1260
+      ]
+    }
+  }
 }
