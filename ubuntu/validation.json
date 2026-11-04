@@ -1,12 +1,12 @@
 {
-  "status": "2026-11-02 isolated root-fix checks passed; actual client restart/retest pending",
+  "status": "2026-11-05 packaged runtime checks passed; logged-in client retest pending",
   "sanitized": true,
   "environment": "Ubuntu 26.04.1 amd64, GNOME 50.1 Wayland/XWayland, 200% displays, IBus/Rime",
   "runtime_sha256": {
     "wineserver": "81d3992df47db3e9c36d6400f95364703edaa7421c52106377287fa2720d6fb6",
     "ntdll.so": "70db13c547010f6ffe97ec289d32bf17ddf4a5b14358ccb5d82a672123d6b2d9",
     "win32u.so": "4525ee5182f1f8428baccef58c560c91d2ad0789d4c878daaa4f88ffe25f37a4",
-    "winex11.so": "e047b59ef4e010efd280b2db912b2a4f86d4a2ea345831fbac64f271681bb172",
+    "winex11.so": "60115fb5e13b29319e9e592a1d02930b5ef7dfef1d9c0555e5124971b6f59524",
     "wineps.so": "9d6f9767d72c3d7af3e75503a33d853a8f8a655e7114d98475421e478bb9ccff",
     "imm32-i386.dll": "2ee5fa9dab185d277184c3f8cfa2258900c5822d4195c610716d30c3d398daff",
     "imm32-x86_64.dll": "dd2a0182b5e94eb88ead7bfe50f6bf8a1a42e92bc5b760df8d511e873894185a",
@@ -26,11 +26,11 @@
   },
   "source_patch_replay": {
     "source_archive_sha256": "98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793",
-    "patch_sha256": "5695c3708c521b42a3c30ff8caa99b85b156d67e094f324b2da93a20d70a9367",
+    "patch_sha256": "9cc832a291a9b30245b9c94ebb302899d8b23bf4da6ca3f3bac0882c088c0d50",
     "modified_files": 55,
-    "replay_tree": "b037f031571a000230fc074790eaa540b729d219",
+    "replay_tree": "adfa0fdd591937b1195df2721ee4dbadb09962ff",
     "exact_content_and_modes": true,
-    "patched_source_archive_sha256": "460d46ee37ebd894c0ea08d2070b0eb772c7ccfa7e331d9cae4274aca71a89ef"
+    "patched_source_archive_sha256": "447a1481801b1761282c9c7151f23362ad7f3e073bbf2e961da668f693b68490"
   },
   "isolated": {
     "attached_coordinates": {
@@ -44,7 +44,7 @@
     },
     "first_frame_transaction": {
       "old_driver_sha256": "2a70b52fab829a8d5e685efa270fd4f287cf721442a10c15644e3d209d44b2b5",
-      "new_driver_sha256": "e047b59ef4e010efd280b2db912b2a4f86d4a2ea345831fbac64f271681bb172",
+      "new_driver_sha256": "60115fb5e13b29319e9e592a1d02930b5ef7dfef1d9c0555e5124971b6f59524",
       "old_counter_before_after_paint": [
         4,
         4
@@ -175,6 +175,224 @@
         "installed": true,
         "activation_verified": false
       }
+    },
+    "frame_extent_transaction_20261103": {
+      "date": "2026-11-03",
+      "previous_commit": "965072b1fadf182bd683a4a79cb22f5f6e79f16b",
+      "driver_sha256": "60115fb5e13b29319e9e592a1d02930b5ef7dfef1d9c0555e5124971b6f59524",
+      "previous_driver_sha256": "e047b59ef4e010efd280b2db912b2a4f86d4a2ea345831fbac64f271681bb172",
+      "host_desktop_operated": false,
+      "account_data_modified": false,
+      "actual_client_retested": false,
+      "root_causes": [
+        "Same-size outer frames exposed new child layout before native placement and completed XSync too early.",
+        "Extent changes omitted CWWidth/CWHeight; the WM retained old body sizes and fed them back to Win32."
+      ],
+      "fix": [
+        "Preparing a target-size composition updates its resize background without publishing an immediate copy.",
+        "Native resize uses prepared pixels; same-size frames wait for layout acknowledgement and final copy.",
+        "Changed GTK extents include an explicit width and height request even when outer dimensions match."
+      ],
+      "rejected_candidate": {
+        "sha256": "9dfa6665df7563c09719bbede138606cbbc6c208a194d3b61244b190ae3d7241",
+        "reason": "Waiting for every configure caused one undersized frame in 192 title-layer samples.",
+        "raw_bad_frame_image_retained": false
+      },
+      "regressions": {
+        "resize_drawable_passed": true,
+        "first_frame_passed": true,
+        "first_frame_counters": [
+          3,
+          4,
+          4
+        ],
+        "cancel_reopen_passed": true,
+        "cancel_reopen_counters": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "five_phase_sync_passed": true,
+        "five_phase_counters": [
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "attached_coordinates_passed": true,
+        "attached_coordinate_cases": 4,
+        "frame_role_cases_passed": 10,
+        "maximize_gating_cases_passed": 11,
+        "maximize_nongating_failures": [
+          "negative-default-limits"
+        ],
+        "card_cases_passed": 15,
+        "card_cases_total": 16,
+        "full_card_suite_passed": false,
+        "known_card_failure": "foreign-between-native-restack",
+        "native_cycles": [
+          {
+            "fixture": "native-max-staged-six.json",
+            "state_changes": 12,
+            "frames": 192,
+            "minimum_body_width": 1000,
+            "missing_or_undersized_frames": 0,
+            "restore_positions_equal": true
+          },
+          {
+            "fixture": "native-max-staged-title-six.json",
+            "state_changes": 12,
+            "frames": 192,
+            "minimum_body_width": 1000,
+            "missing_or_undersized_frames": 0,
+            "restore_positions_equal": true
+          }
+        ]
+      },
+      "source": {
+        "base_tree": "b037f031571a000230fc074790eaa540b729d219",
+        "replay_tree": "adfa0fdd591937b1195df2721ee4dbadb09962ff",
+        "patch_sha256": "9cc832a291a9b30245b9c94ebb302899d8b23bf4da6ca3f3bac0882c088c0d50",
+        "full_patch_files": 55,
+        "full_source_files": 12469,
+        "changed_files": [
+          "dlls/winex11.drv/window.c",
+          "dlls/winex11.drv/xrender.c"
+        ],
+        "full_replay_exact_content_and_modes": true,
+        "other_patch_sections_unchanged": 53,
+        "patched_source_archive_sha256": "447a1481801b1761282c9c7151f23362ad7f3e073bbf2e961da668f693b68490",
+        "patched_source_archive_bytes": 62822296,
+        "archive": "/home/sai/work/wecom-linux/.local-debug/wine-11.20-frame-layout-20261103-source.tar.zst"
+      },
+      "dependencies": {
+        "before": {
+          "sha256": "e047b59ef4e010efd280b2db912b2a4f86d4a2ea345831fbac64f271681bb172",
+          "needed": [
+            "ntdll.so",
+            "win32u.so",
+            "libXext.so.6",
+            "libX11.so.6",
+            "libm.so.6",
+            "libc.so.6"
+          ],
+          "search_path": [],
+          "glibc_minimum": "2.38"
+        },
+        "after": {
+          "sha256": "60115fb5e13b29319e9e592a1d02930b5ef7dfef1d9c0555e5124971b6f59524",
+          "needed": [
+            "ntdll.so",
+            "win32u.so",
+            "libXext.so.6",
+            "libX11.so.6",
+            "libm.so.6",
+            "libc.so.6"
+          ],
+          "search_path": [],
+          "glibc_minimum": "2.38"
+        },
+        "dependencies_unchanged": true
+      },
+      "deployment": {
+        "installed": true,
+        "scope": "WeCom private Wine only",
+        "restart_required": true,
+        "system_changes": false,
+        "uploaded": false,
+        "package_rebuilt": false,
+        "installed_driver_sha256": "60115fb5e13b29319e9e592a1d02930b5ef7dfef1d9c0555e5124971b6f59524",
+        "actual_current_processes": [
+          {
+            "pid": 22135,
+            "loaded_current": false,
+            "loaded_previous": false
+          },
+          {
+            "pid": 858399,
+            "loaded_current": false,
+            "loaded_previous": true
+          },
+          {
+            "pid": 858401,
+            "loaded_current": false,
+            "loaded_previous": true
+          },
+          {
+            "pid": 858412,
+            "loaded_current": false,
+            "loaded_previous": true
+          },
+          {
+            "pid": 860048,
+            "loaded_current": false,
+            "loaded_previous": true
+          },
+          {
+            "pid": 860677,
+            "loaded_current": false,
+            "loaded_previous": true
+          },
+          {
+            "pid": 860760,
+            "loaded_current": false,
+            "loaded_previous": true
+          },
+          {
+            "pid": 860812,
+            "loaded_current": false,
+            "loaded_previous": true
+          },
+          {
+            "pid": 860814,
+            "loaded_current": false,
+            "loaded_previous": true
+          },
+          {
+            "pid": 860818,
+            "loaded_current": false,
+            "loaded_previous": true
+          },
+          {
+            "pid": 860935,
+            "loaded_current": false,
+            "loaded_previous": true
+          },
+          {
+            "pid": 861018,
+            "loaded_current": false,
+            "loaded_previous": true
+          },
+          {
+            "pid": 861022,
+            "loaded_current": false,
+            "loaded_previous": true
+          },
+          {
+            "pid": 861228,
+            "loaded_current": false,
+            "loaded_previous": true
+          },
+          {
+            "pid": 863509,
+            "loaded_current": false,
+            "loaded_previous": true
+          },
+          {
+            "pid": 863512,
+            "loaded_current": false,
+            "loaded_previous": true
+          },
+          {
+            "pid": 950376,
+            "loaded_current": false,
+            "loaded_previous": true
+          }
+        ],
+        "activation_verified": false
+      }
     }
   },
   "actual": {
@@ -258,9 +476,20 @@
         300,
         1140,
         1260
-      ]
+      ],
+      "driver_sha256": "60115fb5e13b29319e9e592a1d02930b5ef7dfef1d9c0555e5124971b6f59524"
     },
-    "runtime_driver_sha256": "4d5473d7aad4d5b1d551d7e444fd90807215697bdf085f3948fcf85794c821b1",
-    "matches_current_runtime": false
+    "runtime_driver_sha256": "60115fb5e13b29319e9e592a1d02930b5ef7dfef1d9c0555e5124971b6f59524",
+    "matches_current_runtime": true,
+    "frame_extent_regression": {
+      "passed": true,
+      "loaded_driver_verified": true
+    },
+    "fresh_startup": {
+      "passed": true,
+      "account_used": false,
+      "packaged_driver_loaded": true
+    },
+    "package_rebuilt": true
   }
 }
