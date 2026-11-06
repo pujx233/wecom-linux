@@ -1,6 +1,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <stdio.h>
+#include <string.h>
 static HWND window, shadow;
 static BOOL armed;
 static COLORREF color = RGB(0, 255, 0);
@@ -65,11 +66,12 @@ static DWORD WINAPI commands(void *unused)
     while (fgets(line, sizeof(line), stdin)) PostMessageA(window, WM_APP, line[0], 0);
     return 0;
 }
-int main(void)
+int main(int argc, char **argv)
 {
     WNDCLASSA cls = {.lpfnWndProc = procedure, .lpszClassName = "ResizeExtents"};
     RECT rect;
     MSG msg;
+    int padding = argc > 1 && !strcmp(argv[1], "--stationary") ? 0 : 48;
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     RegisterClassA(&cls);
     cls.lpszClassName = "ResizeExtentsShadow";
@@ -81,7 +83,7 @@ int main(void)
     pump();
     GetWindowRect(window, &rect);
     shadow = CreateWindowExA(WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
-                             "ResizeExtentsShadow", "", WS_POPUP, rect.left - 48, rect.top - 48,
+                             "ResizeExtentsShadow", "", WS_POPUP, rect.left - padding, rect.top - padding,
                              416, 336, window, NULL, NULL, NULL);
     SetLayeredWindowAttributes(shadow, 0, 255, LWA_ALPHA);
     ShowWindow(shadow, SW_SHOWNOACTIVATE);

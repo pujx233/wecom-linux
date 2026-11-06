@@ -49,8 +49,10 @@ def desktop(qa, size='1600x1000', bare=False, second_monitor=None):
         env.pop(name, None)
     env.update(XDG_RUNTIME_DIR=str(qa / 'runtime'), XDG_CONFIG_HOME=str(qa / 'config'),
                XDG_DATA_HOME=str(qa / 'data'), XDG_CACHE_HOME=str(qa / 'cache'),
-               GSETTINGS_BACKEND='memory', LIBGL_ALWAYS_SOFTWARE='1', LP_NUM_THREADS='2',
+               GSETTINGS_BACKEND='keyfile', LIBGL_ALWAYS_SOFTWARE='1', LP_NUM_THREADS='2',
                MESA_SHADER_CACHE_DISABLE='true', NO_AT_BRIDGE='1')
+    subprocess.run(['gsettings', 'set', 'org.gnome.desktop.interface', 'enable-hot-corners', 'false'],
+                   env=env, check=True)
     shell_log = (qa / 'gnome-shell.log').open('a')
     pipewire_log = (qa / 'pipewire.log').open('a')
     shell = subprocess.Popen(['dbus-run-session', '--', sys.executable, str(Path(__file__).resolve()),

@@ -112,8 +112,13 @@ def recording(qa, env, run_name, interactive=False):
                 call(remote, 'org.gnome.Mutter.RemoteDesktop.Session', 'NotifyPointerButton',
                      GLib.Variant('(ib)', (code, pressed)))
 
+            def keysym(value, pressed):
+                call(remote, 'org.gnome.Mutter.RemoteDesktop.Session', 'NotifyKeyboardKeysym',
+                     GLib.Variant('(ub)', (value, pressed)))
+
             capture.pointer = pointer
             capture.button = button
+            capture.keysym = keysym
         capture(qa / (run_name + '-before.png'))
         yield capture
         complete = True

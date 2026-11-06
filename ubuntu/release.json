@@ -1,17 +1,17 @@
 {
-  "name": "企业微信",
+  "name": "\u4f01\u4e1a\u5fae\u4fe1",
   "package": "com.qq.wecom.spark",
-  "package_version": "5.0.13.6005-3",
-  "status": "preview",
+  "package_version": "5.0.13.6005-4",
+  "status": "development",
   "wecom_version": "5.0.13.6005",
   "installer_url": "https://dldir1v6.qq.com/wework/work_weixin/WeCom_5.0.13.6005.exe",
   "installer_sha256": "5df50a240038a2de7c3b17e4f25f4747e74d97f9028be9baec6f7379fc97e1be",
   "wine_version": "11.20",
-  "tested_environment": "Ubuntu 26.04.1 amd64, GNOME 50.1 Wayland/XWayland, 200% displays, IBus/Rime",
+  "tested_environment": "Ubuntu 26.04 GNOME 100%/200%; Fedora 44 niri 26.04/XWayland (nested llvmpipe)",
   "upstream_adapter": "tbsangel/archlinux-wine-wecom-setup@f0ad4711049476bb2d87b40acaff53ca5ee58124",
   "wine_source_sha256": "98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793",
   "prelogin_archive_sha256": "94eb246b3562e8e2e1d672a2f9c1edc91a15034a37106b6a6d7faae8dddcae62",
-  "wine_patch_sha256": "9cc832a291a9b30245b9c94ebb302899d8b23bf4da6ca3f3bac0882c088c0d50",
+  "wine_patch_sha256": "179c767a6113b93f7c3f2554382d5acc21d9cd06c523c1fa9a738c687c0a4fbb",
   "wine_components": {
     "wineserver": "wine/bin/wineserver",
     "ntdll.so": "wine/lib/wine/x86_64-unix/ntdll.so",
@@ -32,18 +32,24 @@
     "setupapi.dll-x86_64-windows": "wine/lib/wine/x86_64-windows/setupapi.dll",
     "wineboot.exe-x86_64-windows": "wine/lib/wine/x86_64-windows/wineboot.exe",
     "mountmgr.so": "wine/lib/wine/x86_64-unix/mountmgr.so",
-    "winewayland.so": "wine/lib/wine/x86_64-unix/winewayland.so"
+    "winewayland.so": "wine/lib/wine/x86_64-unix/winewayland.so",
+    "comdlg32-i386.dll": "wine/lib/wine/i386-windows/comdlg32.dll",
+    "shell32-i386.dll": "wine/lib/wine/i386-windows/shell32.dll",
+    "comdlg32-x86_64.dll": "wine/lib/wine/x86_64-windows/comdlg32.dll",
+    "shell32-x86_64.dll": "wine/lib/wine/x86_64-windows/shell32.dll",
+    "comdlg32.so": "wine/lib/wine/x86_64-unix/comdlg32.so",
+    "explorer-i386.exe": "wine/lib/wine/i386-windows/explorer.exe"
   },
   "artifacts_sha256": {
     "libcef.dll": "02b6cd5185af5fa390c41116f9c4a07912dc2175c8f8a75d0ec3f41256220265",
     "wineserver": "81d3992df47db3e9c36d6400f95364703edaa7421c52106377287fa2720d6fb6",
     "ntdll.so": "70db13c547010f6ffe97ec289d32bf17ddf4a5b14358ccb5d82a672123d6b2d9",
     "win32u.so": "4525ee5182f1f8428baccef58c560c91d2ad0789d4c878daaa4f88ffe25f37a4",
-    "winex11.so": "60115fb5e13b29319e9e592a1d02930b5ef7dfef1d9c0555e5124971b6f59524",
+    "winex11.so": "3e67a4eae5e6f9265d87801fb08125f2461e61c13f479416bde05bd59ae08c7b",
     "wineps.so": "9d6f9767d72c3d7af3e75503a33d853a8f8a655e7114d98475421e478bb9ccff",
     "imm32-i386.dll": "2ee5fa9dab185d277184c3f8cfa2258900c5822d4195c610716d30c3d398daff",
     "imm32-x86_64.dll": "dd2a0182b5e94eb88ead7bfe50f6bf8a1a42e92bc5b760df8d511e873894185a",
-    "explorer.exe": "f4296ea6e3a3b4192d0e84c933ca5a880f97e68300fca8eac550db6089325722",
+    "explorer.exe": "88d8472088ac84387a997dcb81d8e99522bbf8485618c2298a9753c4a28c8490",
     "wine": "fa443c7a1f7d289faeffab7cf79ae2f13398bd715ab25267e725e67d6bf765a1",
     "gdiplus-i386.dll": "7638a21e0ffdef61ae77066dc5904352c60a20c64ae6a5e6d6ee896524b3be36",
     "gdiplus-x86_64.dll": "1c07e1c7ff5ab9b88f190b9a528e65566a981f8667a84fee29e350aaf1137d38",
@@ -55,7 +61,13 @@
     "setupapi.dll-x86_64-windows": "fab5daaaad453a43e5bfec0c8c61a26fe599ceeab52c0b9933dbb73d5cdce11e",
     "wineboot.exe-x86_64-windows": "1de4398bdff7d352f8956fb58b7f6d119a735680946c2cbb67b29b984f88fb78",
     "mountmgr.so": "748de97cc1dfbbb334908a17409f1ad5f4df6d07b17c830a81d8828b1c05956c",
-    "winewayland.so": "011ec6b8e4bfd6fa9326ea33e7ba787c6846569096d32f18fda55bace0781277"
+    "winewayland.so": "011ec6b8e4bfd6fa9326ea33e7ba787c6846569096d32f18fda55bace0781277",
+    "comdlg32-i386.dll": "4ea88f26787b0d5a3a575f71b9b56ad44a7f526f4278573b8934321fc97940ed",
+    "shell32-i386.dll": "451c82ed60dfa6da9aa80a865a196342ed32046dbfd60ec30c5edbb4ad3d58ce",
+    "comdlg32-x86_64.dll": "c8845d809230571542f6fd1365dd9190390dba2b0801a1dafd9a3443b66cfc05",
+    "shell32-x86_64.dll": "9cc82fcec2758b09ff7aab2d2fefdbada7702bf90f59e471020dcb4977e74e0d",
+    "comdlg32.so": "5259b529e2d98d30276839d8eecdd25e81bff33e4e9f7e46746b4921b419131b",
+    "explorer-i386.exe": "88f151bf360cc693377a9c1a0b8132d06f6806aeea321b1d4fada6c3d0044f9e"
   },
   "helpers_sha256": {
     "ime-bridge.so": "9a93e3f60dcc4406a45c559bf388875caff392ce540a7829ae62d238ef1d29e3",
@@ -73,11 +85,12 @@
     "template_copy_preserves_file_independence": true,
     "current_runtime_packaged": true
   },
-  "updated": "2026-11-05",
+  "updated": "2026-11-06",
   "base_package_sha256": [
     "2bdd9ac63a0a5e1f84da752b7c90f75bab5ebb2dcf84bb92ca99bed5e63afb65",
     "02a959cb4de850df6c584e798cb73506601de019a112dea3a3b85680eb11b324",
-    "a12d2542a4248eb476574e7b861d4fea4265c4d31a21a998e0bf645d3d56df9f"
+    "a12d2542a4248eb476574e7b861d4fea4265c4d31a21a998e0bf645d3d56df9f",
+    "44f94cc58ffcadddbb03a532e3a5db8a32126341bdeb98349fa34069d4025894"
   ],
   "wine_driver": "winex11.drv on X11/XWayland",
   "installed_compat_scripts": "immutable template; existing profiles use updated helpers and retain account data",
@@ -87,6 +100,6 @@
     "desktop screenshot black"
   ],
   "focused_scenarios_passed": true,
-  "focused_scenarios_note": "Frame extent and regression checks passed; actual client restart/retest pending.",
-  "manifest_scope": "Current cumulative source patch and 20 paired runtime components before Wine PE debug stripping"
+  "focused_scenarios_note": "DPI, locale/font links, shape clipping, native chooser/file manager and archiver-free startup passed; satellite caption fix is separate and deployed only in the test container.",
+  "manifest_scope": "Current cumulative source patch and 26 paired runtime components before Wine PE debug stripping"
 }

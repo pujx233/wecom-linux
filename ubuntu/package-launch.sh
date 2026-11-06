@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 unset WINEARCH WINESERVER WINELOADER WINELOADERNOEXEC WINEDLLPATH WINESERVERSOCKET
+# Wine regenerates locale-dependent font links when its ANSI codepage changes.
+# Configure and upgrade the prefix in the same locale as launch-wecom.sh.
+unset LC_ALL
+export LANG=zh_CN.UTF-8 LC_CTYPE=zh_CN.UTF-8 LC_MESSAGES=zh_CN.UTF-8
+export WINE_NATIVE_FILE_DIALOGS="${WINE_NATIVE_FILE_DIALOGS:-1}"
+export WINE_NATIVE_FILE_MANAGER="${WINE_NATIVE_FILE_MANAGER:-1}"
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 state="${XDG_DATA_HOME:-$HOME/.local/share}/wecom"
 mkdir -p -m 700 -- "$state"
@@ -15,6 +21,7 @@ if [[ ! -f "$state/prefix/system.reg" ]]; then
   rmdir -- "$temporary"
   trap - EXIT
 fi
+python3 "$root/configure-prefix.py" "$root" "$state/prefix"
 read -r version revision < "$root/application-version"
 if [[ "$(cat "$state/prefix/.wecom-application" 2>/dev/null || true)" != "$revision" ]]; then
   # An existing prefix owns account data; update only the packaged application files.

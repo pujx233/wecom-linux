@@ -4,7 +4,7 @@
 #include <string.h>
 
 static HWND owner, popup, shadow;
-static BOOL paint_popup;
+static BOOL paint_popup, compact;
 
 static LRESULT CALLBACK proc(HWND hwnd, UINT message, WPARAM wp, LPARAM lp)
 {
@@ -17,7 +17,7 @@ static LRESULT CALLBACK proc(HWND hwnd, UINT message, WPARAM wp, LPARAM lp)
 
         if (hwnd == popup && !paint_popup) return 0;
         brush = CreateSolidBrush(hwnd == popup ? RGB(0, 255, 0) :
-                                  hwnd == owner ? RGB(96, 96, 96) : RGB(0, 0, 255));
+                                  hwnd == owner ? RGB(96, 96, 96) : compact ? RGB(0, 0, 0) : RGB(0, 0, 255));
         dc = BeginPaint(hwnd, &paint);
         FillRect(dc, &paint.rcPaint, brush);
         DeleteObject(brush);
@@ -49,11 +49,12 @@ static void state(const char *phase)
     fflush(stdout);
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
     WNDCLASSW cls = {.lpfnWndProc = proc, .lpszClassName = L"FirstTransactionBody"};
     char command[32];
 
+    compact = argc > 1 && !strcmp(argv[1], "--compact");
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     if (!RegisterClassW(&cls)) return 2;
     cls.lpszClassName = L"FirstTransactionDecoration";
@@ -72,10 +73,12 @@ int main(void)
                              0, 0, 0, 0, popup, NULL, NULL, NULL);
     if (!shadow) return 3;
     SetLayeredWindowAttributes(shadow, 0, 255, LWA_ALPHA);
-    SetWindowPos(popup, NULL, 500, 300, 640, 960, SWP_NOZORDER | SWP_NOACTIVATE);
+    SetWindowPos(popup, NULL, compact ? 400 : 500, 300, compact ? 240 : 640,
+                 compact ? 160 : 960, SWP_NOZORDER | SWP_NOACTIVATE);
     InvalidateRect(popup, NULL, FALSE);
     ShowWindow(popup, SW_SHOW);
-    SetWindowPos(shadow, NULL, 452, 252, 736, 1056, SWP_NOZORDER | SWP_NOACTIVATE);
+    SetWindowPos(shadow, NULL, compact ? 390 : 452, compact ? 290 : 252,
+                 compact ? 260 : 736, compact ? 180 : 1056, SWP_NOZORDER | SWP_NOACTIVATE);
     ShowWindow(shadow, SW_SHOWNOACTIVATE);
     UpdateWindow(shadow);
     pump();

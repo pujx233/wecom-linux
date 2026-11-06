@@ -52,10 +52,12 @@ required_components = ['wine/bin/wineserver', 'wine/lib/wine/x86_64-unix/ntdll.s
                        'wine/lib/wine/x86_64-unix/win32u.so', 'wine/lib/wine/x86_64-unix/winex11.so',
                        'wine/lib/wine/x86_64-unix/wineps.so', 'wine/lib/wine/x86_64-unix/winewayland.so',
                        'wine/lib/wine/x86_64-unix/mountmgr.so',
+                       'wine/lib/wine/x86_64-unix/comdlg32.so',
                        'wine/lib/wine/x86_64-windows/wineboot.exe']
 for architecture in ('i386-windows', 'x86_64-windows'):
-    for name in ('imm32.dll', 'cfgmgr32.dll', 'setupapi.dll', 'ntoskrnl.exe'):
+    for name in ('imm32.dll', 'cfgmgr32.dll', 'setupapi.dll', 'ntoskrnl.exe', 'comdlg32.dll', 'shell32.dll'):
         required_components.append(f'wine/lib/wine/{architecture}/{name}')
+required_components.append('wine/lib/wine/i386-windows/explorer.exe')
 for relative in required_components:
     assert relative in spec['wine_components'].values(), 'Incomplete Wine component manifest: ' + relative
 args.stage.parent.mkdir(parents=True, exist_ok=True)
@@ -164,8 +166,9 @@ for name, relative in spec['wine_components'].items():
 for relative in ('drive_c/windows/explorer.exe', 'drive_c/windows/system32/explorer.exe'):
     overlay(files / 'wine/lib/wine/x86_64-windows/explorer.exe', template / relative)
 overlay(files / 'wine/lib/wine/x86_64-windows/wineboot.exe', template / 'drive_c/windows/system32/wineboot.exe')
+overlay(files / 'wine/lib/wine/i386-windows/explorer.exe', template / 'drive_c/windows/syswow64/explorer.exe')
 for architecture, directory in (('x86_64-windows', 'system32'), ('i386-windows', 'syswow64')):
-    for name in ('imm32.dll', 'cfgmgr32.dll', 'setupapi.dll', 'ntoskrnl.exe'):
+    for name in ('imm32.dll', 'cfgmgr32.dll', 'setupapi.dll', 'ntoskrnl.exe', 'comdlg32.dll', 'shell32.dll'):
         overlay(files / 'wine/lib/wine' / architecture / name, template / 'drive_c/windows' / directory / name)
 
 # Strip only Wine's PE debug data. Keep every application and vendor DLL byte-for-byte.
@@ -224,7 +227,7 @@ for paths in by_size.values():
 packaged = {name: digest(files / relative) for name, relative in spec['wine_components'].items()}
 print('Wine PE runtime sections preserved; identical files deduplicated', flush=True)
 for name, target in (('launch.sh', 'launch.sh'), ('package-launch.sh', 'start.sh'),
-                     ('relocate-prefix.py', 'relocate-prefix.py')):
+                     ('relocate-prefix.py', 'relocate-prefix.py'), ('configure-prefix.py', 'configure-prefix.py')):
     overlay(repo / 'ubuntu' / name, files / target)
     (files / target).chmod(0o755)
 (files / 'application-version').write_text(spec['wecom_version'] + ' ' + spec['package_version'] + '\n')
@@ -281,12 +284,14 @@ Maintainer: pujx233 <pujx0415@qq.com>
 Section: non-free/net
 Priority: optional
 Installed-Size: {installed}
-Depends: bash, coreutils, util-linux, python3, libc6 (>= {glibc_minimum}), libgcc-s1 (>= 3.0), libx11-6,
+Depends: bash, coreutils, util-linux, python3, xdg-utils, file, libglib2.0-bin, xdg-desktop-portal,
+ xdg-desktop-portal-gtk | xdg-desktop-portal-gnome | xdg-desktop-portal-kde | xdg-desktop-portal-lxqt,
+ libc6 (>= {glibc_minimum}), libgcc-s1 (>= 3.0), libx11-6,
  libxext6, libfreetype6, libfontconfig1, libdbus-1-3, libxrandr2, libxrender1,
  libxcursor1, libxi6, libxfixes3, libxcomposite1, libxdamage1, libxinerama1,
  libgnutls30t64 | libgnutls30, ca-certificates,
  libpulse0 (>= 0.99.1) | libasound2t64 (>= 1.0.16) | libasound2 (>= 1.0.16)
-Recommends: xwayland, python3-gi, libgl1, libegl1, libvulkan1, libxkbregistry0,
+Recommends: xwayland, python3-gi, fonts-noto-cjk, libgl1, libegl1, libvulkan1, libxkbregistry0,
  libudev1 (>= 183), libusb-1.0-0 (>= 2:1.0.21), libv4l-0, libcups2t64 | libcups2,
  libkrb5-3 (>= 1.8+dfsg), libgssapi-krb5-2 (>= 1.17),
  libglib2.0-0t64 (>= 2.80) | libglib2.0-0 (>= 2.80),

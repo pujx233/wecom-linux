@@ -2,8 +2,10 @@
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-static HWND window, previews[2];
+static HWND window, peer, previews[2];
+static BOOL menu;
 static void state(const char *event)
 {
     HWND current;
@@ -13,9 +15,11 @@ static void state(const char *event)
         if (current == previews[0]) { top = 0; break; }
         if (current == previews[1]) { top = 1; break; }
     }
-    printf("{\"event\":\"%s\",\"body\":%lu,\"frame\":%lu,\"top_preview\":%d}\n", event,
+    printf("{\"event\":\"%s\",\"body\":%lu,\"frame\":%lu,\"top_preview\":%d,"
+           "\"owner_focused\":%s,\"visible\":%s}\n", event,
            (unsigned long)(ULONG_PTR)GetPropA(window, "__wine_x11_whole_window"),
-           (unsigned long)(ULONG_PTR)GetPropA(window, "__wine_x11_wm_window"), top);
+           (unsigned long)(ULONG_PTR)GetPropA(window, "__wine_x11_wm_window"), top,
+           GetForegroundWindow() == peer ? "true" : "false", IsWindowVisible(window) ? "true" : "false");
     fflush(stdout);
 }
 static LRESULT CALLBACK proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
@@ -35,9 +39,12 @@ static LRESULT CALLBACK proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         EndPaint(hwnd, &ps);
         return 0;
     }
-    if (msg == WM_MOUSEACTIVATE) return MA_ACTIVATE;
+    if (menu && hwnd == peer && msg == WM_KILLFOCUS && window && IsWindowVisible(window))
+        ShowWindow(window, SW_HIDE);
+    if (msg == WM_MOUSEACTIVATE) return menu ? MA_NOACTIVATE : MA_ACTIVATE;
     if (msg == WM_LBUTTONDOWN)
     {
+        if (menu) { state("down"); return 0; }
         /* Some non-activating cards explicitly request focus after their first press. */
         LONG ex_style = GetWindowLongA(hwnd, GWL_EXSTYLE);
         SetWindowLongA(hwnd, GWL_EXSTYLE, ex_style & ~WS_EX_NOACTIVATE);
@@ -104,20 +111,22 @@ int main(int argc, char **argv)
     MSG msg;
     DWORD ex = WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW;
     SetProcessDPIAware();
-    if (argc > 1) ex |= strtoul(argv[1], NULL, 16);
+    menu = argc > 1 && !strcmp(argv[1], "menu");
+    if (menu) ex |= WS_EX_TOPMOST;
+    if (argc > 1 && !menu) ex |= strtoul(argv[1], NULL, 16);
     wc.lpfnWndProc = proc;
     wc.hInstance = GetModuleHandleA(NULL);
     wc.lpszClassName = "PopupInputRegression";
     RegisterClassA(&wc);
     {
-        HWND peer = CreateWindowExA(0, wc.lpszClassName, "foreground peer", WS_OVERLAPPEDWINDOW,
-                                    40, 40, 200, 120, NULL, NULL, wc.hInstance, NULL);
+        peer = CreateWindowExA(0, wc.lpszClassName, "foreground peer", WS_OVERLAPPEDWINDOW,
+                               40, 40, 200, 120, NULL, NULL, wc.hInstance, NULL);
         ShowWindow(peer, SW_SHOW);
         SetForegroundWindow(peer);
     }
     window = CreateWindowExA(ex, wc.lpszClassName, "popup input regression",
                              WS_POPUP | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_GROUP,
-                             300, 200, 640, 500, NULL, NULL, wc.hInstance, NULL);
+                             300, 200, 640, 500, menu ? peer : NULL, NULL, wc.hInstance, NULL);
     if (ex & WS_EX_LAYERED) SetLayeredWindowAttributes(window, 0, 255, LWA_ALPHA);
     ShowWindow(window, SW_SHOWNOACTIVATE);
     UpdateWindow(window);

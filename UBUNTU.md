@@ -1,12 +1,15 @@
 # Ubuntu 使用、复用与重建
 
-当前版本为企业微信 5.0.13.6005 / 私有 Wine 11.20（2026-11-05，DEB 5.0.13.6005-3）。
-验收环境为 Ubuntu 26.04.1 amd64、GNOME 50.1 Wayland/XWayland、双屏 200%、IBus/Rime。
-其他发行版、桌面和缩放比例需要另行验证。
+当前本地候选为企业微信 5.0.13.6005 / 私有 Wine 11.20，DEB 版本号 5.0.13.6005-4，尚未发布。
+已发布安装包仍为 5.0.13.6005-3。本轮使用 Ubuntu 26.04 GNOME/Mutter 的 100%/200% 私有会话，
+以及 Fedora 44 的嵌套 niri 26.04 / xwayland-satellite 0.8.3 软件渲染环境验证。
+另在 Ubuntu 26.04.1 / KWin 6.6.6 / Mesa 26.0.8 的双屏 100%/130% 私有会话验证真实菜单、绘制和文件接口。
+这不等于已验收其他桌面、显卡和物理 Wayland 会话。
 
 程序与未登录模板位于 `/opt/apps/com.qq.wecom.spark/files`。
 用户 prefix 位于 `${XDG_DATA_HOME:-$HOME/.local/share}/wecom/prefix`，日志在相邻的 `logs` 目录。
 首次启动按当前 Linux 用户重定位模板，升级沿用账号目录并使用安装包内的启动器、助手。
+空闲时同步包内字体和回退配置，并按桌面 DPI 配置专属 prefix；运行中的客户端不改配置。
 企微的配置修改只作用于该 prefix，不改系统 Wine 或桌面全局设置。
 
 ## 运行库依赖
@@ -14,6 +17,7 @@
 `package.py` 从包内 ELF 的 `GLIBC_*` 符号计算 libc6 下限，当前为 **2.38**。
 构建机的 glibc 版本不作为安装门槛。全部 Unix 模块均为 amd64，32 位 Windows 程序通过 WoW64 运行，
 无需安装 i386 系统库，也无需安装系统 Wine。
+`7zz` 只用于构建时解压官方安装器，首次启动不需要 `7z` 或 `7zz`。
 
 | 分类 | 依赖与用途 |
 | --- | --- |
@@ -47,6 +51,15 @@ CEF 修订仅接受固定 SHA256 的原厂 x86 DLL，回补 V8 保护模式和 C
 原 CEF 签名因此失效；`WXWork.exe` 没有修改。不能将此补丁直接套用到其他企微版本。
 邮件进程在该 prefix 中设置 IFEO `dpiAwareness=1`，与主进程的 DPI 模式保持一致。
 
+文件选择通过桌面的 FileChooser Portal，打开目录和定位文件使用 Linux 默认文件管理器。
+支持中文路径、多选、保存、取消及 COM 确认回调；带 Win32 自定义控件或不支持的选项时使用 Wine 界面。
+旧式 Win32 对话框接口仍使用 Wine，例如当前客户端图片菜单的“另存为”；其中文字体已修复。
+可分别设置 `WINE_NATIVE_FILE_DIALOGS=0`、`WINE_NATIVE_FILE_MANAGER=0` 切回 Wine。
+桌面需有可用的 Portal 文件选择后端和目录默认应用，包内声明了相应依赖。
+
+文件列表中文方块已通过启动 locale 与字体链接迁移修复。
+niri 下额外标题栏的方块来自 xwayland-satellite 缺少字体回退，详见
+[独立补丁](ubuntu/xwayland-satellite-fonts/README.md)；不通过强改 Wine 标题字体处理。
 托盘菜单定位及 XWayland 截图黑屏仍未修复。图片准备、网络取数与桌面开窗动画仍有耗时。
 附件收发、审批、音视频、已读人数等功能未全面验收，不能据此承诺企业微信全部功能可用。
 
@@ -83,7 +96,7 @@ python3 ubuntu/package.py \
   --wine-source /absolute/wine-11.20.tar.gz \
   --installer /absolute/WeCom_5.0.13.6005.exe \
   --stage /absolute/new-stage \
-  --output /absolute/com.qq.wecom.spark_5.0.13.6005-3_amd64.deb
+  --output /absolute/com.qq.wecom.spark_5.0.13.6005-4_amd64.deb
 ```
 
 自行构建后更新 `release.json` 中的组件指纹，再运行打包。
@@ -97,11 +110,15 @@ python3 ubuntu/package.py \
 它们在私有 GNOME/XWayland 会话中运行，使用合成窗口和账号无关的测试 prefix。
 真实客户端的场景与通过范围单列于 `validation.json`，不会以模型测试替代实际客户端验收。
 
-模板默认 192 DPI（200%）。调整其他缩放时先退出企微，再只修改专属 prefix：
+启动器优先读取 X11 的 XSettings `Xft/DPI` 和 X resources，再读取桌面的显示配置。
+原模板中的固定 192 DPI 会迁移到桌面 DPI；手工通过 Wine 配置修改过的 DPI 会保留。
+初始化、升级和实际客户端统一使用中文 locale，避免 Wine 切换代码页时覆盖包内字体回退表。
+
+退出企微后，可以为本次启动指定 DPI，或清除手工 DPI 标记、恢复跟随桌面：
 
 ```sh
-WINEPREFIX="$HOME/.local/share/wecom/prefix" \
-  /opt/apps/com.qq.wecom.spark/files/wine/bin/wine winecfg
+WECOM_DPI=120 /opt/apps/com.qq.wecom.spark/files/start.sh
+WECOM_DPI=auto /opt/apps/com.qq.wecom.spark/files/start.sh
 ```
 
 新源码、组件或缩放组合须重新验收，不能沿用旧版本的通过结论。

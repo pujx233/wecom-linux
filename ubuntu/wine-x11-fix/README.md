@@ -46,6 +46,19 @@ PE 组件单独使用 MinGW 构建，GDI+、IMM32 和设备管理组件同时提
 - [ime-position](tests/ime-position/README.md)：DPI、composition、候选锚点与焦点切换。
 - [pnp-relations](tests/pnp-relations/README.md)：设备关系、通知和旧缓存迁移。
 - `tests/package-upgrade.py`：独立环境中的首次启动、繁忙目录处理、升级和再次启动。
+- `tests/run-native-file-dialogs.py`：32/64 位 Portal 结果、取消、回调、服务退出和文件管理器协议。
+
+原生文件接口用例必须使用独立显示会话及无账号 prefix，在其父目录创建 `.wecom-native-file-qa` 标记。
+脚本自动创建私有 D-Bus 会话并启动模拟服务，不替换当前桌面的 Portal：
+
+```sh
+python3 tests/run-native-file-dialogs.py --runtime /absolute/wine \
+  --prefix /absolute/private-qa/prefix --output /absolute/private-qa/results
+```
+
+需要 Python GI、dbus-run-session、双架构 MinGW 编译器及已初始化的测试 prefix。
+容器没有编译器时，可用 `--fixtures /absolute/probes` 指定已编译的 `probe32.exe`、`probe64.exe`。
+模拟协议通过后，还应在真实桌面后端验证选择、取消、中文路径和 Linux 文件管理器，不能只验模拟服务。
 
 隔离用例使用私有显示会话及无账号 prefix。当前四项附属坐标回归、现场快速拖动和最大化还原通过。
 低频卡片遮挡、完整混合 DPI 和 CFS_RECT 路径尚未全部验证。

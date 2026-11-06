@@ -1,0 +1,230 @@
+diff --git a/src/server/decoration.rs b/src/server/decoration.rs
+index db37dc2..13f918e 100644
+--- a/src/server/decoration.rs
++++ b/src/server/decoration.rs
+@@ -1,13 +1,16 @@
+ use crate::server::{InnerServerState, ServerState, SurfaceRole};
+ use crate::{X11Selection, XConnection};
+ 
+-use ab_glyph::{Font, FontRef, Glyph, PxScaleFont, ScaleFont};
++use ab_glyph::{Font, FontArc, Glyph, PxScaleFont, ScaleFont};
++#[cfg(feature = "fontconfig")]
++use ab_glyph::FontVec;
+ use hecs::{CommandBuffer, Entity, World};
+ use log::{error, warn};
+ use smithay_client_toolkit::registry::SimpleGlobal;
+ use smithay_client_toolkit::shm::slot::SlotPool;
+-use std::borrow::Cow;
+ use std::sync::LazyLock;
++#[cfg(feature = "fontconfig")]
++use std::{path::PathBuf, sync::OnceLock};
+ use tiny_skia::{Color, Paint, PathBuilder, Pixmap, Stroke, Transform};
+ use tiny_skia::{ColorU8, Rect};
+ use wayland_client::Proxy;
+@@ -382,25 +385,26 @@ fn title_pixmap(title: &str, max_width: u32, height: u32, scale: f32) -> Option<
+         return None;
+     }
+ 
+-    let (glyphs, font) = layout_title_glyphs(title, max_width, height, scale);
++    let glyphs = layout_title_glyphs(title, max_width, height, scale);
+ 
+     let width = glyphs
+         .last()
+-        .map(|g| g.position.x + font.h_advance(g.id))?
++        .map(|g| g.glyph.position.x + g.font.h_advance(g.glyph.id))?
+         .ceil() as u32;
+ 
+     let mut pixmap = Pixmap::new(width, height).unwrap();
+     let data = pixmap.pixels_mut();
+ 
+-    for glyph in glyphs {
+-        if let Some(og) = font.outline_glyph(glyph) {
++    for title_glyph in glyphs {
++        if let Some(og) = title_glyph.font.outline_glyph(title_glyph.glyph) {
+             let bounds = og.px_bounds();
+             og.draw(|x, y, coverage| {
+-                let pixel_idx =
+-                    ((bounds.min.x as u32 + x) + (bounds.min.y as u32 + y) * width) as usize;
+-
+-                data[pixel_idx] =
+-                    ColorU8::from_rgba(0, 0, 0, (coverage * 255.0) as u8).premultiply();
++                let x = bounds.min.x as i32 + x as i32;
++                let y = bounds.min.y as i32 + y as i32;
++                if x >= 0 && y >= 0 && x < width as i32 && y < height as i32 {
++                    data[(x as u32 + y as u32 * width) as usize] =
++                        ColorU8::from_rgba(0, 0, 0, (coverage * 255.0) as u8).premultiply();
++                }
+             });
+         }
+     }
+@@ -408,7 +412,7 @@ fn title_pixmap(title: &str, max_width: u32, height: u32, scale: f32) -> Option<
+     Some(pixmap)
+ }
+ 
+-static FONT_DATA: LazyLock<Cow<'static, [u8]>> = LazyLock::new(|| {
++static FONT: LazyLock<FontArc> = LazyLock::new(|| {
+     #[cfg(feature = "fontconfig")]
+     {
+         let fc = fontconfig::Fontconfig::new().expect("Failed to initialize fontconfig.");
+@@ -416,38 +420,87 @@ static FONT_DATA: LazyLock<Cow<'static, [u8]>> = LazyLock::new(|| {
+             .find("opensans", None)
+             .expect("Failed to load Open Sans Regular.");
+         let data = std::fs::read(font.path).expect("Failed to read font from disk.");
+-        Cow::Owned(data)
++        FontVec::try_from_vec_and_index(data, font.index.unwrap_or(0) as u32)
++            .expect("Failed to parse font.")
++            .into()
+     }
+     #[cfg(not(feature = "fontconfig"))]
+     {
+-        Cow::Borrowed(include_bytes!("../../OpenSans-Regular.ttf"))
++        FontArc::try_from_slice(include_bytes!("../../OpenSans-Regular.ttf")).unwrap()
+     }
+ });
+ 
+-static FONT: LazyLock<FontRef<'_>> =
+-    LazyLock::new(|| FontRef::try_from_slice(FONT_DATA.as_ref()).unwrap());
++#[cfg(feature = "fontconfig")]
++struct FallbackFont {
++    path: PathBuf,
++    index: u32,
++    font: OnceLock<Option<FontArc>>,
++}
++
++#[cfg(feature = "fontconfig")]
++static FALLBACK_FONTS: LazyLock<Vec<FallbackFont>> = LazyLock::new(|| {
++    let fc = fontconfig::Fontconfig::new().expect("Failed to initialize fontconfig.");
++    let mut pattern = fontconfig::Pattern::new(&fc);
++    pattern.add_string(c"family", c"opensans");
++    pattern
++        .sort_fonts(true)
++        .iter()
++        .filter_map(|font| {
++            Some(FallbackFont {
++                path: font.filename()?.into(),
++                index: font.face_index().unwrap_or(0) as u32,
++                font: OnceLock::new(),
++            })
++        })
++        .collect()
++});
++
++fn title_font(c: char) -> &'static FontArc {
++    if FONT.glyph_id(c).0 != 0 {
++        return &FONT;
++    }
++    #[cfg(feature = "fontconfig")]
++    for fallback in FALLBACK_FONTS.iter() {
++        let font = fallback.font.get_or_init(|| {
++            FontVec::try_from_vec_and_index(std::fs::read(&fallback.path).ok()?, fallback.index)
++                .ok()
++                .map(FontArc::from)
++        });
++        if let Some(font) = font {
++            if font.glyph_id(c).0 != 0 {
++                return font;
++            }
++        }
++    }
++    &FONT
++}
++
++struct TitleGlyph {
++    glyph: Glyph,
++    font: PxScaleFont<&'static FontArc>,
++}
+ 
+ fn layout_title_glyphs(
+     text: &str,
+     max_width: u32,
+     height: u32,
+     scale: f32,
+-) -> (Vec<Glyph>, PxScaleFont<&FontRef<'_>>) {
++) -> Vec<TitleGlyph> {
+     const TEXT_SIZE: f32 = 10.0;
+     const TEXT_MARGIN: f32 = 11.0;
+ 
+-    let mut ret = Vec::<Glyph>::new();
+-
+-    let px_scale = FONT.pt_to_px_scale(TEXT_SIZE * scale).unwrap();
+-    let font = FONT.as_scaled(px_scale);
++    let mut ret = Vec::<TitleGlyph>::new();
+     for c in text.chars() {
++        let face = title_font(c);
++        let font = face.as_scaled(face.pt_to_px_scale(TEXT_SIZE * scale).unwrap());
+         let mut glyph = font.scaled_glyph(c);
+         // This centers the glyphs vertically
+         glyph.position.y = (height as f32 / 2.0) - font.descent();
+         if let Some(previous) = ret.last() {
+-            glyph.position.x = previous.position.x
+-                + font.h_advance(previous.id)
+-                + font.kern(glyph.id, previous.id);
++            glyph.position.x = previous.glyph.position.x + previous.font.h_advance(previous.glyph.id);
++            if std::ptr::eq(font.font, previous.font.font) {
++                glyph.position.x += font.kern(glyph.id, previous.glyph.id);
++            }
+         } else {
+             glyph.position.x = TEXT_MARGIN * scale;
+         }
+@@ -455,10 +508,10 @@ fn layout_title_glyphs(
+             break;
+         }
+ 
+-        ret.push(glyph);
++        ret.push(TitleGlyph { glyph, font });
+     }
+ 
+-    (ret, font)
++    ret
+ }
+ 
+ fn get_decoration(
+@@ -517,3 +570,48 @@ pub fn handle_pointer_click(
+         state.close_x_window(window);
+     }
+ }
++
++#[cfg(all(test, feature = "fontconfig"))]
++mod title_tests {
++    use super::{title_font, title_pixmap};
++    use ab_glyph::Font;
++
++    #[test]
++    fn cjk_titles_use_distinct_glyphs() {
++        let mut rendered = Vec::new();
++        let output = std::env::var_os("SATELLITE_QA_RENDER_DIR").map(std::path::PathBuf::from);
++        if let Some(path) = &output {
++            std::fs::create_dir_all(path).unwrap();
++            title_pixmap("Wine - ASCII title", 500, 25, 1.0)
++                .unwrap()
++                .save_png(path.join("latin.png"))
++                .unwrap();
++        }
++        for c in "中文目录".chars() {
++            assert_ne!(title_font(c).glyph_id(c).0, 0, "No installed font covers {c}");
++            let pixmap = title_pixmap(&c.to_string(), 100, 25, 1.0).unwrap();
++            assert!(pixmap.pixels().iter().any(|pixel| pixel.alpha() > 0));
++            if let Some(path) = &output {
++                pixmap.save_png(path.join(format!("{c}.png"))).unwrap();
++            }
++            rendered.push(pixmap.data().to_vec());
++        }
++        rendered.sort();
++        rendered.dedup();
++        assert_eq!(rendered.len(), 4, "Chinese characters must not share the missing-glyph box");
++    }
++
++    #[test]
++    fn fallback_glyphs_clip_to_title_bounds() {
++        for scale in [1.0, 1.25, 2.0, 4.0] {
++            for height in [1, 13, 25, 50] {
++                for width in [1, 20, 80, 500] {
++                    if let Some(pixmap) = title_pixmap("中文目录 Åj 水 Linux", width, height, scale) {
++                        assert!(pixmap.width() <= width);
++                        assert_eq!(pixmap.height(), height);
++                    }
++                }
++            }
++        }
++    }
++}

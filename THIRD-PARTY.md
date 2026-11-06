@@ -19,3 +19,11 @@ CEF / Chromium / V8 属于各自上游和第三方版权所有者。ubuntu/patch
 - https://github.com/chromium/chromium/commit/fe73f3f71c1cc1be0734906e841922d9a60c0f0a
 
 本预览版包含该 CEF 兼容修订；投稿时明确披露给审核者，不声称是腾讯官方构建。
+
+## xwayland-satellite 补丁
+
+`ubuntu/xwayland-satellite-fonts` 提供基于上游 v0.8.3
+（b83eab900644e4c7c77982ce3d44cb490f0c5e1d）的可选字体回退源码补丁。
+上游采用 MPL-2.0，许可证随该目录提供。企业微信安装包不分发或替换系统的桥接器二进制。
+
+上游源码：https://github.com/Supreeeme/xwayland-satellite

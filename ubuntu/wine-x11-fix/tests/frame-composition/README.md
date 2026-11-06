@@ -65,6 +65,8 @@ python3 run-attached-anchor.py --runtime /absolute/private-wine --output /absolu
 弹窗临时改变激活样式时，原生窗口身份也必须保持不变。
 它还检查头像式 owned 预览在其 owner 上方，以及两个带共享框架的同 owner 窗口能按明确请求往返换序。
 首次映射后的顺序以稳定后的 Win32 枚举为准，避免将窗口管理器激活顺序当作绘制错误。
+另有置顶、不激活的 owned 菜单：三组点击都须到达，owner 不得失焦、菜单不得被提前关闭。
+`popup-input.exe menu` 可在私有 KWin 会话中用真实 Wayland 输入重复运行，覆盖点击触发的原生焦点请求。
 
 `run-frame-roles.py` 验证窗口样式相同但角色不同的两个窗口：普通可缩放分层内容必须在主体上方，
 只有通过 `WINE_X11_FRAME_DECORATION_CLASSES` 明确声明的装饰类才放在主体后面。
@@ -139,6 +141,36 @@ Wine 服务初始化单独执行并记录耗时；窗口就绪和几何断言仍
 正文绘制结束后暂不处理已排队的框架合成消息：此时桌面仍须保持旧绿色，扩展 XSync 计数必须为奇数。
 处理消息后，桌面变蓝且计数变为偶数。它同时检查装饰与正文共用原生 frame，避免误测直接显示正文的路径。
 测试使用私有 GNOME 会话与空白 prefix，不运行企业微信，也不操作用户桌面。
+私有会话把 GSettings 保存在 QA 目录，关闭热角，避免测试指针初始化触发概览而误读桌面像素；
+该设置不进入应用启动器，也不修改宿主桌面。
+
+`run-shape-clip.py --runtime /absolute/private-wine --output /absolute/new-result-dir` 验证合成时的形状裁剪。
+分层装饰只显示左侧 16 像素，测试直接把其 backing pixmap 的形状外区域写成白色，再反复重绘正文。
+源中的白色必须仍在，外框对应位置必须透明，装饰与正文颜色必须正确，以免把清除源数据当作修复。
+Fedora/niri 的旧驱动失败，新驱动通过；GNOME 的旧驱动也能通过，不能拿该控制组替代 niri 验证。
+复用已运行的私有 niri 容器时可加 `--existing-niri --fixture /absolute/shape-clip.exe`，
+其中 fixture 用同目录的 `shape-clip.c` 编译。该模式要求运行时目录和输出属于带标记的私有 QA 目录，
+仍创建新的空白 Wine prefix，不使用登录账号。报告记录驱动与 fixture 指纹。
+
+`run-resize-extents.py` 的 `WECOM_QA_NO_EXTENDED_SYNC=1` 模式在私有会话中暂时移除扩展同步能力声明，
+保持外框实际位置、尺寸不变，冻结 WM 后改变正文及边距。新版必须直接提交新图像，不能等待空操作确认。
+`WECOM_QA_STATIONARY=1` 在保留扩展同步时检查同一情况；默认模式仍要求真实移动等待 WM 确认。
+这些模式退出时恢复能力声明和 WM，不改桌面全局设置。
+基础模式现在要求公布一个计数器，扩展模式要求公布两个计数器，避免只在 GNOME 的扩展协议下通过。
+
+`run-kwin-first-transaction.py --runtime /absolute/wine --output /absolute/private-qa/result`
+在已运行的私有 KWin 会话中检查基础 XSync。输出的父目录必须包含 `.wecom-frame-qa`，
+测试创建独立空白 prefix，不使用账号。环境应为双屏 2560×1440、130%，逻辑高度 1108；
+其他高度通过 `--logical-height` 指定。`kwin-capture.py` 通过 KWin 截图 API 取得合成后的像素。
+正文未就绪时必须保持 owner 背景、计数器为 0、`_XWAYLAND_ALLOW_COMMITS=0`；
+正文就绪后必须显示目标颜色、确认基础请求并允许提交。首次打开和两次重开均检查。
+同时检查实际加载的驱动 inode。旧驱动没有计数器且提前显示黑矩形，应作为失败对照保留。
+
+`../prefix-settings.py --files /absolute/prepared-package-files --qa /absolute/new-result-dir` 验证真实打包启动器。
+它启动 100%/200% 私有桌面，读取客户端窗口 DPI，检查手工值、忙碌 prefix、字体修复及数据保留。
+可用 `LANG=en_US.UTF-8 LC_ALL=C` 启动测试，验证包装器能够统一所有 Wine 命令的 locale。
+缺字正反例隐藏宿主字体，在客户端 locale 下用 32/64 位、11 像素 Tahoma 绘制真实中文字形。
+测试探针也必须使用客户端 locale，避免探针自己触发 Wine 重写被测字体链接。
 
 `--pending-resize` 检查混合顺序：暂停私有 WM 后，owner 只改变尺寸并阻塞消息循环；再恢复 WM，
 让它移动 frame，最后由另一线程更新阴影。此时尺寸确认尚未消费，但没有待执行的位置请求，

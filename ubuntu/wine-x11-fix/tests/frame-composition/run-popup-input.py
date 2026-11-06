@@ -59,7 +59,7 @@ with desktop(qa) as env:
         return {'point': [rx.value, ry.value], 'child': child.value}
     try:
         with recording(qa, env, name, interactive=True) as capture, (qa / (name + '.log')).open('w') as log:
-            for mode in ('0', '20', '80020'):
+            for mode in ('0', '20', '80020', 'menu'):
                 x.XFlush(d)
                 app = subprocess.Popen([str(qa / 'wine/bin/wine'), str(qa / 'popup-input.exe'), mode],
                                        env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -98,6 +98,8 @@ with desktop(qa) as env:
                     case['native_role_stable'] = (final['body'], final['frame']) == (ready['body'], ready['frame'])
                     case['passed'] = ((case['down'], case['up'], len(case['sentinel_events'])) ==
                                       ((0, 0, 6) if mode == '80020' else (3, 3, 0)) and case['native_role_stable'])
+                    if mode == 'menu':
+                        case['passed'] &= final['owner_focused'] and final['visible']
                     capture(qa / f'{name}-{mode}.png')
                     if mode == '0':
                         app.stdin.write('preview\n'); app.stdin.flush()

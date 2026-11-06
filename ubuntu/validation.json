@@ -1,16 +1,16 @@
 {
-  "status": "2026-11-05 packaged runtime checks passed; logged-in client retest pending",
+  "status": "5.0.13.6005-4 local development package; focused source, packaged runtime and retained-account tests passed",
   "sanitized": true,
-  "environment": "Ubuntu 26.04.1 amd64, GNOME 50.1 Wayland/XWayland, 200% displays, IBus/Rime",
+  "environment": "Ubuntu 26.04 GNOME/Mutter 100%/200%; Fedora 44 niri 26.04 with xwayland-satellite 0.8.3 (nested software renderer); Ubuntu 26.04.1 KWin 6.6.6/Mesa 26.0.8 (Intel OpenGL, dual 2560x1440 at 60 Hz, 100%/130%)",
   "runtime_sha256": {
     "wineserver": "81d3992df47db3e9c36d6400f95364703edaa7421c52106377287fa2720d6fb6",
     "ntdll.so": "70db13c547010f6ffe97ec289d32bf17ddf4a5b14358ccb5d82a672123d6b2d9",
     "win32u.so": "4525ee5182f1f8428baccef58c560c91d2ad0789d4c878daaa4f88ffe25f37a4",
-    "winex11.so": "60115fb5e13b29319e9e592a1d02930b5ef7dfef1d9c0555e5124971b6f59524",
+    "winex11.so": "3e67a4eae5e6f9265d87801fb08125f2461e61c13f479416bde05bd59ae08c7b",
     "wineps.so": "9d6f9767d72c3d7af3e75503a33d853a8f8a655e7114d98475421e478bb9ccff",
     "imm32-i386.dll": "2ee5fa9dab185d277184c3f8cfa2258900c5822d4195c610716d30c3d398daff",
     "imm32-x86_64.dll": "dd2a0182b5e94eb88ead7bfe50f6bf8a1a42e92bc5b760df8d511e873894185a",
-    "explorer.exe": "f4296ea6e3a3b4192d0e84c933ca5a880f97e68300fca8eac550db6089325722",
+    "explorer.exe": "88d8472088ac84387a997dcb81d8e99522bbf8485618c2298a9753c4a28c8490",
     "wine": "fa443c7a1f7d289faeffab7cf79ae2f13398bd715ab25267e725e67d6bf765a1",
     "gdiplus-i386.dll": "7638a21e0ffdef61ae77066dc5904352c60a20c64ae6a5e6d6ee896524b3be36",
     "gdiplus-x86_64.dll": "1c07e1c7ff5ab9b88f190b9a528e65566a981f8667a84fee29e350aaf1137d38",
@@ -22,15 +22,23 @@
     "setupapi.dll-x86_64-windows": "fab5daaaad453a43e5bfec0c8c61a26fe599ceeab52c0b9933dbb73d5cdce11e",
     "wineboot.exe-x86_64-windows": "1de4398bdff7d352f8956fb58b7f6d119a735680946c2cbb67b29b984f88fb78",
     "mountmgr.so": "748de97cc1dfbbb334908a17409f1ad5f4df6d07b17c830a81d8828b1c05956c",
-    "winewayland.so": "011ec6b8e4bfd6fa9326ea33e7ba787c6846569096d32f18fda55bace0781277"
+    "winewayland.so": "011ec6b8e4bfd6fa9326ea33e7ba787c6846569096d32f18fda55bace0781277",
+    "comdlg32-i386.dll": "4ea88f26787b0d5a3a575f71b9b56ad44a7f526f4278573b8934321fc97940ed",
+    "shell32-i386.dll": "451c82ed60dfa6da9aa80a865a196342ed32046dbfd60ec30c5edbb4ad3d58ce",
+    "comdlg32-x86_64.dll": "c8845d809230571542f6fd1365dd9190390dba2b0801a1dafd9a3443b66cfc05",
+    "shell32-x86_64.dll": "9cc82fcec2758b09ff7aab2d2fefdbada7702bf90f59e471020dcb4977e74e0d",
+    "comdlg32.so": "5259b529e2d98d30276839d8eecdd25e81bff33e4e9f7e46746b4921b419131b",
+    "explorer-i386.exe": "88f151bf360cc693377a9c1a0b8132d06f6806aeea321b1d4fada6c3d0044f9e"
   },
   "source_patch_replay": {
     "source_archive_sha256": "98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793",
-    "patch_sha256": "9cc832a291a9b30245b9c94ebb302899d8b23bf4da6ca3f3bac0882c088c0d50",
-    "modified_files": 55,
-    "replay_tree": "adfa0fdd591937b1195df2721ee4dbadb09962ff",
+    "patch_sha256": "179c767a6113b93f7c3f2554382d5acc21d9cd06c523c1fa9a738c687c0a4fbb",
+    "modified_files": 64,
     "exact_content_and_modes": true,
-    "patched_source_archive_sha256": "447a1481801b1761282c9c7151f23362ad7f3e073bbf2e961da668f693b68490"
+    "full_tree_entries": 12471,
+    "full_tree_matches_build_source": true,
+    "replay_manifest_sha256": "6eabf9adc8e342842a2a459f88e7a2778f504d6840fd4e84fb8eddbf72f95662",
+    "mode_scope": "Git executable bits; all source file contents and paths match"
   },
   "isolated": {
     "attached_coordinates": {
@@ -393,6 +401,148 @@
         ],
         "activation_verified": false
       }
+    },
+    "current_candidate": {
+      "driver_sha256": "3e67a4eae5e6f9265d87801fb08125f2461e61c13f479416bde05bd59ae08c7b",
+      "checks": {
+        "no_ack": true,
+        "delayed_move": true,
+        "stationary": true,
+        "normal": true,
+        "frame_sync": true,
+        "first_frame": true,
+        "cancel_reopen": true,
+        "attached_coordinates": true,
+        "shape_niri": true,
+        "shape_mutter": true,
+        "noactivate_input_and_explicit_activation": true
+      },
+      "shape_old_niri_passed": false,
+      "shape_old_driver_sha256": "0c1a6ce12e49e04000ed7e480f43eb693c1f8895a5aac90d11f00c9afb77a136",
+      "noop_old_driver_passed": false,
+      "noop_old_driver_sha256": "60115fb5e13b29319e9e592a1d02930b5ef7dfef1d9c0555e5124971b6f59524",
+      "prefix_settings": {
+        "passed": true,
+        "source_desktop_locale": {
+          "LANG": "en_US.UTF-8",
+          "LC_CTYPE": "C.UTF-8",
+          "LC_ALL": "C"
+        },
+        "dpi_cases": [
+          {
+            "name": "fresh-100-percent",
+            "dpi": 96
+          },
+          {
+            "name": "existing-prefix-font-repair",
+            "dpi": 96
+          },
+          {
+            "name": "automatic-200-percent",
+            "dpi": 192
+          },
+          {
+            "name": "manual-dpi-preserved",
+            "dpi": 120
+          },
+          {
+            "name": "explicit-return-to-auto",
+            "dpi": 192
+          }
+        ],
+        "glyph_bits": [
+          32,
+          64
+        ],
+        "tahoma_pixel_height": 11,
+        "host_fonts_hidden": true,
+        "negative_distinct": 1,
+        "repaired_distinct": 4,
+        "private_data_preserved": true,
+        "report_sha256": "b3d623d99b8d5c3e5517846e140adf5c2d8c8d374c3d6c4a55850e3ea35b8f67",
+        "driver_sha256": "3e67a4eae5e6f9265d87801fb08125f2461e61c13f479416bde05bd59ae08c7b"
+      },
+      "final_shape_runner_passed": true,
+      "mutter_groups": 9,
+      "mutter_report_sha256": "db654199780c2de12be819952130dad6622d271d97254bf39764c9a06af48561",
+      "shape_niri_report_sha256": "e19aef32b3a164065827abfe0320ff77ddf9015c4528463529a7a644b03d0a9e",
+      "kwin_basic_sync": {
+        "passed": true,
+        "new_driver_sha256": "3e67a4eae5e6f9265d87801fb08125f2461e61c13f479416bde05bd59ae08c7b",
+        "old_driver_sha256": "891547595408235c1759632a490d92d2bb71e9e071f3f4988e466434706fc94a",
+        "basic_counter_count": 1,
+        "extended_protocol_advertised_by_wm": false,
+        "old_driver_three_black_pending_opens": true,
+        "new_driver_three_opens_held_before_body": true,
+        "pixels_uploaded_before_basic_ack": true,
+        "loaded_driver_verified": true,
+        "final_report_sha256": "16976c3d04a2c7de838d407c170ab7796f6ed48d4a3baca68f72b2ba3ba683f7"
+      },
+      "noactivate_focus": {
+        "passed": true,
+        "old_driver_sha256": "010ec3b6792303da7a57644900a6a19a3ce92edc214bf43b0e06b31c190280de",
+        "new_driver_sha256": "3e67a4eae5e6f9265d87801fb08125f2461e61c13f479416bde05bd59ae08c7b",
+        "old_complete_clicks": 0,
+        "new_complete_clicks": 3,
+        "owner_focus_retained": true,
+        "explicit_card_activation_preserved": true,
+        "mutter_input_cases": 4,
+        "negative_report_sha256": "65d7bfaf0f3be450264162d41299740264b04ce15c97ae57630fccf25ef0a8e4",
+        "positive_report_sha256": "e04d0a1c936d5726172762c0c23aa8172c406b4de2a72c2f032288a40d7527f2"
+      }
+    },
+    "native_file_dialogs": {
+      "passed": true,
+      "architectures": [
+        32,
+        64
+      ],
+      "cases": 60,
+      "account_used": false,
+      "private_mock_bus": true,
+      "report_sha256": "7424ccaebf5700444b58b3631ac26eafdfa12bab4553ce48901841be6bd3eded",
+      "covers": [
+        "open",
+        "multi-select",
+        "cancel",
+        "folder",
+        "save-extension",
+        "read-only-save-rejection",
+        "COM-veto",
+        "Close-before-method-reply",
+        "early-response",
+        "WM_QUIT-code",
+        "provider-exit-before-and-after-reply",
+        "spoofed-sender",
+        "malformed-response",
+        "unsupported-service",
+        "custom-controls-fallback",
+        "reuse-and-backend-switch",
+        "ShellExecute-directory",
+        "SHOpenFolderAndSelectItems",
+        "Explorer-select",
+        "xdg-open-fallback",
+        "Save-unsupported-option-fallback",
+        "Save-selected-filter-extension",
+        "Save-filter-without-default-extension",
+        "Save-veto-current-filename"
+      ],
+      "driver_sha256": "3e67a4eae5e6f9265d87801fb08125f2461e61c13f479416bde05bd59ae08c7b"
+    },
+    "satellite_title": {
+      "component": "xwayland-satellite",
+      "version": "0.8.3",
+      "upstream_commit": "b83eab900644e4c7c77982ce3d44cb490f0c5e1d",
+      "native_titlebar_height": 25,
+      "original_distinct_cjk_glyphs": 1,
+      "patched_distinct_cjk_glyphs": 4,
+      "latin_pixels_unchanged": true,
+      "upstream_tests_passed": 86,
+      "real_dialog_title_passed": true,
+      "host_component_replaced": false,
+      "patch_sha256": "74d63f06284f96d0b735a9c0aaee5911f3f16199a38fb2d77a55fad5eeb73e94",
+      "no_fontconfig_tests_passed": 84,
+      "retained_main_xwayland_updated": true
     }
   },
   "actual": {
@@ -441,15 +591,124 @@
       "new_driver_activation_verified": true,
       "driver_sha256": "4d5473d7aad4d5b1d551d7e444fd90807215697bdf085f3948fcf85794c821b1"
     },
-    "current_driver_retested": false,
-    "last_accepted_driver_sha256": "4d5473d7aad4d5b1d551d7e444fd90807215697bdf085f3948fcf85794c821b1"
+    "current_driver_retested": true,
+    "last_accepted_driver_sha256": "4d5473d7aad4d5b1d551d7e444fd90807215697bdf085f3948fcf85794c821b1",
+    "current_candidate": {
+      "logged_in": true,
+      "account_clone_used": true,
+      "original_prefix_used": false,
+      "menu_cycles": 8,
+      "width_changes": 3,
+      "captures": 21,
+      "native_wayland_input": true,
+      "shape_residue_removed": true,
+      "chinese_filenames_verified": true,
+      "file_sent": false,
+      "driver_sha256": "010ec3b6792303da7a57644900a6a19a3ce92edc214bf43b0e06b31c190280de",
+      "application_revision": "5.0.13.6005-4",
+      "native_linux_file_chooser": true,
+      "caption_chinese_fallback_complete": true,
+      "environment": "Fedora 44 niri 26.04/XWayland (nested llvmpipe)",
+      "visible_menu_opens_verified": 8,
+      "native_linux_file_manager": true,
+      "native_file_navigation_and_cancel": true,
+      "native_file_dialog_enabled_in_retained_prefix": true,
+      "account_retained_after_runtime_upgrade": true,
+      "caption_fix_scope": "Patched xwayland-satellite deployed to the retained private test container; host unchanged",
+      "real_native_fixture_multi_select": true,
+      "real_native_fixture_save": true,
+      "real_native_file_manager_selection": true,
+      "latest_menu_and_width_regression_passed": true,
+      "satellite_version": "0.8.3 + font fallback",
+      "native_file_chooser_default_x11_backend_passed": true,
+      "scope": "Authenticated niri run before the final NOACTIVATE focus correction; original prefix retained, GUI stopped for KDE testing"
+    },
+    "kwin_current_candidate": {
+      "passed": true,
+      "logged_in": true,
+      "original_daily_prefix_used": false,
+      "driver_sha256": "3e67a4eae5e6f9265d87801fb08125f2461e61c13f479416bde05bd59ae08c7b",
+      "loaded_driver_verified": true,
+      "application_revision": "5.0.13.6005-4",
+      "kwin": "6.6.6",
+      "mesa": "26.0.8",
+      "gpu": "Intel ARL OpenGL/EGL",
+      "physical_output_hz": 60,
+      "full_plasma_shell_used": false,
+      "outputs": 2,
+      "native_output_pixels": [
+        2560,
+        1440
+      ],
+      "scales": [
+        1.0,
+        1.3
+      ],
+      "wine_dpi": 96,
+      "menu_cases": 24,
+      "menu_samples": 5439,
+      "opaque_menu_body_black_samples": 0,
+      "maximum_sample_gap_ms": 22.961,
+      "capture_api_average_hz_range": [
+        150.31,
+        228.42
+      ],
+      "body_frame_pixel_checks": 10,
+      "menu_matrix_report_sha256": "0106657eaee2d0c9c85529f4cc942262392634d51246b84d4d5ea1d39d92864e",
+      "real_native_file_interfaces": {
+        "passed": true,
+        "driver_sha256": "3e67a4eae5e6f9265d87801fb08125f2461e61c13f479416bde05bd59ae08c7b",
+        "loaded_driver_inode_verified": true,
+        "wine_client_processes": 15,
+        "prefix_comdlg32_sha256": {
+          "i386-windows": "4ea88f26787b0d5a3a575f71b9b56ad44a7f526f4278573b8934321fc97940ed",
+          "x86_64-windows": "c8845d809230571542f6fd1365dd9190390dba2b0801a1dafd9a3443b66cfc05"
+        },
+        "native_kde_upload_chinese_navigation_and_cancel": true,
+        "owner_disabled_during_dialog": true,
+        "owner_enabled_after_cancel": true,
+        "native_dolphin_file_selected": true,
+        "image_save_legacy_wine_dialog_chinese_valid": true,
+        "image_save_and_open_folder_mouse_clicks_work": true,
+        "message_or_file_sent": false,
+        "authenticated_client_restarted_without_qr": true
+      },
+      "file_interfaces_report_sha256": "3f4be043e0d8cef3061a24db3f1af171ecff7ded89295ef214e9effca7f0a765",
+      "maximize_restore_geometry_cycles": 6,
+      "maximize_restore_geometry_passed": true,
+      "geometry_report_sha256": "393abf6ca9602745a20203f672cd015e0a1a1228696a937715753629e40b5195",
+      "after_live_scaling_work_area_was_stale": true,
+      "work_area_xrandr_before": [
+        5120,
+        1440
+      ],
+      "net_workarea_before": [
+        3938,
+        1108
+      ],
+      "net_workarea_after_normal_output_rearrange": [
+        5119,
+        1440
+      ],
+      "wine_scaling_compensation_added": false,
+      "field_rx580_or_plasma_x11_issue_confirmed_fixed": false,
+      "published": false
+    }
   },
   "known_limits": [
     "Tray menu placement and XWayland desktop screenshot black remain unresolved.",
     "First mail and avatar loading still takes time.",
     "Wine Bluetooth name string leak remains unfixed.",
     "Rare card stacking, CFS_RECT candidate positioning and mixed-DPI scenarios remain incomplete.",
-    "Audio/video, approvals, attachments and other desktop environments are not fully validated."
+    "Audio/video, approvals, attachments and other desktop environments are not fully validated.",
+    "Portal must have a working desktop backend and a configured directory application.",
+    "Portal does not expose intermediate navigation events; COM notifications describe committed selection.",
+    "Native Win32 custom controls and unsupported options retain the Wine dialog.",
+    "The xwayland-satellite title font fix is separate and does not replace the host compositor.",
+    "The field RX580 and Plasma X11 occasional menu origin were not reproduced or accepted.",
+    "In the standalone KWin session, live scale changes left stale EWMH work-area dimensions until an ordinary output layout change; no Wine scale heuristic was added.",
+    "Image context-menu Save As uses the legacy Wine dialog; its Chinese text is valid. IFileDialog uploads use the desktop Portal.",
+    "The no-7zip startup check covers this DEB template; third-party Fedora transplant launchers were not obtained."
   ],
   "release_acceptance_complete": false,
   "package_validation": {
@@ -480,7 +739,7 @@
       "driver_sha256": "60115fb5e13b29319e9e592a1d02930b5ef7dfef1d9c0555e5124971b6f59524"
     },
     "runtime_driver_sha256": "60115fb5e13b29319e9e592a1d02930b5ef7dfef1d9c0555e5124971b6f59524",
-    "matches_current_runtime": true,
+    "matches_current_runtime": false,
     "frame_extent_regression": {
       "passed": true,
       "loaded_driver_verified": true
@@ -490,6 +749,58 @@
       "account_used": false,
       "packaged_driver_loaded": true
     },
-    "package_rebuilt": true
+    "package_rebuilt": true,
+    "scope": "Last published 5.0.13.6005-3 only; current local -4 candidate tracked separately."
+  },
+  "history_note": "Historical runs are retained with their original driver hashes. Authenticated niri GUI coverage precedes the final focus change; final KWin, Mutter, niri shape, prefix and packaged checks are recorded separately.",
+  "current_candidate_package_built": true,
+  "current_candidate_package": {
+    "version": "5.0.13.6005-4",
+    "development_only": true,
+    "published": false,
+    "stage_runtime_tested": true,
+    "non_debug_pe_sections_preserved": true,
+    "wine_components": 26,
+    "native_bridge_cases": 24,
+    "fresh_prefix_settings_passed": true,
+    "dpi_cases": 5,
+    "font_negative_and_positive_passed": true,
+    "template_unchanged": true,
+    "private_data_preserved": true,
+    "first_start_without_7z_7zz_7za": true,
+    "no_archiver_test_account_used": false,
+    "no_archiver_test_dpi": 96,
+    "packaged_runtime_sha256": {
+      "wineserver": "81d3992df47db3e9c36d6400f95364703edaa7421c52106377287fa2720d6fb6",
+      "ntdll.so": "70db13c547010f6ffe97ec289d32bf17ddf4a5b14358ccb5d82a672123d6b2d9",
+      "win32u.so": "4525ee5182f1f8428baccef58c560c91d2ad0789d4c878daaa4f88ffe25f37a4",
+      "winex11.so": "3e67a4eae5e6f9265d87801fb08125f2461e61c13f479416bde05bd59ae08c7b",
+      "wineps.so": "9d6f9767d72c3d7af3e75503a33d853a8f8a655e7114d98475421e478bb9ccff",
+      "imm32-i386.dll": "366ff81449d54f365f8e5b64a1be5eb13b67fe30ed684035a1ad064c0e8e3f0d",
+      "imm32-x86_64.dll": "35b25203fa117c7e10c10995ada37edf4d56673e0b98b5c5d108968fc2bccf37",
+      "explorer.exe": "0e98db85cf10575807cf0e5677be600413739a72b1cfd6a3c0ea21a3b5452ec1",
+      "wine": "fa443c7a1f7d289faeffab7cf79ae2f13398bd715ab25267e725e67d6bf765a1",
+      "gdiplus-i386.dll": "0623c1e20536c9c734b0d8bef938b54ea6364fed009d98ed3b6f07ce310137ab",
+      "gdiplus-x86_64.dll": "d5d9f1b7cf9b6635033749ed6af14e3d1e8e7a184fb4c0bc69ebefb6fa925251",
+      "ntoskrnl.exe-i386-windows": "abfb279712d58a7528190dc04fb04a14910e0f695a95ab84b1676b37e65ec1e1",
+      "cfgmgr32.dll-i386-windows": "54e25039987bf47341a900bec6610a4bccf81078737f42e69abab950dbbcf5b0",
+      "setupapi.dll-i386-windows": "13098d8736e845bab49ae1c75bb437a1ee2c89eb17e17168b084e55a08e2cc11",
+      "ntoskrnl.exe-x86_64-windows": "ffd18005098f8b94a4d54f1a5e6c8d280a3e6c6368d4e7681b351048c6936e39",
+      "cfgmgr32.dll-x86_64-windows": "688951c468f0c19f1c1f70be82afd0e5332c745655d7f002c092ba9f29b64593",
+      "setupapi.dll-x86_64-windows": "32dda67beec9ec7a81d68c036be7313c8f22cfaa04414164a0a2d05adf513e39",
+      "wineboot.exe-x86_64-windows": "379440aae4fe7648b938f4ef78f3af4633a47d9ca78e6078580a389c3e5b782e",
+      "mountmgr.so": "748de97cc1dfbbb334908a17409f1ad5f4df6d07b17c830a81d8828b1c05956c",
+      "winewayland.so": "011ec6b8e4bfd6fa9326ea33e7ba787c6846569096d32f18fda55bace0781277",
+      "comdlg32-i386.dll": "a74a25be24ba7b89dff0ffe62c2ca656aa1219d123e2d24cfd64aaddfc0a588e",
+      "shell32-i386.dll": "5fd5a5d5d297bb257a2b7d5f7045aba2281645374e7e0f42d72ebd2a48ad842c",
+      "comdlg32-x86_64.dll": "22b8ff07d0611a3066f5f35be5b7a94acc1f86344150085d49f48715fbe82ec7",
+      "shell32-x86_64.dll": "05984f5c0313d5a2218fb995f61a0c6338dba6324b4becbcaa9eb68dddd930b4",
+      "comdlg32.so": "5259b529e2d98d30276839d8eecdd25e81bff33e4e9f7e46746b4921b419131b",
+      "explorer-i386.exe": "ce6e6ef4d80836e4a18f052cf5a05df71f508188671dcfa32f217ad3d80f192f"
+    },
+    "native_bridge_report_sha256": "45a97e3b871c8d6b5b400fb83efed0cd0f6eb5e433e8805e7cb35331b116826e",
+    "prefix_settings_report_sha256": "b3d623d99b8d5c3e5517846e140adf5c2d8c8d374c3d6c4a55850e3ea35b8f67",
+    "no_archiver_report_sha256": "3d89552234ca0c3bf7ad321d1590888bee69f181786fc3be66baf4aa53a90da1",
+    "no_new_oom_kill": true
   }
 }
