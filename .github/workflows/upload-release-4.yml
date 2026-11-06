@@ -1,0 +1,126 @@
+name: Upload verified WeCom -4 assets
+"on":
+  push:
+    branches: [release-upload-5.0.13.6005-4-20261106]
+permissions:
+  contents: write
+jobs:
+  upload:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      DEB: com.qq.wecom.spark_5.0.13.6005-4_amd64.deb
+      BASE: com.qq.wecom.spark_5.0.13.6005-3_amd64.deb
+    steps:
+      - name: Fetch pinned inputs
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/wecom-upload"
+          mkdir -p "$work"
+          git init -q "$work/repo"
+          git -C "$work/repo" fetch -q --depth=1 "https://github.com/$GITHUB_REPOSITORY.git" "$GITHUB_SHA"
+          git -C "$work/repo" checkout -q FETCH_HEAD
+          base_url="https://github.com/$GITHUB_REPOSITORY/releases/download/v5.0.13.6005-3"
+          curl -fL --retry 3 --max-time 300 "$base_url/$BASE" -o "$work/base.deb"
+          curl -fL --retry 3 --max-time 300 \
+            https://codeload.github.com/wine-mirror/wine/tar.gz/refs/tags/wine-11.20 \
+            -o "$work/wine-original.tar.gz"
+      - name: Reconstruct and verify exact artifacts
+        run: |
+          work="$RUNNER_TEMP/wecom-upload"
+          cat > "$work/reconstruct.py" <<'PY'
+          from pathlib import Path
+          import hashlib
+          import json
+          import os
+          import shutil
+          import subprocess
+
+          root = Path('/work')
+          os.chdir(root)
+          data = root / 'repo/.release-transfer'
+          meta = json.loads((data / 'metadata.json').read_text())
+
+
+          def check(path, expected):
+              with Path(path).open('rb') as stream:
+                  actual = hashlib.file_digest(stream, 'sha256').hexdigest()
+              assert actual == expected, (str(path), actual, expected)
+
+
+          for name in ['data.xdelta', 'wine-source-manifest.json.zst']:
+              with (data / name).open('wb') as stream:
+                  for part in sorted(data.glob(name + '.*')):
+                      with part.open('rb') as source:
+                          shutil.copyfileobj(source, stream)
+          check('base.deb', meta['base_deb_sha256'])
+          check(data / 'data.xdelta', meta['raw_delta_sha256'])
+          check(data / 'deb-prefix.bin', meta['prefix_sha256'])
+          check(data / 'deb-suffix.bin', meta['suffix_sha256'])
+          with open('base-data.tar', 'wb') as stream:
+              subprocess.run(['dpkg-deb', '--fsys-tarfile', 'base.deb'], stdout=stream, check=True)
+          check('base-data.tar', meta['base_tar_sha256'])
+          subprocess.run(['xdelta3', '-d', '-s', 'base-data.tar', str(data / 'data.xdelta'), 'data.tar'], check=True)
+          check('data.tar', meta['final_tar_sha256'])
+          with open('data.tar.xz', 'wb') as stream:
+              subprocess.run(['xz', '-6', '-T4', '-c', 'data.tar'], stdout=stream, check=True)
+          check('data.tar.xz', meta['final_xz_sha256'])
+          deb = Path('com.qq.wecom.spark_5.0.13.6005-4_amd64.deb')
+          with deb.open('wb') as stream:
+              for part in [data / 'deb-prefix.bin', Path('data.tar.xz'), data / 'deb-suffix.bin']:
+                  with part.open('rb') as source:
+                      shutil.copyfileobj(source, stream)
+          check(deb, meta['final_deb_sha256'])
+          Path('SHA256SUMS').write_text(f"{meta['final_deb_sha256']}  {deb.name}\n")
+
+          check('wine-original.tar.gz', meta['wine_original_sha256'])
+          patch = root / 'repo/ubuntu/wine-x11-fix/wine-11.20-x11-popups.patch'
+          check(patch, meta['wine_patch_sha256'])
+          source = root / 'wine'
+          source.mkdir()
+          subprocess.run(['tar', '-xf', 'wine-original.tar.gz', '--strip-components=1', '-C', str(source)], check=True)
+          subprocess.run(['patch', '--batch', '--fuzz=0', '-p1', '-d', str(source), '-i', str(patch)], check=True)
+          manifest = data / 'wine-source-manifest.json.zst'
+          check(manifest, meta['wine_source_manifest_sha256'])
+          entries = json.loads(subprocess.check_output(['zstd', '-dc', str(manifest)]))
+          paths = {str(path.relative_to(source)) for path in [source, *source.rglob('*')]}
+          assert paths == {entry[0] for entry in entries}
+          for name, kind, mode, *value in entries:
+              path = source / name
+              if kind == 'f':
+                  assert path.is_file() and not path.is_symlink(), name
+                  check(path, value[0])
+              elif kind == 'd':
+                  assert path.is_dir() and not path.is_symlink(), name
+              else:
+                  assert kind == 'l' and path.is_symlink() and str(path.readlink()) == value[0], name
+                  continue
+              path.chmod(mode)
+          archive = Path('wine-11.20-wecom-20261106-source.tar.zst')
+          subprocess.run([
+              'tar', '--sort=name', '--mtime=@1793923200', '--owner=0', '--group=0', '--numeric-owner',
+              '--use-compress-program=zstd -T2 -10', '--transform=s,^[.],wine-11.20-wecom-20261106,',
+              '-cf', str(archive), '-C', str(source), '.'
+          ], check=True)
+          check(archive, meta['wine_source_archive_sha256'])
+          archive.with_suffix(archive.suffix + '.sha256').write_text(
+              f"{meta['wine_source_archive_sha256']}  {archive.name}\n"
+          )
+          print(json.dumps({'deb': meta['final_deb_sha256'], 'source': meta['wine_source_archive_sha256']}))
+          PY
+          docker run --rm -i -v "$work:/work" -w /work ubuntu:26.04 bash -euo pipefail <<'SH'
+          apt-get -qq update
+          DEBIAN_FRONTEND=noninteractive apt-get -qq install -y xdelta3 xz-utils zstd patch python3
+          xz --version
+          zstd --version
+          python3 reconstruct.py
+          SH
+      - name: Upload verified assets to the existing draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/wecom-upload"
+          source="wine-11.20-wecom-20261106-source.tar.zst"
+          gh release upload v5.0.13.6005-4 "$work/$DEB" "$work/SHA256SUMS" \
+            "$work/$source" "$work/$source.sha256" --repo "$GITHUB_REPOSITORY" --clobber

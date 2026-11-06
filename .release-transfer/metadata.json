@@ -1,0 +1,23 @@
+{
+  "base_deb_sha256": "44f94cc58ffcadddbb03a532e3a5db8a32126341bdeb98349fa34069d4025894",
+  "final_deb_sha256": "94c287b95946e2b68cfaea4ffbcab2e4aa0107ec5205d69f6f86b403c80b6dd2",
+  "base_xz_sha256": "76c2431e181138abf480b7c460307d62f2a95c932d3d2e2d8ec3910cfcdcbd62",
+  "base_xz_bytes": 955488024,
+  "final_xz_sha256": "81f0fdf0462e4ac54b55d77337a7f9cf487f9008539f3b0cd5866d599aa8cfe2",
+  "final_xz_bytes": 955439492,
+  "final_deb_bytes": 955440952,
+  "base_tar_bytes": 2892400640,
+  "base_tar_sha256": "6d2452bf49da46172a1fa1a8653eb528c1dfc21cd79c05d0bb2df5787061f12f",
+  "final_tar_bytes": 2892728320,
+  "final_tar_sha256": "34fe351d79821abadd353bb645799e9d50631fea12301de7e4a180b85324167f",
+  "xz_cli_exact_match": true,
+  "raw_delta_sha256": "dd5250d6825dd7b79eac53f31efd27f59143537737e7c9c13724350c3cead4db",
+  "raw_delta_bytes": 1686394,
+  "full_deb_reconstruction_exact": true,
+  "wine_source_manifest_sha256": "540e8368513d03885e4f8baa811326d7254c18318f432927b212e4dcf6ea747c",
+  "wine_source_archive_sha256": "5f058b8d8964f1c55e36e36e2a5906c67ae2143914b68cf63f3ca2d98c20189b",
+  "wine_original_sha256": "98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793",
+  "wine_patch_sha256": "179c767a6113b93f7c3f2554382d5acc21d9cd06c523c1fa9a738c687c0a4fbb",
+  "prefix_sha256": "eaddcaad70fe88b073d6615becd46ee60dbffb7faab8cff26cad040c938d58fb",
+  "suffix_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}
