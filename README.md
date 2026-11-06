@@ -2,12 +2,15 @@
 
 版本
 
-企业微信 5.0.13.6005，内置 Wine 11.20，Linux 社区适配版。
-DEB 修订 5.0.13.6005-3，glibc 最低要求为 2.38，兼容 t64 与非 t64 运行库包名。
-已在 Ubuntu 26.04 amd64 平台验证。
+企业微信 5.0.13.6005，内置 Wine 11.20，Linux 社区适配测试版。
+DEB 修订 5.0.13.6005-4，glibc 最低要求为 2.38，兼容 t64 与非 t64 运行库包名。
+已在 Ubuntu 26.04 GNOME/Mutter、KWin 6.6.6 和 Fedora 44 嵌套 niri 环境验证对应场景。
 
 修复问题
 
+- 跟随桌面 DPI，修复界面过大，并保留手工 DPI 设置。
+- 修复文件列表中文方块，恢复 Linux 原生上传文件选择窗口和打开文件夹。
+- 修复 niri 下的累积黑斑，补齐 KWin 绘制同步和菜单焦点声明。
 - 修复已读名单首次打开时的轻微跳动。
 - 改善预览弹窗层级，以及窗口尺寸变化、最大化和还原时的画面错位。
 - 适配右键菜单、透明窗口、阴影和绘制裁剪，改善弹窗闪动、残影和遮挡。
@@ -24,14 +27,15 @@ DEB 修订 5.0.13.6005-3，glibc 最低要求为 2.38，兼容 t64 与非 t64 �
 
 - 托盘单击、右键行为仍不完善，“更多操作”会出现回到屏幕中间的问题。
 - XWayland 下截图黑屏。
+- RX580 现场的右键黑框，以及 Plasma X11 下菜单偶发定位到桌面左上角，仍需复测。
 
 安装
 
-从 [Releases](https://github.com/pujx233/wecom-linux/releases/tag/v5.0.13.6005-3) 下载 DEB 和 SHA256SUMS，执行：
+从 [Releases](https://github.com/pujx233/wecom-linux/releases/tag/v5.0.13.6005-4) 下载 DEB 和 SHA256SUMS，执行：
 
 ```sh
 sha256sum -c SHA256SUMS
-sudo apt install ./com.qq.wecom.spark_5.0.13.6005-3_amd64.deb
+sudo apt install ./com.qq.wecom.spark_5.0.13.6005-4_amd64.deb
 ```
 
 在应用菜单启动“企业微信”。升级保留账号和聊天记录，用户数据位于 `~/.local/share/wecom/prefix`。
