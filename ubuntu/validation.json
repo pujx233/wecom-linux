@@ -1,43 +1,44 @@
 {
-  "status": "5.0.13.6005-4 local development package; focused source, packaged runtime and retained-account tests passed",
+  "status": "QA18 menu root fix reviewed: 55/56 valid groups passed; dual-200% fullscreen monitor selection and an existing real-client maximize/restore anomaly remain open.",
   "sanitized": true,
-  "environment": "Ubuntu 26.04 GNOME/Mutter 100%/200%; Fedora 44 niri 26.04 with xwayland-satellite 0.8.3 (nested software renderer); Ubuntu 26.04.1 KWin 6.6.6/Mesa 26.0.8 (Intel OpenGL, dual 2560x1440 at 60 Hz, 100%/130%)",
+  "environment": "QA18 private Ubuntu 26.04 Mutter 100%/200%; original account on daily dual-200% GNOME with Wine 96/192 DPI. QA17 lock/unlock and niri/KWin history retain older driver fingerprints.",
   "runtime_sha256": {
     "wineserver": "81d3992df47db3e9c36d6400f95364703edaa7421c52106377287fa2720d6fb6",
     "ntdll.so": "70db13c547010f6ffe97ec289d32bf17ddf4a5b14358ccb5d82a672123d6b2d9",
-    "win32u.so": "4525ee5182f1f8428baccef58c560c91d2ad0789d4c878daaa4f88ffe25f37a4",
-    "winex11.so": "3e67a4eae5e6f9265d87801fb08125f2461e61c13f479416bde05bd59ae08c7b",
-    "wineps.so": "9d6f9767d72c3d7af3e75503a33d853a8f8a655e7114d98475421e478bb9ccff",
-    "imm32-i386.dll": "2ee5fa9dab185d277184c3f8cfa2258900c5822d4195c610716d30c3d398daff",
-    "imm32-x86_64.dll": "dd2a0182b5e94eb88ead7bfe50f6bf8a1a42e92bc5b760df8d511e873894185a",
-    "explorer.exe": "88d8472088ac84387a997dcb81d8e99522bbf8485618c2298a9753c4a28c8490",
+    "win32u.so": "e1f490af81f7109b7a38e163c717369e079a152b7d4c15577b051623e37ce136",
+    "winex11.so": "631f6fdedb9ace20b81fd7478652bb9741349dd8e510a9537ceeccbfc9c7af05",
+    "wineps.so": "30b9b3db1eda53cc307828e05fc51952edcf6771174d196d49c291a78174dc8a",
+    "imm32-i386.dll": "366ff81449d54f365f8e5b64a1be5eb13b67fe30ed684035a1ad064c0e8e3f0d",
+    "imm32-x86_64.dll": "35b25203fa117c7e10c10995ada37edf4d56673e0b98b5c5d108968fc2bccf37",
+    "explorer.exe": "0e98db85cf10575807cf0e5677be600413739a72b1cfd6a3c0ea21a3b5452ec1",
     "wine": "fa443c7a1f7d289faeffab7cf79ae2f13398bd715ab25267e725e67d6bf765a1",
-    "gdiplus-i386.dll": "7638a21e0ffdef61ae77066dc5904352c60a20c64ae6a5e6d6ee896524b3be36",
-    "gdiplus-x86_64.dll": "1c07e1c7ff5ab9b88f190b9a528e65566a981f8667a84fee29e350aaf1137d38",
-    "ntoskrnl.exe-i386-windows": "32fd0a2a4064f9558e717f133e977949228dd74829243bd032163ba7df7c98fa",
-    "cfgmgr32.dll-i386-windows": "919dd528c560ff7c0827c4007bf8a0233ce757b9feaad6a8d52b053a6daf08d4",
-    "setupapi.dll-i386-windows": "c4a12bdeae8e9e4c60ee60fa7d8ae19b212ca56fef33c24ad77dd2954961b622",
-    "ntoskrnl.exe-x86_64-windows": "0e5f86d6f0fbb09ccdefca0f908f56261ead7fc93abba322da2cdca0176af727",
-    "cfgmgr32.dll-x86_64-windows": "b0de6be30b0a31919a04653c8e0615f2782c645e0efef4118db7a6c819cb6e69",
-    "setupapi.dll-x86_64-windows": "fab5daaaad453a43e5bfec0c8c61a26fe599ceeab52c0b9933dbb73d5cdce11e",
-    "wineboot.exe-x86_64-windows": "1de4398bdff7d352f8956fb58b7f6d119a735680946c2cbb67b29b984f88fb78",
+    "gdiplus-i386.dll": "0623c1e20536c9c734b0d8bef938b54ea6364fed009d98ed3b6f07ce310137ab",
+    "gdiplus-x86_64.dll": "d5d9f1b7cf9b6635033749ed6af14e3d1e8e7a184fb4c0bc69ebefb6fa925251",
+    "ntoskrnl.exe-i386-windows": "abfb279712d58a7528190dc04fb04a14910e0f695a95ab84b1676b37e65ec1e1",
+    "cfgmgr32.dll-i386-windows": "54e25039987bf47341a900bec6610a4bccf81078737f42e69abab950dbbcf5b0",
+    "setupapi.dll-i386-windows": "13098d8736e845bab49ae1c75bb437a1ee2c89eb17e17168b084e55a08e2cc11",
+    "ntoskrnl.exe-x86_64-windows": "ffd18005098f8b94a4d54f1a5e6c8d280a3e6c6368d4e7681b351048c6936e39",
+    "cfgmgr32.dll-x86_64-windows": "688951c468f0c19f1c1f70be82afd0e5332c745655d7f002c092ba9f29b64593",
+    "setupapi.dll-x86_64-windows": "32dda67beec9ec7a81d68c036be7313c8f22cfaa04414164a0a2d05adf513e39",
+    "wineboot.exe-x86_64-windows": "379440aae4fe7648b938f4ef78f3af4633a47d9ca78e6078580a389c3e5b782e",
     "mountmgr.so": "748de97cc1dfbbb334908a17409f1ad5f4df6d07b17c830a81d8828b1c05956c",
-    "winewayland.so": "011ec6b8e4bfd6fa9326ea33e7ba787c6846569096d32f18fda55bace0781277",
-    "comdlg32-i386.dll": "4ea88f26787b0d5a3a575f71b9b56ad44a7f526f4278573b8934321fc97940ed",
-    "shell32-i386.dll": "451c82ed60dfa6da9aa80a865a196342ed32046dbfd60ec30c5edbb4ad3d58ce",
-    "comdlg32-x86_64.dll": "c8845d809230571542f6fd1365dd9190390dba2b0801a1dafd9a3443b66cfc05",
-    "shell32-x86_64.dll": "9cc82fcec2758b09ff7aab2d2fefdbada7702bf90f59e471020dcb4977e74e0d",
+    "winewayland.so": "6a7a38c28a09d71221f06d1f766ff6c174334bc10637a2e2205594f83babb7d3",
+    "comdlg32-i386.dll": "a74a25be24ba7b89dff0ffe62c2ca656aa1219d123e2d24cfd64aaddfc0a588e",
+    "shell32-i386.dll": "5fd5a5d5d297bb257a2b7d5f7045aba2281645374e7e0f42d72ebd2a48ad842c",
+    "comdlg32-x86_64.dll": "22b8ff07d0611a3066f5f35be5b7a94acc1f86344150085d49f48715fbe82ec7",
+    "shell32-x86_64.dll": "05984f5c0313d5a2218fb995f61a0c6338dba6324b4becbcaa9eb68dddd930b4",
     "comdlg32.so": "5259b529e2d98d30276839d8eecdd25e81bff33e4e9f7e46746b4921b419131b",
-    "explorer-i386.exe": "88f151bf360cc693377a9c1a0b8132d06f6806aeea321b1d4fada6c3d0044f9e"
+    "explorer-i386.exe": "ce6e6ef4d80836e4a18f052cf5a05df71f508188671dcfa32f217ad3d80f192f",
+    "winebth.so": "31dfdfb3e1d5dc298550efeea0721904606d3cb93bba1fa17e248114b53718e6"
   },
   "source_patch_replay": {
     "source_archive_sha256": "98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793",
-    "patch_sha256": "179c767a6113b93f7c3f2554382d5acc21d9cd06c523c1fa9a738c687c0a4fbb",
-    "modified_files": 64,
+    "patch_sha256": "d1bbceaaa7f252196099ec6338ac6f7c9671f27761d3cbf781da4e619cc2a9a8",
+    "modified_files": 66,
     "exact_content_and_modes": true,
     "full_tree_entries": 12471,
     "full_tree_matches_build_source": true,
-    "replay_manifest_sha256": "6eabf9adc8e342842a2a459f88e7a2778f504d6840fd4e84fb8eddbf72f95662",
+    "replay_manifest_sha256": "d5ffed9116d406f7c8ad986afb88e3aaca9ab4ea2fad9c420656fa1af936e90e",
     "mode_scope": "Git executable bits; all source file contents and paths match"
   },
   "isolated": {
@@ -543,6 +544,189 @@
       "patch_sha256": "74d63f06284f96d0b735a9c0aaee5911f3f16199a38fb2d77a55fad5eeb73e94",
       "no_fontconfig_tests_passed": 84,
       "retained_main_xwayland_updated": true
+    },
+    "revision_5": {
+      "date": "2026-11-06",
+      "package_version": "5.0.13.6005-5",
+      "base_source_sha": "c351bdc34fca63f0247613fd43b6e8ef90af568d",
+      "source_changes_uncommitted": true,
+      "driver_sha256": "e99e8e1a7f2ab168b3f8153cdb5a7bed30580da6c54164fdaf7155aab1e3826a",
+      "patch_sha256": "b6680e65c9a5347679ecfef676fe8259b964e6a32192388f06fac0c08be915a7",
+      "host_desktop_used": false,
+      "account_data_used": false,
+      "clipboard": {
+        "passed": true,
+        "cases": 12,
+        "architectures": [
+          32,
+          64
+        ],
+        "old_control_cases": 12
+      },
+      "launcher": {
+        "passed": true,
+        "inherited_environment_cases": 8,
+        "clean_environment_cases": 8
+      },
+      "upgrade": {
+        "passed": true,
+        "busy_prefix_unchanged": true,
+        "running_client_continued": true,
+        "private_data_preserved": true,
+        "same_version_not_recopied": true,
+        "template_unchanged": true
+      },
+      "lock_screen_workarea": {
+        "passed": true,
+        "cases_per_scale": 7,
+        "scales": [
+          1,
+          2
+        ],
+        "cycles_per_case": 3,
+        "no_position_change_checked": true
+      },
+      "fullscreen_comparison": {
+        "cases": 7,
+        "new_failures": [],
+        "unchanged_legacy_failures": {
+          "negative-disabled": [
+            "zoomed-fullscreen"
+          ],
+          "negative-primary-disabled": [
+            "zoomed-fullscreen"
+          ],
+          "negative-no-shadow": [
+            "zoomed-fullscreen"
+          ]
+        },
+        "all_scenarios_passed": false
+      },
+      "standard_maximization": {
+        "gating_passed": 11,
+        "legacy_non_gating_failures": [
+          "negative-default-limits"
+        ]
+      },
+      "first_frame": {
+        "passed": true,
+        "loaded_driver_verified": true,
+        "counters": [
+          3,
+          4,
+          4
+        ]
+      },
+      "unchanged_native_bridge_components": {
+        "passed": true,
+        "cases": 60,
+        "component_hashes_match": true,
+        "scope": "PE bridge tests preceded the fullscreen-only final build."
+      },
+      "unchanged_prefix_configuration": {
+        "passed": true,
+        "cases": 5,
+        "scope": "Font and DPI scripts are unchanged by the fullscreen fix."
+      },
+      "build_capabilities": {
+        "old_and_new_optional_sonames_match": true,
+        "required_features": [
+          "SONAME_LIBDBUS_1",
+          "SONAME_LIBXCOMPOSITE",
+          "SONAME_LIBXDAMAGE",
+          "SONAME_LIBXRENDER",
+          "HAVE_LIBXSHAPE"
+        ],
+        "configure_arguments": [
+          "--enable-win64",
+          "--without-mingw",
+          "--with-wayland",
+          "--without-xxf86vm"
+        ],
+        "native_sha256": "e99e8e1a7f2ab168b3f8153cdb5a7bed30580da6c54164fdaf7155aab1e3826a"
+      },
+      "mutter_native_fullscreen": {
+        "wine_used": false,
+        "account_used": false,
+        "real_desktop_used": false,
+        "cases": [
+          {
+            "scale": 1,
+            "xinerama": [
+              [
+                0,
+                3200,
+                0,
+                3840,
+                2160
+              ],
+              [
+                1,
+                0,
+                0,
+                3200,
+                2000
+              ]
+            ],
+            "requested_index": 0,
+            "expected": [
+              3200,
+              0,
+              3840,
+              2160
+            ],
+            "actual": [
+              3200,
+              0,
+              3840,
+              2160
+            ],
+            "correct_monitor": true
+          },
+          {
+            "scale": 2,
+            "xinerama": [
+              [
+                0,
+                3200,
+                0,
+                3840,
+                2160
+              ],
+              [
+                1,
+                0,
+                0,
+                3200,
+                2000
+              ]
+            ],
+            "requested_index": 0,
+            "expected": [
+              3200,
+              0,
+              3840,
+              2160
+            ],
+            "actual": [
+              0,
+              0,
+              3200,
+              2000
+            ],
+            "correct_monitor": false
+          }
+        ]
+      },
+      "report_sha256": {
+        "workarea_200": "9f43f16ec36f3ff18056127373d405365fa05f36255dc4583034a7a8ffcba7d7",
+        "workarea_100": "bb65536b24ea8179581b3bab661cbe10dbc51ee7dbe27389dc7b0be7935dc100",
+        "standard_maximize": "5df10367ce4cc6ff3acb278332d29fe43b1d9717813c696fa76c9a4c5d1824a3",
+        "comparison": "4ac7bff70a641c49222c6acdc0ed9560a4d1d5def575bdc39a21a161dbaf3a43",
+        "frame": "742898de7806a651d1131dbf7b62ab1ce3c7c4f12ebd6a8d4bfb4057509a2f95",
+        "clipboard": "1f900cabdffc18a9c6dd082d05938811a8c60396c64133e97d4b375624375145",
+        "upgrade": "3d3a0e4f8b4424956f6619780ca93443ddf56cebcaa59baf6fa55cfef367e37b"
+      }
     }
   },
   "actual": {
@@ -698,8 +882,6 @@
   "known_limits": [
     "Tray menu placement and XWayland desktop screenshot black remain unresolved.",
     "First mail and avatar loading still takes time.",
-    "Wine Bluetooth name string leak remains unfixed.",
-    "Rare card stacking, CFS_RECT candidate positioning and mixed-DPI scenarios remain incomplete.",
     "Audio/video, approvals, attachments and other desktop environments are not fully validated.",
     "Portal must have a working desktop backend and a configured directory application.",
     "Portal does not expose intermediate navigation events; COM notifications describe committed selection.",
@@ -708,7 +890,11 @@
     "The field RX580 and Plasma X11 occasional menu origin were not reproduced or accepted.",
     "In the standalone KWin session, live scale changes left stale EWMH work-area dimensions until an ordinary output layout change; no Wine scale heuristic was added.",
     "Image context-menu Save As uses the legacy Wine dialog; its Chinese text is valid. IFileDialog uploads use the desktop Portal.",
-    "The no-7zip startup check covers this DEB template; third-party Fedora transplant launchers were not obtained."
+    "The no-7zip startup check covers this DEB template; third-party Fedora transplant launchers were not obtained.",
+    "GNOME/Mutter 50.1: 200% native X11 fullscreen can select the wrong monitor, also without Wine.",
+    "QA17 after unlock: an application-button restore once left PerryShadowWnd at 3912x2066 while the main body was 2114x1338. Win32 shadow geometry itself was oversized; three subsequent button cycles passed, without erasing the failure.",
+    "Current authenticated candidate tests cover the local GNOME desktop only; niri/KWin authenticated history retains older runtime hashes.",
+    "Intermittent native maximize/restore geometry reproduced in current and preceding local -5 builds. Comparison with published -4 is pending; regression status relative to -4 is unresolved."
   ],
   "release_acceptance_complete": false,
   "package_validation": {
@@ -750,11 +936,11 @@
       "packaged_driver_loaded": true
     },
     "package_rebuilt": true,
-    "scope": "Last published 5.0.13.6005-3 only; current local -4 candidate tracked separately."
+    "scope": "Historical 5.0.13.6005-3 measurement. The previous local -5 DEB is in baseline_local_deb_before_root_fixes.package; the rebuilt current -5 is in current_authenticated_desktop.package."
   },
-  "history_note": "Historical runs are retained with their original driver hashes. Authenticated niri GUI coverage precedes the final focus change; final KWin, Mutter, niri shape, prefix and packaged checks are recorded separately.",
+  "history_note": "Historical records keep their original runtime, package, test validity and deployment scope; current root-fix results are in current_candidate_root_fixes.",
   "current_candidate_package_built": true,
-  "current_candidate_package": {
+  "historical_candidate_package_4": {
     "version": "5.0.13.6005-4",
     "development_only": true,
     "published": false,
@@ -802,5 +988,1134 @@
     "prefix_settings_report_sha256": "b3d623d99b8d5c3e5517846e140adf5c2d8c8d374c3d6c4a55850e3ea35b8f67",
     "no_archiver_report_sha256": "3d89552234ca0c3bf7ad321d1590888bee69f181786fc3be66baf4aa53a90da1",
     "no_new_oom_kill": true
+  },
+  "current_candidate_package": {
+    "version": "5.0.13.6005-5",
+    "development_only": true,
+    "deb_built": true,
+    "published": true,
+    "user_runtime_replaced": true,
+    "focused_fixes_passed": true,
+    "matches_existing_local_deb": true,
+    "existing_local_deb_sha256": "c33fa30b5b569231e8a684d9fd4bbf0bad42e2a9972911e980f3f3b2b8715fec",
+    "existing_local_deb_record": "current_menu_fix.package",
+    "runtime_fingerprints": "runtime_sha256",
+    "test_results": "current_menu_fix; earlier sections are historical",
+    "deb_sha256": "c33fa30b5b569231e8a684d9fd4bbf0bad42e2a9972911e980f3f3b2b8715fec",
+    "deb_bytes": 955555076,
+    "baseline_before_repackage": "baseline_local_deb_before_root_fixes.package"
+  },
+  "regression_2026_11_07": {
+    "date": "2026-11-07",
+    "version": "5.0.13.6005-5",
+    "git_base": "c351bdc34fca63f0247613fd43b6e8ef90af568d",
+    "driver_sha256": "e99e8e1a7f2ab168b3f8153cdb5a7bed30580da6c54164fdaf7155aab1e3826a",
+    "complete": true,
+    "passed": false,
+    "groups_total": 50,
+    "groups_passed": 47,
+    "groups": [
+      {
+        "name": "launcher",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "launcher-clean",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "native-size",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "surface-lock",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "pnp-queue",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "udisks",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "pnp-32",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "pnp-64",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "popup",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "foreign-dc",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "cursor-32",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "cursor-64",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "gdiplus",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "foreground-policy",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "first",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "cancel",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "anchor",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "frame-sync",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "frame-reuse",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "shape",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "own-dc",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "resize",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "extents-move",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "extents-no-ack",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "extents-still",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "extents-direct",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "foreign",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "roles",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "input",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "create",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "cards",
+        "exit_code": 1,
+        "passed": false
+      },
+      {
+        "name": "display-removal",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "maximize-1",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "workarea-1",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "fullscreen-1",
+        "exit_code": 1,
+        "passed": false
+      },
+      {
+        "name": "maximize-2",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "workarea-2",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "fullscreen-2",
+        "exit_code": 1,
+        "passed": false
+      },
+      {
+        "name": "ime-96",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "ime-192",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "ime-unaware",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "ime-32",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "ime-plain",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "ime-position",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "ime-mixed",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "ime-candidate",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "clipboard",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "prefix-settings",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "upgrade",
+        "exit_code": 0,
+        "passed": true
+      },
+      {
+        "name": "native-dialogs",
+        "exit_code": 0,
+        "passed": true
+      }
+    ],
+    "suite_report_sha256": "da551c19d08b627a1d7834a4513aa48a7d2451b346c8fe7881095b7de3b95810",
+    "native_bridge_cases": 60,
+    "gdiplus_cases_per_architecture": 144,
+    "satellite_unit_tests_passed": 86,
+    "niri_shape_runs_passed": 3,
+    "kwin_first_frame_and_reopen_passed": true,
+    "kwin_actual_scale": 1.0,
+    "real_client": {
+      "logged_in": true,
+      "driver_mapping_inode_verified": true,
+      "desktop": "Ubuntu 26.04 GNOME/Mutter 50.1, dual monitors at 200%",
+      "checks": {
+        "repeat_launch_existing_session": true,
+        "chat_visible": true,
+        "history_sidebar_open_and_close": true,
+        "native_file_dialog_upload_entry": true,
+        "native_file_dialog_chinese_directory_and_names": true,
+        "file_dialog_cancel_owner_reusable": true,
+        "native_file_manager_open_and_select_chinese_file": true,
+        "actual_clipboard_english_chinese_nautilus_paste": true,
+        "member_card_visible": true,
+        "avatar_preview_above_card": true,
+        "ime_chat_composition_and_candidate_below": true,
+        "ime_search_composition_and_candidate_below": true,
+        "draft_cleared_after_ime_test": true,
+        "smart_assistant_loaded": true,
+        "maximized_minimize_launcher_restore": true,
+        "primary_secondary_maximize_restore": true,
+        "cross_monitor_drag_both_directions": true,
+        "mail_body_rendered": true,
+        "microdisk_independent_window_loaded": true,
+        "robot_page_rendered": true,
+        "robot_independent_chat": true,
+        "actual_resize_larger_and_minimum": true,
+        "image_save_legacy_wine_chinese_labels_and_filename": true,
+        "image_save_legacy_wine_cancel": true
+      },
+      "slow_drags": 4,
+      "fast_drags": 4,
+      "geometry_samples": 2473,
+      "decoded_video_frames": 325,
+      "messages_or_files_sent": false,
+      "clipboard_english_chinese_target_bytes_equal": true,
+      "initial_regression_pid": 8548,
+      "current_pid": 206055,
+      "wine_dpi96": {
+        "wine_dpi": 96,
+        "desktop_scale": 2,
+        "host_desktop_scale_changed": false,
+        "account_login_retained": true,
+        "driver_sha256": "e99e8e1a7f2ab168b3f8153cdb5a7bed30580da6c54164fdaf7155aab1e3826a",
+        "pid": 202155,
+        "checks": {
+          "main": true,
+          "chat": true,
+          "message_menu": true,
+          "forwarded_history_popup": true,
+          "smart_assistant": true,
+          "mail_body": true,
+          "read_receipt_list_open": true,
+          "read_receipt_tabs": true
+        },
+        "messages_sent": false,
+        "files_sent": false,
+        "first_frame_video_captured": false
+      },
+      "dpi_restored": {
+        "pid": 206055,
+        "dpi": 192,
+        "original_prefix_settings_restored": true,
+        "logged_in": true,
+        "driver_mapping_verified": true,
+        "driver_sha256": "e99e8e1a7f2ab168b3f8153cdb5a7bed30580da6c54164fdaf7155aab1e3826a",
+        "time": "2026-11-07T01:33:28.378380+08:00"
+      }
+    },
+    "not_retested_on_current_client": [
+      "physical unplug",
+      "session lock/unlock",
+      "read receipt first-frame video",
+      "100% desktop authenticated full page matrix",
+      "authenticated niri/KWin"
+    ],
+    "unaccepted_experiment": {
+      "name": "frame-move-race migration draft",
+      "cases_passed": 4,
+      "cases_failed": 1,
+      "included_in_groups_total": false,
+      "product_regression_confirmed": false,
+      "reason": "Original fixture targets the pre-attached contract; draft follow callbacks share the command acknowledgement name and lack host-geometry ordering proof.",
+      "current_formal_replacement": "attached-anchor: before, after, native-ahead, independent popup; all four passed again",
+      "history_review": "race-review/HISTORY.md",
+      "migration_draft": "race-review/migration-draft.patch"
+    },
+    "product_changes_during_this_review": false,
+    "new_findings_fixed": false,
+    "published": false,
+    "additional_reviewed_runs": {
+      "anchor-reviewed": {
+        "passed": true,
+        "sha256": "a90abd9150b5acbe89563188c03b745df1a7922a975f24d9f24a014973ca7ff4"
+      },
+      "dc-reviewed": {
+        "passed": true,
+        "sha256": "e2ce2e3770c4e58eea29d9427a68ae69bf006865543ffb87cadcaa6a66497d5d"
+      }
+    },
+    "cleanup": {
+      "removed_prefixes": 78,
+      "bytes_reclaimed_on_work_volume": 71834144768,
+      "free_bytes_on_work_volume": 143577493504,
+      "source_retained": true,
+      "final_debs_retained": true,
+      "live_account_prefix_retained": true,
+      "owned_qa_containers_and_images_removed": true
+    },
+    "review_complete": true,
+    "test_refactor_complete": true,
+    "documents_revised": true,
+    "manual_findings": [
+      {
+        "name": "normal client exit leaves Wine desktop running",
+        "confirmed": true,
+        "main_process_exited": true,
+        "server_wait_5_seconds_exit_code": 124,
+        "next_launch_skips_migration": true,
+        "product_changed": false,
+        "existing_upgrade_fixture_scope": "wineserver -k ends all prefix clients before the cold upgrade phase"
+      }
+    ],
+    "scope": "QA15 baseline local -5, driver e99e8e1a; retained historical evidence before the later root fixes."
+  },
+  "baseline_local_deb_before_root_fixes": {
+    "runtime_sha256": {
+      "wineserver": "81d3992df47db3e9c36d6400f95364703edaa7421c52106377287fa2720d6fb6",
+      "ntdll.so": "70db13c547010f6ffe97ec289d32bf17ddf4a5b14358ccb5d82a672123d6b2d9",
+      "win32u.so": "4525ee5182f1f8428baccef58c560c91d2ad0789d4c878daaa4f88ffe25f37a4",
+      "winex11.so": "e99e8e1a7f2ab168b3f8153cdb5a7bed30580da6c54164fdaf7155aab1e3826a",
+      "wineps.so": "9d6f9767d72c3d7af3e75503a33d853a8f8a655e7114d98475421e478bb9ccff",
+      "imm32-i386.dll": "2ee5fa9dab185d277184c3f8cfa2258900c5822d4195c610716d30c3d398daff",
+      "imm32-x86_64.dll": "dd2a0182b5e94eb88ead7bfe50f6bf8a1a42e92bc5b760df8d511e873894185a",
+      "explorer.exe": "88d8472088ac84387a997dcb81d8e99522bbf8485618c2298a9753c4a28c8490",
+      "wine": "fa443c7a1f7d289faeffab7cf79ae2f13398bd715ab25267e725e67d6bf765a1",
+      "gdiplus-i386.dll": "7638a21e0ffdef61ae77066dc5904352c60a20c64ae6a5e6d6ee896524b3be36",
+      "gdiplus-x86_64.dll": "1c07e1c7ff5ab9b88f190b9a528e65566a981f8667a84fee29e350aaf1137d38",
+      "ntoskrnl.exe-i386-windows": "32fd0a2a4064f9558e717f133e977949228dd74829243bd032163ba7df7c98fa",
+      "cfgmgr32.dll-i386-windows": "919dd528c560ff7c0827c4007bf8a0233ce757b9feaad6a8d52b053a6daf08d4",
+      "setupapi.dll-i386-windows": "c4a12bdeae8e9e4c60ee60fa7d8ae19b212ca56fef33c24ad77dd2954961b622",
+      "ntoskrnl.exe-x86_64-windows": "0e5f86d6f0fbb09ccdefca0f908f56261ead7fc93abba322da2cdca0176af727",
+      "cfgmgr32.dll-x86_64-windows": "b0de6be30b0a31919a04653c8e0615f2782c645e0efef4118db7a6c819cb6e69",
+      "setupapi.dll-x86_64-windows": "fab5daaaad453a43e5bfec0c8c61a26fe599ceeab52c0b9933dbb73d5cdce11e",
+      "wineboot.exe-x86_64-windows": "1de4398bdff7d352f8956fb58b7f6d119a735680946c2cbb67b29b984f88fb78",
+      "mountmgr.so": "748de97cc1dfbbb334908a17409f1ad5f4df6d07b17c830a81d8828b1c05956c",
+      "winewayland.so": "011ec6b8e4bfd6fa9326ea33e7ba787c6846569096d32f18fda55bace0781277",
+      "comdlg32-i386.dll": "4ea88f26787b0d5a3a575f71b9b56ad44a7f526f4278573b8934321fc97940ed",
+      "shell32-i386.dll": "451c82ed60dfa6da9aa80a865a196342ed32046dbfd60ec30c5edbb4ad3d58ce",
+      "comdlg32-x86_64.dll": "c8845d809230571542f6fd1365dd9190390dba2b0801a1dafd9a3443b66cfc05",
+      "shell32-x86_64.dll": "9cc82fcec2758b09ff7aab2d2fefdbada7702bf90f59e471020dcb4977e74e0d",
+      "comdlg32.so": "5259b529e2d98d30276839d8eecdd25e81bff33e4e9f7e46746b4921b419131b",
+      "explorer-i386.exe": "88f151bf360cc693377a9c1a0b8132d06f6806aeea321b1d4fada6c3d0044f9e"
+    },
+    "source_patch_replay": {
+      "source_archive_sha256": "98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793",
+      "patch_sha256": "b6680e65c9a5347679ecfef676fe8259b964e6a32192388f06fac0c08be915a7",
+      "modified_files": 65,
+      "exact_content_and_modes": true,
+      "full_tree_entries": 12471,
+      "full_tree_matches_build_source": true,
+      "replay_manifest_sha256": "bae68b2576b74a56b159e87bf9d8dd0489a3ae37b5be219752c4feb78725fc60",
+      "mode_scope": "Git executable bits; all source file contents and paths match"
+    },
+    "package": {
+      "version": "5.0.13.6005-5",
+      "development_only": true,
+      "published": false,
+      "stage_runtime_tested": true,
+      "deb_built": true,
+      "user_runtime_replaced": true,
+      "focused_fixes_passed": false,
+      "all_fullscreen_scenarios_passed": false,
+      "packaged_runtime_sha256": {
+        "wineserver": "81d3992df47db3e9c36d6400f95364703edaa7421c52106377287fa2720d6fb6",
+        "ntdll.so": "70db13c547010f6ffe97ec289d32bf17ddf4a5b14358ccb5d82a672123d6b2d9",
+        "win32u.so": "4525ee5182f1f8428baccef58c560c91d2ad0789d4c878daaa4f88ffe25f37a4",
+        "winex11.so": "e99e8e1a7f2ab168b3f8153cdb5a7bed30580da6c54164fdaf7155aab1e3826a",
+        "wineps.so": "9d6f9767d72c3d7af3e75503a33d853a8f8a655e7114d98475421e478bb9ccff",
+        "imm32-i386.dll": "366ff81449d54f365f8e5b64a1be5eb13b67fe30ed684035a1ad064c0e8e3f0d",
+        "imm32-x86_64.dll": "35b25203fa117c7e10c10995ada37edf4d56673e0b98b5c5d108968fc2bccf37",
+        "explorer.exe": "0e98db85cf10575807cf0e5677be600413739a72b1cfd6a3c0ea21a3b5452ec1",
+        "wine": "fa443c7a1f7d289faeffab7cf79ae2f13398bd715ab25267e725e67d6bf765a1",
+        "gdiplus-i386.dll": "0623c1e20536c9c734b0d8bef938b54ea6364fed009d98ed3b6f07ce310137ab",
+        "gdiplus-x86_64.dll": "d5d9f1b7cf9b6635033749ed6af14e3d1e8e7a184fb4c0bc69ebefb6fa925251",
+        "ntoskrnl.exe-i386-windows": "abfb279712d58a7528190dc04fb04a14910e0f695a95ab84b1676b37e65ec1e1",
+        "cfgmgr32.dll-i386-windows": "54e25039987bf47341a900bec6610a4bccf81078737f42e69abab950dbbcf5b0",
+        "setupapi.dll-i386-windows": "13098d8736e845bab49ae1c75bb437a1ee2c89eb17e17168b084e55a08e2cc11",
+        "ntoskrnl.exe-x86_64-windows": "ffd18005098f8b94a4d54f1a5e6c8d280a3e6c6368d4e7681b351048c6936e39",
+        "cfgmgr32.dll-x86_64-windows": "688951c468f0c19f1c1f70be82afd0e5332c745655d7f002c092ba9f29b64593",
+        "setupapi.dll-x86_64-windows": "32dda67beec9ec7a81d68c036be7313c8f22cfaa04414164a0a2d05adf513e39",
+        "wineboot.exe-x86_64-windows": "379440aae4fe7648b938f4ef78f3af4633a47d9ca78e6078580a389c3e5b782e",
+        "mountmgr.so": "748de97cc1dfbbb334908a17409f1ad5f4df6d07b17c830a81d8828b1c05956c",
+        "winewayland.so": "011ec6b8e4bfd6fa9326ea33e7ba787c6846569096d32f18fda55bace0781277",
+        "comdlg32-i386.dll": "a74a25be24ba7b89dff0ffe62c2ca656aa1219d123e2d24cfd64aaddfc0a588e",
+        "shell32-i386.dll": "5fd5a5d5d297bb257a2b7d5f7045aba2281645374e7e0f42d72ebd2a48ad842c",
+        "comdlg32-x86_64.dll": "22b8ff07d0611a3066f5f35be5b7a94acc1f86344150085d49f48715fbe82ec7",
+        "shell32-x86_64.dll": "05984f5c0313d5a2218fb995f61a0c6338dba6324b4becbcaa9eb68dddd930b4",
+        "comdlg32.so": "5259b529e2d98d30276839d8eecdd25e81bff33e4e9f7e46746b4921b419131b",
+        "explorer-i386.exe": "ce6e6ef4d80836e4a18f052cf5a05df71f508188671dcfa32f217ad3d80f192f"
+      },
+      "deb_sha256": "7d855e8f934ff38c051ca5cb3a52c9cf1dee4ce78ccbfc7c9bc734fd10f25ef2",
+      "current_driver_mapping_verified": true,
+      "local_deployment_kind": "user-local extracted DEB",
+      "post_build_test_and_document_changes_in_deb": false,
+      "focused_results": {
+        "clipboard": true,
+        "running_client_continued": true,
+        "upgrade_after_all_wine_clients_exit": true,
+        "upgrade_after_normal_tray_exit": false,
+        "maximized_workarea_cycles": true
+      },
+      "live_pid": 206055
+    }
+  },
+  "current_candidate_root_fixes": {
+    "date": "2026-11-07",
+    "git_base": "c351bdc34fca63f0247613fd43b6e8ef90af568d",
+    "complete": true,
+    "groups_total": 53,
+    "groups_passed": 52,
+    "failed_groups": [
+      "fullscreen-2"
+    ],
+    "raw_suite_passed": false,
+    "raw_suite_exit_code": 1,
+    "in_scope_passed": true,
+    "suite_report_sha256": "87d19d59c79c7453080ffcd068226fd14b8998183c21fd2ca40de6cd47760426",
+    "runtime_sha256": {
+      "winex11.so": "67a974e30c257d20f9f6cacaf9f44680d20102897ecb42ff78e3b8282b0897fc",
+      "win32u.so": "e1f490af81f7109b7a38e163c717369e079a152b7d4c15577b051623e37ce136"
+    },
+    "host_desktop_used": false,
+    "account_used": false,
+    "new_container_created": false,
+    "new_deb_built": false,
+    "published": false,
+    "excluded_failure": "GNOME/Mutter 50.1 dual-screen 200% native X11 fullscreen monitor selection; left unchanged as requested",
+    "excluded_failed_samples": [
+      {
+        "case": "negative-primary-shadow",
+        "phase": "fullscreen",
+        "expected_rect": [
+          0,
+          0,
+          3840,
+          2160
+        ],
+        "native_body": [
+          -3200,
+          0,
+          0,
+          2000
+        ],
+        "win32_rect": [
+          -3200,
+          0,
+          0,
+          2000
+        ]
+      },
+      {
+        "case": "negative-primary-shadow",
+        "phase": "queued-zoomed-fullscreen",
+        "expected_rect": [
+          0,
+          0,
+          3840,
+          2160
+        ],
+        "native_body": [
+          -3200,
+          0,
+          0,
+          2000
+        ],
+        "win32_rect": [
+          -3200,
+          0,
+          0,
+          2000
+        ]
+      },
+      {
+        "case": "negative-primary-shadow",
+        "phase": "zoomed-fullscreen",
+        "expected_rect": [
+          0,
+          0,
+          3840,
+          2160
+        ],
+        "native_body": [
+          -3200,
+          0,
+          0,
+          2000
+        ],
+        "win32_rect": [
+          -3200,
+          0,
+          0,
+          2000
+        ]
+      },
+      {
+        "case": "negative-primary-disabled",
+        "phase": "fullscreen",
+        "expected_rect": [
+          0,
+          0,
+          3840,
+          2160
+        ],
+        "native_body": [
+          -3200,
+          0,
+          0,
+          2000
+        ],
+        "win32_rect": [
+          0,
+          0,
+          3840,
+          2160
+        ]
+      },
+      {
+        "case": "negative-primary-disabled",
+        "phase": "queued-zoomed-fullscreen",
+        "expected_rect": [
+          0,
+          0,
+          3840,
+          2160
+        ],
+        "native_body": [
+          -3200,
+          0,
+          640,
+          2160
+        ],
+        "win32_rect": [
+          0,
+          0,
+          3840,
+          2160
+        ]
+      },
+      {
+        "case": "negative-primary-disabled",
+        "phase": "zoomed-fullscreen",
+        "expected_rect": [
+          0,
+          0,
+          3840,
+          2160
+        ],
+        "native_body": [
+          0,
+          0,
+          3840,
+          2160
+        ],
+        "win32_rect": [
+          0,
+          0,
+          3840,
+          2160
+        ]
+      }
+    ],
+    "card_cases_passed": 19,
+    "launcher_cases_per_environment": 10,
+    "normal_application_exit_left_wine_background": true,
+    "upgrade_next_launch_passed": true,
+    "successful_prefixes_removed": 44,
+    "source_patch_replay": {
+      "passed": true,
+      "entries": 12471,
+      "differences": [],
+      "source_manifest_sha256": "3f60a9bdab1558ee9a3e31919c3c6bfb8e126c6eded45a8ff5c01de4d175b070",
+      "patch_sha256": "46e96b952349701dca23edd98d008e1275b3adfc7d2ab3519a97bcf5da9e004a"
+    },
+    "ime_contract_review": {
+      "reference": "https://learn.microsoft.com/en-us/windows/win32/api/imm/ns-imm-compositionform",
+      "CFS_RECT_position": "rcArea",
+      "POINT_and_FORCE_POSITION": "ptCurrentPos",
+      "earlier_offset_point_assertions_valid": false,
+      "earlier_negative_reports": [
+        "ime-old",
+        "focused/ime-*"
+      ],
+      "production_ime_changes_withdrawn": true,
+      "gdi_abi": 112
+    },
+    "elf_components": {
+      "win32u.so": {
+        "sha256": "e1f490af81f7109b7a38e163c717369e079a152b7d4c15577b051623e37ce136",
+        "glibc": "2.38"
+      },
+      "winex11.so": {
+        "sha256": "67a974e30c257d20f9f6cacaf9f44680d20102897ecb42ff78e3b8282b0897fc",
+        "glibc": "2.38"
+      },
+      "winewayland.so": {
+        "sha256": "6a7a38c28a09d71221f06d1f766ff6c174334bc10637a2e2205594f83babb7d3",
+        "glibc": "2.34"
+      },
+      "wineps.so": {
+        "sha256": "30b9b3db1eda53cc307828e05fc51952edcf6771174d196d49c291a78174dc8a",
+        "glibc": "2.14"
+      },
+      "winebth.so": {
+        "sha256": "31dfdfb3e1d5dc298550efeea0721904606d3cb93bba1fa17e248114b53718e6",
+        "glibc": "2.38"
+      }
+    },
+    "daily_runtime_retained": {
+      "pid": 206055,
+      "process_present": true,
+      "driver_sha256": "e99e8e1a7f2ab168b3f8153cdb5a7bed30580da6c54164fdaf7155aab1e3826a",
+      "current_candidate_loaded": false
+    },
+    "status": "completed_in_requested_scope",
+    "wine_gdi_abi": 112,
+    "patch_sha256": "46e96b952349701dca23edd98d008e1275b3adfc7d2ab3519a97bcf5da9e004a",
+    "modified_source_files": 66,
+    "review_complete": true,
+    "product_ime_changes_withdrawn": true,
+    "production_changes": [
+      "upgrade lifecycle after application exit",
+      "native foreground stacking and visible background pointer target",
+      "fullscreen/maximize request origin and layout acknowledgement",
+      "Bluetooth cached string ownership"
+    ],
+    "before_after_evidence": {
+      "bluetooth_old_failed": true,
+      "bluetooth_new_passed": true,
+      "old_driver_background_stacking_failed_cases": [
+        "foreign-above-native-restack",
+        "foreign-between-native-restack"
+      ],
+      "pre_input_fix_candidate_hover_failed": true,
+      "final_candidate_hover_passed": true,
+      "CFS_RECT_original_runtime_passed_corrected_contract_tests": true
+    },
+    "daily_prefix_settings_unchanged": true,
+    "scope": "QA16 private-display formal regression before repackaging; flags and retained daily-runtime snapshot describe that time. QA17 packaging/deployment/authenticated observations follow separately."
+  },
+  "actual_scope": "Current QA18 authenticated menu and drag verification is in current_menu_fix.authenticated. current_authenticated_desktop is the QA17 history for driver 67a974e3.",
+  "current_authenticated_desktop": {
+    "date": "2026-11-07",
+    "git_base": "c351bdc34fca63f0247613fd43b6e8ef90af568d",
+    "package_version": "5.0.13.6005-5",
+    "deb_sha256": "8677b84e991eae0b56ca9ba8f2312be9aeb4672c634372b40063fb4640673b05",
+    "runtime_sha256": {
+      "win32u.so": "e1f490af81f7109b7a38e163c717369e079a152b7d4c15577b051623e37ce136",
+      "winex11.so": "67a974e30c257d20f9f6cacaf9f44680d20102897ecb42ff78e3b8282b0897fc"
+    },
+    "host_desktop_used": true,
+    "account_used": true,
+    "new_container_created": false,
+    "new_login_required": false,
+    "messages_sent": false,
+    "host": "Ubuntu 26.04 GNOME/Mutter 50.1; DP-1 3840x2160 and eDP-1 3200x2000, both 200%",
+    "wine_dpi_tested": [
+      192,
+      96
+    ],
+    "host_desktop_100_percent_tested": false,
+    "account_prefix_preserved": true,
+    "final_dpi": 192,
+    "automatic_dpi_restored": true,
+    "final_client_pid": 623576,
+    "final_main_window_id": 3132372288,
+    "release_acceptance_complete": false,
+    "drag": {
+      "groups": [
+        {
+          "group": "drag-after-unlock-primary-192",
+          "pid": 623576,
+          "moves": 8,
+          "slow": 4,
+          "fast": 4,
+          "geometry_samples": 2460,
+          "geometry_stable": true,
+          "requested_displacements_match": true,
+          "decoded_frames": 338,
+          "whole_body_black_frames": []
+        },
+        {
+          "group": "drag-after-unlock-secondary-192",
+          "pid": 623576,
+          "moves": 8,
+          "slow": 4,
+          "fast": 4,
+          "geometry_samples": 2471,
+          "geometry_stable": true,
+          "requested_displacements_match": true,
+          "decoded_frames": 462,
+          "whole_body_black_frames": []
+        },
+        {
+          "group": "drag-primary-192",
+          "pid": 607704,
+          "moves": 8,
+          "slow": 4,
+          "fast": 4,
+          "geometry_samples": 2453,
+          "geometry_stable": true,
+          "requested_displacements_match": true,
+          "decoded_frames": 365,
+          "whole_body_black_frames": []
+        },
+        {
+          "group": "drag-primary-chat-192",
+          "pid": 607704,
+          "moves": 8,
+          "slow": 4,
+          "fast": 4,
+          "geometry_samples": 2484,
+          "geometry_stable": true,
+          "requested_displacements_match": true,
+          "decoded_frames": 363,
+          "whole_body_black_frames": []
+        },
+        {
+          "group": "drag-primary-chat-96-final",
+          "pid": 618926,
+          "moves": 8,
+          "slow": 4,
+          "fast": 4,
+          "geometry_samples": 2504,
+          "geometry_stable": true,
+          "requested_displacements_match": true,
+          "decoded_frames": 320,
+          "whole_body_black_frames": []
+        },
+        {
+          "group": "drag-secondary-chat-192",
+          "pid": 607704,
+          "moves": 8,
+          "slow": 4,
+          "fast": 4,
+          "geometry_samples": 2469,
+          "geometry_stable": true,
+          "requested_displacements_match": true,
+          "decoded_frames": 473,
+          "whole_body_black_frames": []
+        },
+        {
+          "group": "drag-secondary-chat-96",
+          "pid": 618926,
+          "moves": 8,
+          "slow": 4,
+          "fast": 4,
+          "geometry_samples": 2512,
+          "geometry_stable": true,
+          "requested_displacements_match": true,
+          "decoded_frames": 465,
+          "whole_body_black_frames": []
+        }
+      ],
+      "moves_total": 56,
+      "geometry_samples_total": 17353,
+      "decoded_frames_total": 2786,
+      "incomplete_capture_not_counted": [
+        "drag-primary-chat-96"
+      ],
+      "video_scope": "whole-body black-frame detection plus retained sampled contact sheets, not a claim that every possible edge artifact was excluded"
+    },
+    "checks": {
+      "normal_exit_and_background_recovery": true,
+      "primary_and_secondary_fast_slow_drag": true,
+      "cross_monitor_drag_both_directions": true,
+      "app_and_native_maximize_restore": false,
+      "maximized_minimize_recall": true,
+      "native_resize_and_minimum": true,
+      "member_card_and_avatar_preview": true,
+      "message_and_chat_context_menus": true,
+      "forwarded_history": true,
+      "history_sidebar": true,
+      "native_upload_and_chinese_names_cancel": true,
+      "chat_and_search_ime_candidates": true,
+      "actual_attachment_english_chinese_nautilus_bytes_equal": true,
+      "native_file_manager_select_original": true,
+      "mail_body": true,
+      "mail_unread_count_restored_364": true,
+      "smart_assistant_loaded": true,
+      "legacy_image_save_chinese_cancel": true,
+      "actual_image_preview_loaded": true,
+      "actual_legacy_save_chinese_filename": true,
+      "microdisk_independent_window": true,
+      "robot_page_loaded": true,
+      "robot_independent_chat": true,
+      "robot_page_mouse_wheel": true,
+      "read_receipts_first_open": true,
+      "read_receipt_tabs": true,
+      "read_receipt_reopen": true,
+      "native_maximize_restore": true,
+      "app_restore_after_unlock_shadow_size": false,
+      "lock_unlock_same_client": true
+    },
+    "dpi96": {
+      "pid": 618926,
+      "runtime": {
+        "win32u.so": "e1f490af81f7109b7a38e163c717369e079a152b7d4c15577b051623e37ce136",
+        "winex11.so": "67a974e30c257d20f9f6cacaf9f44680d20102897ecb42ff78e3b8282b0897fc"
+      },
+      "logged_in": true,
+      "primary_drag_passed": true,
+      "checks": {
+        "primary_secondary_fast_slow_drag": true,
+        "primary_secondary_maximize_restore": true,
+        "member_card_avatar": true,
+        "message_menu": true,
+        "forwarded_history": true,
+        "history_sidebar": true,
+        "chat_search_ime": true,
+        "read_receipt_tabs": true,
+        "smart_assistant": true,
+        "mail_body": true,
+        "native_upload_cancel": true
+      },
+      "mail_151251_unread_restored": true,
+      "native_tray_and_account_menu_presentation": false
+    },
+    "lock_unlock": {
+      "pid": 623576,
+      "dpi": 192,
+      "locked_at": 1794012450.128132,
+      "active": false,
+      "samples": [
+        {
+          "at": 1794012459.1268792,
+          "active": true
+        },
+        {
+          "at": 1794012510.557341,
+          "active": false
+        }
+      ],
+      "locked_observed": true,
+      "unlocked_observed": true,
+      "same_process_running": true
+    },
+    "post_unlock": {
+      "primary_secondary_fast_slow_drag_moves": 16,
+      "native_maximize_restore_both_monitors": true,
+      "resize_larger_smaller_minimum": true,
+      "minimize_launcher_recall_same_process": true,
+      "app_maximize_restore": false,
+      "subsequent_app_button_cycles_passed": 3
+    },
+    "file_clipboard": {
+      "english_actual_chat_attachment": true,
+      "chinese_actual_chat_attachment": true,
+      "nautilus_destination_bytes_identical": true,
+      "global_search_result_copy_file_uri_exported": false
+    },
+    "unresolved": [
+      {
+        "scenario": "native tray/account menus during manual Wine 96 DPI on a 200% host desktop",
+        "observed": "mapped windows not visible; tray drawable contains text while _XWAYLAND_ALLOW_COMMITS was 0",
+        "restored_auto_192_menus_visible": true,
+        "root_cause_confirmed": false,
+        "evidence": [
+          "native-menu-96-observation.json",
+          "native-menu-96-drawable.png",
+          "screens/native_menu96_missing.jpg"
+        ]
+      },
+      {
+        "scenario": "application restore button after unlock and prior native size/minimize operations",
+        "body_dimensions": [
+          2114,
+          1338
+        ],
+        "shadow_dimensions": [
+          3912,
+          2066
+        ],
+        "win32_shadow_itself_oversized": true,
+        "subsequent_repeat_cycles_passed": 3,
+        "root_cause_confirmed": false,
+        "evidence": [
+          "actual-geometry.json",
+          "after-unlock-app-restore-win32.jsonl",
+          "screens/after_unlock_app_restore_settled.jpg"
+        ]
+      }
+    ],
+    "not_retested": [
+      "authenticated niri/KWin with this candidate",
+      "physical monitor unplug and host scale 100%",
+      "audio/video calls, approvals, outgoing messages/uploads"
+    ],
+    "formal_suite_scope": "QA16 private-display regression remains 52/53 with raw exit 1 and the explicitly excluded Mutter 200% fullscreen monitor-selection failure; it is independent of these authenticated observations",
+    "product_source_changed_during_acceptance": false,
+    "package": {
+      "version": "5.0.13.6005-5",
+      "sha256": "8677b84e991eae0b56ca9ba8f2312be9aeb4672c634372b40063fb4640673b05",
+      "bytes": 955554288,
+      "runtime_components": 27,
+      "all_extracted_entries_verified": 18165,
+      "dependencies_unchanged": true,
+      "vendor_and_prelogin_template_unchanged": true
+    },
+    "local_evidence": "QA17 actual-acceptance.json, actual-geometry.json, movies, screenshots and package-verification.json retained locally"
+  },
+  "current_menu_fix": {
+    "driver_sha256": "631f6fdedb9ace20b81fd7478652bb9741349dd8e510a9537ceeccbfc9c7af05",
+    "patch_sha256": "d1bbceaaa7f252196099ec6338ac6f7c9671f27761d3cbf781da4e619cc2a9a8",
+    "gdi_abi": 112,
+    "status": "reviewed, packaged, verified and running from the local DEB directory",
+    "product_source_files_changed": 1,
+    "mechanism": "Consume an accepted host resize before merging attached layout, and retain frame padding for host-origin size changes.",
+    "review_complete": true,
+    "formal": {
+      "groups_total": 56,
+      "groups_passed": 55,
+      "in_scope_passed": true,
+      "raw_suite_passed": false,
+      "excluded_failed_groups": [
+        "fullscreen-2"
+      ],
+      "report_sha256": "f97d66de3bc853fe566446b760b6acf42e1b3ede93949f5a31aab8b2d08653a2",
+      "runs": {
+        "focused-final": {
+          "sha256": "71585fd01de8b492ac77707cee9df1c8777b0e0afd0b493e2165411bff29e798",
+          "passed": true
+        },
+        "final-regression": {
+          "sha256": "396050985333c222aff371e396799486a082edc60a9e7799c0409e886a8fd260",
+          "passed": false
+        },
+        "upgrade-from4": {
+          "sha256": "532200b68ff9c54ca3105bebd5c35be27a6d8884de887c662485485fc1c8312d",
+          "passed": true
+        }
+      },
+      "upgrade_fixture_path_fixed": true,
+      "upgrade_from_published_4_passed": true
+    },
+    "source_patch_replay": {
+      "source_archive_sha256": "98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793",
+      "patch_sha256": "d1bbceaaa7f252196099ec6338ac6f7c9671f27761d3cbf781da4e619cc2a9a8",
+      "modified_files": 66,
+      "exact_content_and_modes": true,
+      "full_tree_entries": 12471,
+      "full_tree_matches_build_source": true,
+      "replay_manifest_sha256": "d5ffed9116d406f7c8ad986afb88e3aaca9ab4ea2fad9c420656fa1af936e90e",
+      "mode_scope": "Git executable bits; all source file contents and paths match"
+    },
+    "authenticated": {
+      "account_used": true,
+      "new_login_required": false,
+      "messages_sent": false,
+      "host_desktop_scale": [
+        2,
+        2
+      ],
+      "wine_dpi": [
+        96,
+        192
+      ],
+      "menu96_account_and_tray_opens": 12,
+      "native_dialog_open_cancel_and_menu_reopen": true,
+      "drag_runs": [
+        "drag-fixed96-primary",
+        "drag-fixed96-secondary-final",
+        "drag-fixed192-primary-valid",
+        "drag-fixed192-secondary"
+      ],
+      "completed_drag_actions": 32,
+      "geometry_stable": true,
+      "recordings_reviewed": true,
+      "lock_unlock_retested_this_round": false,
+      "remaining": "Intermittent native maximize/restore geometry reproduced in current and preceding local -5 builds. Comparison with published -4 is pending; regression status relative to -4 is unresolved.",
+      "automatic_192_dpi_restored": true,
+      "decoded_frames": 1460,
+      "whole_body_black_frames": 0,
+      "final_client_pid": 752362,
+      "final_main_window_id": 3132372376,
+      "mapped_from_final_install_directory": true,
+      "installed_account_menu_smoke_passed": true
+    },
+    "evidence_directory": "Local QA18: original logs, screenshots, movies, source diff, rejected prototypes and final-review.json",
+    "package": {
+      "method": "Verified previous -5 DEB plus the QA18 tested X11 driver and matching source/test documentation",
+      "base_deb_sha256": "8677b84e991eae0b56ca9ba8f2312be9aeb4672c634372b40063fb4640673b05",
+      "package_version": "5.0.13.6005-5",
+      "source_patch_sha256": "d1bbceaaa7f252196099ec6338ac6f7c9671f27761d3cbf781da4e619cc2a9a8",
+      "gdi_abi": 112,
+      "changed_product_payload_files": [
+        "wine/lib/wine/x86_64-unix/winex11.so"
+      ],
+      "runtime_components_verified": 27,
+      "vendor_application_and_prelogin_template_unchanged": true,
+      "test_results": "55/56 valid groups passed; fullscreen-2 retains its failure; real-client native maximize/restore remains open",
+      "documentation_snapshot": "QA18 before DEB compression; final DEB hash is recorded after packaging",
+      "deb_sha256": "c33fa30b5b569231e8a684d9fd4bbf0bad42e2a9972911e980f3f3b2b8715fec",
+      "deb_bytes": 955555076,
+      "output": "/home/sai/work/wecom-linux/dist/com.qq.wecom.spark_5.0.13.6005-5_amd64.deb",
+      "verification": {
+        "passed": true,
+        "entries_verified": 18163,
+        "archive_entries_root_owned": 18164,
+        "all_extracted_content_and_modes_match_stage": true,
+        "changed_product_payload_files": [
+          "wine/lib/wine/x86_64-unix/winex11.so"
+        ],
+        "runtime_components_verified": 27,
+        "dependencies_unchanged": true,
+        "package_sha256": "c33fa30b5b569231e8a684d9fd4bbf0bad42e2a9972911e980f3f3b2b8715fec",
+        "source_patch_sha256": "d1bbceaaa7f252196099ec6338ac6f7c9671f27761d3cbf781da4e619cc2a9a8",
+        "deployment_candidate": "/home/sai/.local/share/wecom-local-deb/5.0.13.6005-5/package.next"
+      }
+    },
+    "release_acceptance_complete": false,
+    "published": true
+  },
+  "prerelease_review": {
+    "base_tag": "v5.0.13.6005-4",
+    "git_base": "c351bdc34fca63f0247613fd43b6e8ef90af568d",
+    "product_source_files_changed": 8,
+    "ready_for_github_prerelease": true,
+    "stable_acceptance_complete": false,
+    "known_issues": [
+      "Dual-200% native X11 fullscreen monitor selection",
+      "Intermittent native maximize/restore geometry reproduced in current and preceding local -5 builds. Comparison with published -4 is pending; regression status relative to -4 is unresolved."
+    ],
+    "package_sha256": "c33fa30b5b569231e8a684d9fd4bbf0bad42e2a9972911e980f3f3b2b8715fec",
+    "source_bundle": {
+      "archive": "wine-11.20-wecom-20261107-source.tar.zst",
+      "sha256": "ad1820c2f72d9c9f4fadb9290dda980eea159bca3f9eba886eb0b435daa90263",
+      "entries_verified": 13850,
+      "files_verified": 12471,
+      "exact_source_contents_and_executable_modes": true,
+      "wine_patch_sha256": "d1bbceaaa7f252196099ec6338ac6f7c9671f27761d3cbf781da4e619cc2a9a8"
+    },
+    "publication_channel": "GitHub Pre-release",
+    "tag": "v5.0.13.6005-5"
   }
 }

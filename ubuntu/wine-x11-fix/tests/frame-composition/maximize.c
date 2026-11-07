@@ -11,6 +11,9 @@ static BOOL default_limits, select_primary, custom_offset;
 static unsigned int max_proposals;
 static BOOL proposal_wrong_monitor;
 static RECT first_proposal;
+static RECT normal_rect;
+static BOOL fullscreen_on_size, hold_paint;
+static unsigned int fullscreen_callbacks;
 
 static void state(void)
 {
@@ -18,12 +21,12 @@ static void state(void)
     GetWindowRect(window, &rect);
     if (shadow) GetWindowRect(shadow, &shadow_rect);
     printf("{\"event\":\"state\",\"rect\":[%ld,%ld,%ld,%ld],\"selected_monitor\":%d,\"maximized\":%d,"
-           "\"minimized\":%d,"
+           "\"minimized\":%d,\"fullscreen_callbacks\":%u,"
            "\"body\":%lu,\"frame\":%lu,\"shadow\":%lu,\"shadow_visible\":%d,"
            "\"shadow_rect\":[%ld,%ld,%ld,%ld],\"max_proposals\":%u,\"proposal_wrong_monitor\":%d,"
            "\"first_proposal\":[%ld,%ld,%ld,%ld]}\n", rect.left, rect.top, rect.right, rect.bottom,
            MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST) == selected_monitor, IsZoomed(window),
-           IsIconic(window),
+           IsIconic(window), fullscreen_callbacks,
            (unsigned long)(ULONG_PTR)GetPropA(window, "__wine_x11_whole_window"),
            (unsigned long)(ULONG_PTR)GetPropA(window, "__wine_x11_wm_window"),
            (unsigned long)(ULONG_PTR)GetPropA(shadow, "__wine_x11_whole_window"), IsWindowVisible(shadow),
@@ -91,6 +94,15 @@ static LRESULT CALLBACK procedure(HWND hwnd, UINT message, WPARAM wparam, LPARAM
         limits->ptMaxSize.y = info.rcWork.bottom - info.rcWork.top;
         return 0;
     }
+    if (message == WM_SIZE && fullscreen_on_size && IsZoomed(hwnd))
+    {
+        fullscreen_on_size = FALSE;
+        fullscreen_callbacks++;
+        SetWindowPos(hwnd, NULL, selected_info.rcMonitor.left, selected_info.rcMonitor.top,
+                     selected_info.rcMonitor.right - selected_info.rcMonitor.left,
+                     selected_info.rcMonitor.bottom - selected_info.rcMonitor.top,
+                     SWP_NOACTIVATE | SWP_NOZORDER);
+    }
     if ((message == WM_SIZE || message == WM_MOVE) && shadow)
     {
         RECT rect;
@@ -102,7 +114,9 @@ static LRESULT CALLBACK procedure(HWND hwnd, UINT message, WPARAM wparam, LPARAM
     if (message == WM_PAINT)
     {
         PAINTSTRUCT paint;
-        HDC dc = BeginPaint(hwnd, &paint);
+        HDC dc;
+        if (hold_paint) return 0;
+        dc = BeginPaint(hwnd, &paint);
         FillRect(dc, &paint.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
         EndPaint(hwnd, &paint);
         return 0;
@@ -124,6 +138,36 @@ static LRESULT CALLBACK procedure(HWND hwnd, UINT message, WPARAM wparam, LPARAM
             ShowWindow(hwnd, SW_MINIMIZE);
             ShowWindow(hwnd, SW_RESTORE);
         }
+        else if (wparam == 'f' || wparam == 'z' || wparam == 'd')
+        {
+            if (wparam == 'f') GetWindowRect(hwnd, &normal_rect);
+            if (wparam == 'd') ShowWindow(hwnd, SW_MAXIMIZE);
+            SetWindowPos(hwnd, NULL, selected_info.rcMonitor.left, selected_info.rcMonitor.top,
+                         selected_info.rcMonitor.right - selected_info.rcMonitor.left,
+                         selected_info.rcMonitor.bottom - selected_info.rcMonitor.top,
+                         SWP_NOACTIVATE | SWP_NOZORDER);
+        }
+        else if (wparam == 'w')
+        {
+            SetWindowPos(hwnd, NULL, normal_rect.left, normal_rect.top,
+                         normal_rect.right - normal_rect.left, normal_rect.bottom - normal_rect.top,
+                         SWP_NOACTIVATE | SWP_NOZORDER);
+        }
+        else if (wparam == 'h')
+        {
+            GetWindowRect(hwnd, &normal_rect);
+            hold_paint = TRUE;
+            SetWindowPos(hwnd, NULL, 0, 0, normal_rect.right - normal_rect.left + 64,
+                         normal_rect.bottom - normal_rect.top + 48, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+        else if (wparam == 'u')
+        {
+            hold_paint = FALSE;
+            UpdateWindow(hwnd);
+        }
+        else if (wparam == 'e') fullscreen_on_size = TRUE;
+        else if (wparam == 'n')
+            SetWindowPos(hwnd, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOZORDER);
         else if (wparam == 's') state();
         else if (wparam == 'q') PostQuitMessage(0);
         return 0;

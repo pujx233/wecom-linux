@@ -1,104 +1,51 @@
-# XIM candidate position regression
+# 输入法位置回归
 
-This fixture checks the actual IBus `SetCursorLocation` requests against the
-rendered client's physical coordinates. It creates a disposable Wine prefix and a private
-Mutter/Xwayland and IBus session. It does not use account data, type into WeCom,
-or change the host display configuration.
+夹具读取实际 IBus `SetCursorLocation` 请求，并与 X11 客户区、Win32 锚点转换后的物理坐标比较。
+测试使用空白 prefix、私有 Mutter/Xwayland 和 IBus，不操作真实客户端。
 
-Run from any directory:
+## 运行
 
 ```sh
-python3 run-isolated.py \
-  --runtime /absolute/path/to/private/wine \
-  --driver /absolute/path/to/winex11.so \
-  --core /absolute/path/to/win32u.so \
-  --output /absolute/path/to/test-output \
+python3 run-isolated.py --runtime /absolute/wine --output /absolute/new-qa \
   --name pm192 --dpi 192 --awareness pm
 ```
 
-The output directory must be empty or already carry the fixture's marker. Report
-names cannot be reused. Each report creates its runtime overlay and disposable prefix
-under a new subdirectory named by `--name`; reusing the output directory never reuses
-an earlier report's loader, server or PE libraries. Binaries, logs and reports stay
-under the output directory. `--driver` and `--core` default to the supplied runtime;
-pass both when testing the paired X11/core change. The report records native core,
-driver, server, IMM32, fixture and runner hashes, checks the private processes' mapped
-module paths, and verifies that the loaded
-IMM32 matches the selected runtime and application architecture.
-Caret cases require `CreateCaret`, `SetCaretPos` and `ShowCaret` to succeed. Explicit
-composition requests exercise the IMM32-to-win32u dispatch through the public API;
-there is no test-only production caret query. Run against the installed runtime after
-every component replacement; an older report only validates its recorded binary set.
+需要 frame-composition 的桌面依赖、IBus、dbus-monitor、X11 库和对应 MinGW 编译器。
+`--driver`、`--core` 默认取 runtime，也可同时指定成套组件。每个 `--name` 创建独立 runtime overlay
+和 prefix，报告名称不可重复。结果记录 core、driver、server、IMM32 和夹具指纹，并核对实际映射。
 
-The existing `frame-composition/isolated.py` supplies the private desktop. This
-requires its Mutter/Python GI dependencies, IBus, `dbus-monitor`, X11 libraries,
-and the MinGW compiler selected by `--bits 32` or `--bits 64`.
+| 参数 | 作用 |
+| --- | --- |
+| `--dpi 96` / `--dpi 192` | 普通与高 DPI。 |
+| `--bits 32` / `--bits 64` | 两种 Windows 架构及对应 IMM32。 |
+| `--awareness unaware` | 96 DPI 应用坐标到高 DPI 原生窗口的转换。 |
+| `--frame 0` | 普通 X11 窗口控制组。 |
+| `--preedit position` | server-side preedit，插入点保持顶边语义。 |
+| `--mixed-scale` | 私有双屏 100%/200%，增加六项跨屏移动与锚点更新。 |
+| `--candidate` | 增加 CFS_CANDIDATEPOS、CFS_EXCLUDE 和移动后的排除区域锚点。 |
 
-The default 23 cases cover:
+## 请求语义
 
-- Caret movement, line changes, and 24/48-unit caret heights.
-- Explicit composition points matching the caret and unrelated composition points.
-- Large and one-unit `CFS_RECT` regions at the caret origin, both retaining their supplied origin.
-- `CFS_FORCE_POSITION` with a matching caret and after the caret is destroyed.
-- Moving, maximizing and restoring the window while retaining both point and forced-position anchors.
-- Changing the focused child, requesting a point for the previous input, and destroying the previous caret.
+默认 25 项覆盖 caret 移动、换行、24/48 单位高度、composition point、FORCE_POSITION、
+CFS_RECT、移动、最大化、还原、切换焦点和销毁 caret。
+两个 CFS_RECT 用例使 ptCurrentPos 与 rcArea 左上角不同，按微软接口约定检查 rcArea 定位，
+避免把不参与该模式的点坐标误作期望。
+CreateCaret、SetCaretPos、ShowCaret 必须成功，显式请求经公开 IMM32 API 进入 win32u。
 
-`--preedit position` requests server-side preedit and keeps automatic updates at the
-caret's top edge. The runner checks the actual selected XIM style in the Wine log.
-Automatic caret updates use the lower edge only for XIM callback preedit. Explicit
-`CFS_POINT` and `CFS_FORCE_POSITION` requests use that lower edge for callback candidate placement
-only when the input thread, focused HWND, caret HWND and insertion point match the current caret.
-Their text insertion point remains unchanged for position preedit. A missing or unrelated caret
-leaves the requested point unchanged. This checks the Wine-to-XIM anchor, not whether every host
-IME honors forced placement.
-See the [COMPOSITIONFORM contract](https://learn.microsoft.com/en-us/windows/win32/api/imm/ns-imm-compositionform).
+callbacks 模式下，只有输入线程、焦点 HWND、caret HWND 和插入点均匹配时，
+POINT/FORCE 请求使用真实 caret 底边，防止候选框遮住文字。
+无关或失效 caret 保留调用方原位置；position preedit 保留文字插入点顶边语义。
+显式 candidate point 不因同位置 caret 而改变，EXCLUDE 使用排除区底边。
 
-The fixture records `ClientToScreen` followed by
-`LogicalToPhysicalPointForPerMonitorDPI` for both the anchor and root client
-origin in the application's DPI context. The acceptance oracle adds their physical displacement
-to the actual X client origin from `XTranslateCoordinates`. `XGetGeometry` must
-independently match the root client size after conversion to the window's logical DPI.
-The ratio uses `GetDpiForWindow` and the private monitor's `GetDpiForMonitor(MDT_RAW_DPI)`,
-queried in a per-monitor-aware context. Positive native sizes use `MulDiv` rounding;
-the resulting logical sizes must match exactly. This compares at the common logical
-precision instead of reconstructing odd native sizes from rounded unaware coordinates.
-Anchor conversion retains the application's DPI context.
-Reports retain both this native `expected` and the original `win32_expected`,
-plus native origins, sizes, DPI ratios and logical sizes, including when geometry equality fails.
-This exposes differences between Wine's stored
-screen geometry and the X window's placement without allowing a tolerance or
-adding an offset. Position assertions require exact coordinate equality.
-`--awareness unaware --dpi 192` checks scaling from the
-application's 96-DPI coordinate space. Also run `--dpi 96`, `--bits 32`, and
-`--frame 0` to cover ordinary X11 windows without shared-frame composition.
+坐标判定使用 ClientToScreen、LogicalToPhysicalPointForPerMonitorDPI 和 XTranslateCoordinates，
+并单独核对 XGetGeometry 尺寸。DPI 取应用上下文的 GetDpiForWindow 与显示器的 raw DPI；
+正尺寸按 MulDiv 舍入后在共同逻辑精度比较，位置要求精确相等。
+报告同时保留原始 Win32 期望、原生期望、原点、尺寸和 DPI 比例，便于定位转换差异。
 
-`--mixed-scale` adds a second virtual monitor and temporarily configures only
-the private compositor to 100%/200%. It adds six cases that move between monitors
-and update composition/caret positions there. These assertions cover IBus's
-physical screen-coordinate requests, not the host GNOME candidate panel's pixel
-appearance. The runner verifies that it is using a different session bus and
-X display before configuring the private monitors.
+## 覆盖边界
 
-A nonzero exit or `passed: false` is a failure. Collection completion alone is
-not acceptance. The default cases only check the APIs above; cross-process hosted
-input still needs separate coverage. The
-existing automatic caret path and explicit candidate requests can still replace each other's anchors;
-persistent IMC positioning policy is not covered or fixed
-by these per-request tests.
-The fixture refuses to run directly on host `DISPLAY=:0`.
+CFS_RECT 使用 rcArea；POINT/FORCE_POSITION 使用 ptCurrentPos，分别按调用模式验证。
+跨进程输入宿主、自动更新与显式请求的持久策略，以及屏幕边缘输入法面板翻转另需实测。
+失败以非零退出码或 `passed: false` 表示，采集完成本身不计通过。
 
-`--candidate` adds `CFS_CANDIDATEPOS`, `CFS_EXCLUDE` and a window move retaining
-the exclusion anchor. These check the requested point and the exclusion area's lower
-edge in IBus requests; they do not verify candidate-panel placement when the host IME
-flips its panel at a screen edge.
-
-The IME followup also checks an explicit composition point after a matching caret,
-a different point, a stale caret after focus moves to another input, and a destroyed
-caret. Callback preedit places candidates below the matching caret; position preedit
-keeps its text insertion point. An explicit candidate point remains unchanged even
-when a caret exists at that point. The stale-input case requires the old caret to remain
-owned by that HWND while focus is elsewhere before accepting the result.
-`CFS_RECT` remains the existing layout-area path; the bridge still uses `rcArea` rather than
-preserving its separate `ptCurrentPos`. These cases do not establish full rectangular
-composition layout support. The updated cases require new isolated reports; earlier reports
-whose oracle expected every explicit composition point at the top do not validate this change.
+参数约定见 [COMPOSITIONFORM](https://learn.microsoft.com/windows/win32/api/imm/ns-imm-compositionform)。

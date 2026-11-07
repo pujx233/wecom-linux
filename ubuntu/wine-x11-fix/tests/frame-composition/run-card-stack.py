@@ -12,6 +12,7 @@ import threading
 import time
 
 from PIL import Image
+from gi.repository import Gio, GLib
 from isolated import desktop
 from screencast import recording
 
@@ -24,12 +25,15 @@ subprocess.run(['x86_64-w64-mingw32-gcc', '-O2', '-Wall', '-Wextra', '-Werror', 
 report = {'host_desktop_used': False, 'account_data_used': False, 'cases': [], 'runtime': {}}
 for module in ('winex11.so', 'win32u.so'):
     report['runtime'][module] = hashlib.sha256((qa / 'wine/lib/wine/x86_64-unix' / module).read_bytes()).hexdigest()
-with desktop(qa) as env:
+with desktop(qa, allow_eval=True) as env:
     env.update(WINEPREFIX=str(qa / 'prefix'), WINESERVER=str(qa / 'wine/bin/wineserver'),
                WINEDEBUG='-all,+x11drv,+cursor', WINE_X11_OWNED_FRAME='1',
                WINE_WECOM_FIRST_PRESENT_ARGB='1', WINE_X11_FIXED_TRANSIENT_ARGB='1',
                WINE_X11_FIXED_TRANSIENT_UTILITY='1',
                WINEDLLOVERRIDES='winewayland.drv=d;mscoree,mshtml,winemenubuilder=')
+    wm = Gio.DBusConnection.new_for_address_sync(
+        env['DBUS_SESSION_BUS_ADDRESS'], Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT |
+        Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION, None, None)
     with (qa / (name + '-startup.log')).open('w') as log:
         subprocess.run([str(qa / 'wine/bin/wine'), 'wineboot.exe', '-u'], env=env,
                        stdout=log, stderr=log, check=True, timeout=60)
@@ -101,29 +105,34 @@ with desktop(qa) as env:
                 x.XCloseDisplay(display)
 
         def native_restack_case(label, lower, upper, active, color, foreign_window=None, straddle_foreign=False):
-            class Changes(C.Structure):
-                _fields_ = [(name, C.c_int) for name in ('x', 'y', 'width', 'height', 'border_width')]
-                _fields_ += [('sibling', C.c_ulong), ('stack_mode', C.c_int)]
-
             windows = [lower, upper] + ([foreign_window] if foreign_window else [])
+            # Reordering under the pointer generates real EnterNotify input, which can change Win32 Z order.
+            capture.pointer(1600, 900)
+            time.sleep(.1)
             command(app, 'state'); win32_before = lines.get(timeout=5)
             before = {str(window): geometry(window) for window in windows}
-            x = C.CDLL('libX11.so.6')
-            x.XOpenDisplay.argtypes = [C.c_char_p]; x.XOpenDisplay.restype = C.c_void_p
-            x.XReconfigureWMWindow.argtypes = [C.c_void_p, C.c_ulong, C.c_int, C.c_uint, C.POINTER(Changes)]
-            x.XSync.argtypes = [C.c_void_p, C.c_int]
-            x.XCloseDisplay.argtypes = [C.c_void_p]
-            saved = os.environ.get('XAUTHORITY'); os.environ['XAUTHORITY'] = env['XAUTHORITY']
-            display = x.XOpenDisplay(env['DISPLAY'].encode())
-            if saved is None: os.environ.pop('XAUTHORITY')
-            else: os.environ['XAUTHORITY'] = saved
-            assert display
-            try:
-                changes = Changes(sibling=foreign_window if straddle_foreign else upper, stack_mode=0)
-                x.XReconfigureWMWindow(display, lower, 0, 32 | 64, C.byref(changes))
-                x.XSync(display, False)
-            finally:
-                x.XCloseDisplay(display)
+            prior_corrections = (qa / (name + '.log')).read_text().count('native-stack ')
+            anchor = foreign_window if straddle_foreign else upper
+            # Inject a compositor-side reorder. An ordinary inactive X11 client's raise may be refused.
+            script = """(() => {
+                const windows = global.display.sort_windows_by_stacking(
+                    global.get_window_actors().map(a => a.meta_window));
+                const xid = w => parseInt(w.get_description(), 16);
+                const target = windows.find(w => xid(w) === %d);
+                const anchor = windows.find(w => xid(w) === %d);
+                if (!target || !anchor)
+                    throw new Error(JSON.stringify(windows.map(w => w.get_description())));
+                windows.splice(windows.indexOf(target), 1);
+                windows.splice(windows.indexOf(anchor) + 1, 0, target);
+                for (const window of windows) window.raise();
+                return global.display.sort_windows_by_stacking(windows).map(xid);
+            })()""" % (lower, anchor)
+            ok, result = wm.call_sync('org.gnome.Shell', '/org/gnome/Shell', 'org.gnome.Shell', 'Eval',
+                                       GLib.Variant('(s)', (script,)), None,
+                                       Gio.DBusCallFlags.NONE, 5000, None).unpack()
+            assert ok, result
+            injected = json.loads(result)
+            assert injected.index(lower) > injected.index(anchor), injected
             deadline = time.monotonic() + 3
             time.sleep(.1)
             target = qa / (name + '-' + label + '.png')
@@ -143,12 +152,67 @@ with desktop(qa) as env:
                 (order.index(foreign_window) < order.index(window)) == straddle_foreign for window in (lower, upper))
             win32_correct = all(state['order'].index(upper) < state['order'].index(lower)
                                 for state in (win32_before, win32_after))
+            background = foreign_window is not None
+            if background:
+                # A foreign active application owns the native stack. Correct our group on activation.
+                correct = all((order.index(a) < order.index(b)) ==
+                              (injected.index(a) < injected.index(b))
+                              for a in windows for b in windows if a != b)
+                correct &= corrections == prior_corrections
+                if straddle_foreign: color = (0, 0, 255)
             passed = (correct and focused == active and pixel == color and before == after and
-                      corrections == settled and foreign_order and win32_correct)
-            report['cases'].append(dict(name=label, native_order=order, active=focused, pixel=pixel,
+                      corrections == settled and (background or foreign_order) and win32_correct)
+            report['cases'].append(dict(name=label, injected_native_order=injected,
+                                        native_order=order, active=focused, pixel=pixel,
                                         win32_before=win32_before, win32_after=win32_after,
                                         before=before, after=after, corrections=corrections,
                                         settled_corrections=settled, passed=bool(passed)))
+            if background and straddle_foreign:
+                capture.pointer(500, 400)
+                time.sleep(.05)
+                # Moving outside all Wine windows need not update Wine's last cursor position.
+                # Move inside the card as well so this check observes a real WM_MOUSEMOVE.
+                capture.pointer(510, 410)
+                deadline = time.monotonic() + 3
+                while True:
+                    command(app, 'state'); hovered = lines.get(timeout=5)
+                    if hovered['card_moves'] > win32_after['card_moves'] or time.monotonic() >= deadline: break
+                    time.sleep(.05)
+                order, focused = native()
+                capture(target)
+                pixel = Image.open(target).convert('RGB').getpixel((500, 400))
+                passed = (hovered['card_moves'] > win32_after['card_moves'] and
+                          hovered['preview_moves'] == win32_after['preview_moves'] and
+                          hovered['active'] == focused == active and pixel == (0, 0, 255))
+                report['cases'].append(dict(name='background-native-hover', before=win32_after,
+                                            win32=hovered, native_order=order, active=focused,
+                                            pixel=pixel, passed=bool(passed)))
+                capture.pointer(1600, 900)
+            if background:
+                native_activate(win32_before['main'], active)
+                deadline = time.monotonic() + 3
+                while True:
+                    order, focused = native()
+                    capture(target)
+                    pixel = Image.open(target).convert('RGB').getpixel((500, 400))
+                    command(app, 'state'); restored = lines.get(timeout=5)
+                    group = [restored['main'], lower, upper]
+                    expected = min(group, key=restored['order'].index)
+                    expected_color = {restored['main']: (255, 255, 255), lower: (0, 0, 255),
+                                      upper: (0, 255, 0)}[expected]
+                    correct = (focused == restored['active'] == restored['main'] and
+                               order.index(restored['main']) > order.index(foreign_window) and
+                               all((order.index(a) > order.index(b)) ==
+                                   (restored['order'].index(a) < restored['order'].index(b))
+                                   for a in group for b in group if a != b) and
+                               pixel == expected_color)
+                    if correct or time.monotonic() >= deadline: break
+                    time.sleep(.05)
+                report['cases'].append(dict(name=label + '-activation', win32=restored,
+                                            native_order=order, active=focused, pixel=pixel,
+                                            passed=bool(correct)))
+                native_activate(foreign_window, focused)
+                time.sleep(.2)
 
         try:
             app, lines, ready = launch()
@@ -261,18 +325,22 @@ with desktop(qa) as env:
                 if reshow: command(app, 'reshow-main')
                 command(app, 'helper'); time.sleep(.3)
                 native_activate(peer_state['main'], native()[1]); time.sleep(.3)
-                command(app, 'state'); before = lines.get(timeout=5)
-                before_order, before_active = native()
-                helper = before['helper']
-                precondition = (helper in before_order and before['main'] in before_order and
-                                peer_state['main'] in before_order and before['helper_owner'] == 0 and
-                                before['helper_style'] & 0x10000000 and not before['helper_style'] & 0x20000000 and
-                                before['helper_exstyle'] & 0x8080080 == 0x8080080 and
-                                not before['helper_exstyle'] & 8 and
-                                before['order'].index(helper) < before['order'].index(before['main']) and
-                                before_active == before['active'] == peer_state['main'] and
-                                before_order.index(before['main']) < before_order.index(peer_state['main']) and
-                                before_order.index(helper) < before_order.index(peer_state['main']))
+                deadline = time.monotonic() + 3
+                while True:
+                    command(app, 'state'); before = lines.get(timeout=5)
+                    before_order, before_active = native()
+                    helper = before['helper']
+                    precondition = (helper in before_order and before['main'] in before_order and
+                                    peer_state['main'] in before_order and before['helper_owner'] == 0 and
+                                    before['helper_style'] & 0x10000000 and not before['helper_style'] & 0x20000000 and
+                                    before['helper_exstyle'] & 0x8080080 == 0x8080080 and
+                                    not before['helper_exstyle'] & 8 and
+                                    before['order'].index(helper) < before['order'].index(before['main']) and
+                                    before_active == before['active'] == peer_state['main'] and
+                                    before_order.index(before['main']) < before_order.index(peer_state['main']) and
+                                    before_order.index(helper) < before_order.index(peer_state['main']))
+                    if precondition or time.monotonic() >= deadline: break
+                    time.sleep(.05)
                 native_activate(before['main'], before_active)
                 time.sleep(.5)
                 command(app, 'state'); after = lines.get(timeout=5)
@@ -294,7 +362,7 @@ with desktop(qa) as env:
                     command(app, 'quit'); app.wait(timeout=10)
             subprocess.run([env['WINESERVER'], '-k'], env=env)
             subprocess.run([env['WINESERVER'], '-w'], env=env, check=True, timeout=10)
-report['passed'] = len(report['cases']) == 16 and 'error' not in report and all(c['passed'] for c in report['cases'])
+report['passed'] = len(report['cases']) == 19 and 'error' not in report and all(c['passed'] for c in report['cases'])
 path = qa / (name + '.json')
 path.write_text(json.dumps(report, indent=2) + '\n')
 print(path); print(json.dumps(report))

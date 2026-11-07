@@ -20,10 +20,10 @@ for feature in SONAME_LIBDBUS_1 SONAME_LIBXCOMPOSITE SONAME_LIBXDAMAGE SONAME_LI
 done
 make -j "${WECOM_BUILD_JOBS:-4}" server/wineserver dlls/ntdll/ntdll.so \
   dlls/winex11.drv/winex11.so dlls/win32u/win32u.so dlls/wineps.drv/wineps.so \
-  dlls/winewayland.drv/winewayland.so dlls/mountmgr.sys/mountmgr.so dlls/comdlg32/comdlg32.so
+  dlls/winewayland.drv/winewayland.so dlls/mountmgr.sys/mountmgr.so dlls/comdlg32/comdlg32.so dlls/winebth.sys/winebth.so
 sha256sum server/wineserver dlls/ntdll/ntdll.so dlls/winex11.drv/winex11.so \
   dlls/win32u/win32u.so dlls/wineps.drv/wineps.so dlls/winewayland.drv/winewayland.so \
-  dlls/mountmgr.sys/mountmgr.so dlls/comdlg32/comdlg32.so
+  dlls/mountmgr.sys/mountmgr.so dlls/comdlg32/comdlg32.so dlls/winebth.sys/winebth.so
 mkdir "$output/build-explorer"
 cd "$output/build-explorer"
 ../source/configure --enable-archs=i386,x86_64 --without-x --without-wayland

@@ -92,7 +92,7 @@ with desktop(qa, size='3200x2000', bare=True,
              second_monitor='3840x2160' if args.mixed_scale else None) as env:
     if args.mixed_scale:
         assert env['DISPLAY'] != ':0'
-        assert env['DBUS_SESSION_BUS_ADDRESS'] != os.environ['DBUS_SESSION_BUS_ADDRESS']
+        assert env['DBUS_SESSION_BUS_ADDRESS'] != os.environ.get('DBUS_SESSION_BUS_ADDRESS')
         connection = Gio.DBusConnection.new_for_address_sync(
             env['DBUS_SESSION_BUS_ADDRESS'], Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT |
             Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION, None, None)
@@ -237,6 +237,7 @@ with desktop(qa, size='3200x2000', bare=True,
                      ('move', 800, 300), ('composition', 210, 200), ('caret', 30, 240),
                      ('composition', 30, 240),
                      ('tall', 70, 280), ('composition', 70, 280), ('area', 70, 280),
+                     ('offset-area', 70, 280), ('offset-small-area', 70, 280),
                      ('small-area', 70, 280), ('force', 70, 280), ('maximize', 0, 0), ('restore', 0, 0),
                      ('move', 500, 200), ('composition', 180, 300), ('stale', 70, 280),
                      ('blur', 70, 280), ('destroy', 70, 280), ('force', 70, 280)]
@@ -266,7 +267,7 @@ with desktop(qa, size='3200x2000', bare=True,
                 elif command in ('blur', 'destroy', 'stale'):
                     caret_point = None
                     anchor_uses_bottom = False
-                elif command in ('area', 'small-area', 'candidate'):
+                elif command in ('area', 'small-area', 'offset-area', 'offset-small-area', 'candidate'):
                     anchor_uses_bottom = False
                 expected = result['lower_physical'] if anchor_uses_bottom else result['physical']
                 native_x, native_y, native_child = C.c_int(), C.c_int(), C.c_ulong()

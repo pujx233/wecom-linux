@@ -17,6 +17,14 @@ from screencast import recording
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--case', help='Run one case by its full name, such as negative-primary-overlapped')
+parser.add_argument('--scale', type=int, choices=(1, 2), default=2, help='Desktop scale for both monitors')
+parser.add_argument('--workarea-cycle', action='store_true',
+                    help='Hide and restore panels as during screen locking')
+parser.add_argument('--fullscreen', action='store_true', help='Also enter and leave genuine fullscreen')
+parser.add_argument('--reentrant-fullscreen', action='store_true',
+                    help='Enter fullscreen from an application WM_SIZE callback during a host resize')
+parser.add_argument('--pending-native-minimize', action='store_true',
+                    help='Minimize through the host while the resized body is waiting for its first paint')
 args = parser.parse_args()
 qa = Path(os.environ['WECOM_QA_ROOT']).resolve()
 name = 'maximize-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
@@ -25,7 +33,8 @@ subprocess.run(['x86_64-w64-mingw32-gcc', '-O2', '-Wall', '-Wextra',
                 '-lgdi32', '-luser32'], check=True)
 report = {'driver_sha256': hashlib.sha256((qa / 'wine/lib/wine/x86_64-unix/winex11.so').read_bytes()).hexdigest(),
           'win32u_sha256': hashlib.sha256((qa / 'wine/lib/wine/x86_64-unix/win32u.so').read_bytes()).hexdigest(),
-          'account_data_used': False, 'main_desktop_used': False, 'cases': []}
+          'account_data_used': False, 'main_desktop_used': False, 'scale': args.scale,
+          'workarea_cycle': args.workarea_cycle, 'fullscreen_control': args.fullscreen, 'cases': []}
 x = C.CDLL('libX11.so.6')
 x.XOpenDisplay.restype = C.c_void_p
 x.XDefaultRootWindow.argtypes = [C.c_void_p]
@@ -44,6 +53,7 @@ x.XCreateSimpleWindow.restype = C.c_ulong
 x.XChangeProperty.argtypes = [C.c_void_p, C.c_ulong, C.c_ulong, C.c_ulong, C.c_int, C.c_int,
                               C.c_void_p, C.c_int]
 x.XMapWindow.argtypes = [C.c_void_p, C.c_ulong]
+x.XUnmapWindow.argtypes = [C.c_void_p, C.c_ulong]
 x.XDestroyWindow.argtypes = [C.c_void_p, C.c_ulong]
 x.XFlush.argtypes = [C.c_void_p]
 x.XSendEvent.argtypes = [C.c_void_p, C.c_ulong, C.c_int, C.c_long, C.c_void_p]
@@ -82,6 +92,11 @@ with desktop(qa, '3200x2000', second_monitor='3840x2160') as env:
     assert display
     root = x.XDefaultRootWindow(display)
     wm_state = x.XInternAtom(display, b'WM_STATE', True)
+    net_wm_state = x.XInternAtom(display, b'_NET_WM_STATE', False)
+    workareas = x.XInternAtom(display, b'_GTK_WORKAREAS_D0', False)
+    fullscreen_state = x.XInternAtom(display, b'_NET_WM_STATE_FULLSCREEN', False)
+    maximized_states = {x.XInternAtom(display, name, False) for name in (
+        b'_NET_WM_STATE_MAXIMIZED_HORZ', b'_NET_WM_STATE_MAXIMIZED_VERT')}
     active_window = x.XInternAtom(display, b'_NET_ACTIVE_WINDOW', False)
     docks = []
 
@@ -95,16 +110,16 @@ with desktop(qa, '3200x2000', second_monitor='3840x2160') as env:
         left, top = px.value + origin[0], py.value + origin[1]
         return [left, top, left + width.value, top + height.value]
 
-    def native_property(window, atom):
+    def native_property(window, atom, all_values=False):
         kind, count, remaining = C.c_ulong(), C.c_ulong(), C.c_ulong()
         bits = C.c_int()
         data = C.c_void_p()
-        assert x.XGetWindowProperty(display, window, atom, 0, 2, False, 0,
+        assert x.XGetWindowProperty(display, window, atom, 0, 1024 if all_values else 2, False, 0,
                                     C.byref(kind), C.byref(bits), C.byref(count),
                                     C.byref(remaining), C.byref(data)) == 0
-        result = C.cast(data, C.POINTER(C.c_ulong))[0] if data and bits.value == 32 and count.value else None
+        values = list(C.cast(data, C.POINTER(C.c_ulong))[:count.value]) if data and bits.value == 32 else []
         if data: x.XFree(data)
-        return result
+        return values if all_values else values[0] if values else None
 
     def stop():
         # -k returns 1 when this private prefix has no server to stop.
@@ -119,7 +134,7 @@ with desktop(qa, '3200x2000', second_monitor='3840x2160') as env:
 
     try:
         subprocess.run([wine, 'reg', 'add', r'HKCU\Control Panel\Desktop', '/v', 'LogPixels',
-                        '/t', 'REG_DWORD', '/d', '192', '/f'], env=env, check=True, timeout=20)
+                        '/t', 'REG_DWORD', '/d', str(96 * args.scale), '/f'], env=env, check=True, timeout=20)
         for primary_right in (True, False):
             stop()
             config = display_call('GetCurrentState')
@@ -129,8 +144,9 @@ with desktop(qa, '3200x2000', second_monitor='3840x2160') as env:
                 outputs.append((mode[1], spec[0], mode[0]))
             outputs.sort()
             assert [output[0] for output in outputs] == [3200, 3840]
-            logical = [(0, 0, 2.0, 0, not primary_right, [(outputs[0][1], outputs[0][2], {})]),
-                       (1600, 0, 2.0, 0, primary_right, [(outputs[1][1], outputs[1][2], {})])]
+            logical = [(0, 0, float(args.scale), 0, not primary_right, [(outputs[0][1], outputs[0][2], {})]),
+                       (3200 // args.scale, 0, float(args.scale), 0, primary_right,
+                        [(outputs[1][1], outputs[1][2], {})])]
             display_call('ApplyMonitorsConfig', GLib.Variant('(uua(iiduba(ssa{sv}))a{sv})',
                                                            (config[0], 1, logical, {})))
             if not docks:
@@ -159,12 +175,15 @@ with desktop(qa, '3200x2000', second_monitor='3840x2160') as env:
                 label = ('negative-' if primary_right else 'positive-') + case_name
                 if args.case and args.case != label:
                     continue
+                if args.workarea_cycle and case_name not in (
+                        'secondary-shadow', 'primary-shadow', 'disabled', 'primary-disabled', 'no-shadow'):
+                    continue
                 stop()
                 test_minimize = primary_right and case_name in (
                     'secondary-shadow', 'primary-shadow', 'primary-disabled',
                     'secondary-overlapped', 'primary-overlapped')
                 case = {'name': label, 'shared_frame': frame == '1', 'shadow': bool(shadow),
-                        'default_limits': defaults == 1, 'custom_offset': defaults == 2, 'gating': defaults != 1,
+                        'default_limits': defaults == 1, 'custom_offset': defaults == 2,
                         'minimize_restore': test_minimize, 'overlapped': bool(overlapped),
                         'native_mapped': True, 'samples': []}
                 report['cases'].append(case)
@@ -190,7 +209,7 @@ with desktop(qa, '3200x2000', second_monitor='3840x2160') as env:
                         app.stdin.write(value + '\n')
                         app.stdin.flush()
 
-                    def sample(phase, maximized, expected=None, minimized=False):
+                    def sample(phase, maximized, expected=None, minimized=False, fullscreen=False):
                         deadline = time.monotonic() + 3
                         stable = None
                         configures = []
@@ -200,6 +219,15 @@ with desktop(qa, '3200x2000', second_monitor='3840x2160') as env:
                             command('state')
                             value = lines.get(timeout=5)
                             assert value['event'] == 'state', value
+                            if args.workarea_cycle and maximized and not fullscreen:
+                                areas = native_property(root, workareas, True)
+                                assert len(areas) == 8, areas
+                                ox, oy = ready['virtual_origin']
+                                rects = [[a + ox, b + oy, a + c + ox, b + d + oy]
+                                         for a, b, c, d in (areas[:4], areas[4:])]
+                                monitor = ready['monitor']
+                                mx, my = [(monitor[i] + monitor[i + 2]) // 2 for i in (0, 1)]
+                                expected = next(r for r in rects if r[0] <= mx < r[2] and r[1] <= my < r[3])
                             body = native_rect(value['body'], ready['virtual_origin'])
                             frame_rect = native_rect(value['frame'], ready['virtual_origin'])
                             shadow_rect = None
@@ -210,6 +238,7 @@ with desktop(qa, '3200x2000', second_monitor='3840x2160') as env:
                                 bounds += [max(body[i], shadow_rect[i]) for i in (2, 3)]
                                 frame_matches = frame_rect == bounds and shadow_rect == value['shadow_rect']
                             host_state = native_property(value['frame'], wm_state)
+                            native_states = set(native_property(value['frame'], net_wm_state, True))
                             event = (C.c_long * 24)()
                             while x.XPending(display):
                                 x.XNextEvent(display, C.byref(event))
@@ -236,12 +265,14 @@ with desktop(qa, '3200x2000', second_monitor='3840x2160') as env:
                             passed = (value['selected_monitor'] and not value['minimized'] and host_state == 1 and
                                       bool(value['maximized']) == maximized and frame_matches and
                                       not value['proposal_wrong_monitor'] and bounds_ok and
-                                      (body == value['rect'] or defaults == 1 and maximized) and
+                                      body == value['rect'] and
                                       frame_rect[0] <= body[0] <= body[2] <= frame_rect[2] and
                                       frame_rect[1] <= body[1] <= body[3] <= frame_rect[3] and
                                       monitor[0] <= center[0] < monitor[2] and
                                       monitor[1] <= center[1] < monitor[3] and
                                       (expected is None or value['rect'] == expected))
+                            passed &= ((fullscreen_state in native_states) == fullscreen and
+                                       maximized_states.issubset(native_states) == maximized)
                             if phase == 'maximized' and defaults == 2:
                                 passed = passed and value['first_proposal'][:2] == [
                                     ready['work'][0] + 23, ready['work'][1] + 17]
@@ -257,6 +288,9 @@ with desktop(qa, '3200x2000', second_monitor='3840x2160') as env:
                             time.sleep(.1)
                         result = dict(phase=phase, win32=value, native_body=body, native_frame=frame_rect,
                                       native_shadow=shadow_rect, native_state=host_state,
+                                      native_fullscreen=fullscreen_state in native_states,
+                                      native_maximized=maximized_states.issubset(native_states),
+                                      expected_rect=expected,
                                       configures=configures, visible_configures=visible_configures,
                                       configure_events=configure_events,
                                       frame_limit=frame_limit, frame_min_size=frame_min_size, passed=bool(passed))
@@ -282,7 +316,56 @@ with desktop(qa, '3200x2000', second_monitor='3840x2160') as env:
                         x.XSelectInput(display, watching_frame, 1 << 17)
                         x.XFlush(display)
                         command('maximize')
-                        sample('maximized', True, None if defaults == 1 else ready['work'])
+                        sample('maximized', True, ready['work'])
+                        if args.reentrant_fullscreen:
+                            frame_limit = None
+                            command('enter-on-size')
+                            # The following state response acknowledges arming before the host resize.
+                            command('state'); lines.get(timeout=5)
+                            for dock in docks: x.XUnmapWindow(display, dock)
+                            x.XFlush(display)
+                            entered = sample('fullscreen-from-host-size', True, ready['monitor'], fullscreen=True)
+                            case['samples'][-1]['passed'] &= entered['fullscreen_callbacks'] == 1
+                            command('restore')
+                            sample('restored-from-host-size', False, initial['rect'])
+                            for dock in docks: x.XMapWindow(display, dock)
+                            x.XFlush(display)
+                            command('maximize')
+                            sample('maximized-after-host-size', True, ready['work'])
+                        if args.workarea_cycle or args.fullscreen:
+                            # GNOME hides panel struts during locking without changing monitor geometry.
+                            work_limit = frame_limit
+                            frame_limit = None
+                            for cycle in range(3 if args.workarea_cycle else 0):
+                                for dock in docks: x.XUnmapWindow(display, dock)
+                                x.XFlush(display)
+                                sample('panels-hidden-' + str(cycle), True)
+                                assert case['samples'][-1]['expected_rect'][3] > ready['work'][3]
+                                command('noop')
+                                sample('panels-hidden-noop-' + str(cycle), True)
+                                for dock in docks: x.XMapWindow(display, dock)
+                                x.XFlush(display)
+                                sample('panels-restored-' + str(cycle), True, ready['work'])
+                            if args.fullscreen:
+                                command('restore')
+                                sample('restore-before-fullscreen', False, initial['rect'])
+                                command('fullscreen')
+                                sample('fullscreen', False, ready['monitor'], fullscreen=True)
+                                command('windowed')
+                                sample('windowed', False, initial['rect'])
+                                command('direct-zoomed-fullscreen')
+                                sample('queued-zoomed-fullscreen', True, ready['monitor'], fullscreen=True)
+                                command('restore')
+                                sample('restored-queued-fullscreen', False, initial['rect'])
+                                command('maximize')
+                                sample('maximized-before-fullscreen', True, ready['work'])
+                                command('zoomed-fullscreen')
+                                sample('zoomed-fullscreen', True, ready['monitor'], fullscreen=True)
+                                command('restore')
+                                sample('restore-after-fullscreen', False, initial['rect'])
+                            frame_limit = work_limit
+                            command('maximize')
+                            sample('maximized-after-cycle', True, ready['work'])
                         if test_minimize:
                             command('restore')
                             sample('restore-direct', False, initial['rect'])
@@ -356,7 +439,31 @@ with desktop(qa, '3200x2000', second_monitor='3840x2160') as env:
                                                         initial['rect'][i + 2] - initial['rect'][i] for i in (0, 1))
                                 result['passed'] &= moved['rect'] != initial['rect']
                                 result['screenshot'] = capture(qa / (name + '-drag-after.png'))
-                        case['passed'] = all(item['passed'] for item in case['samples'])
+                        if args.pending_native_minimize:
+                            command('hold-resize')
+                            command('state'); pending = lines.get(timeout=5)
+                            frame_before_minimize = native_rect(pending['frame'], ready['virtual_origin'])
+                            case['pending_minimize_precondition'] = any(
+                                frame_before_minimize[i + 2] - frame_before_minimize[i] <
+                                pending['rect'][i + 2] - pending['rect'][i] for i in (0, 1))
+                            case['pending_layout'] = dict(win32=pending, native_frame=frame_before_minimize)
+                            event = (C.c_long * 24)()
+                            message = ClientMessage.from_buffer(event)
+                            message.type, message.send_event, message.display = 33, True, display
+                            message.window = pending['frame']
+                            message.message_type = x.XInternAtom(display, b'WM_CHANGE_STATE', False)
+                            message.format, message.data[0] = 32, 3
+                            assert x.XSendEvent(display, root, False, (1 << 19) | (1 << 20), C.byref(event))
+                            x.XFlush(display)
+                            sample('host-minimize-before-paint', False, minimized=True)
+                            command('unhold')
+                            command('restore')
+                            frame_limit = None
+                            sample('restore-after-pending-minimize', False, pending['rect'])
+                            command('windowed')
+                            sample('restore-original-size', False, initial['rect'])
+                        case['passed'] = (case.get('pending_minimize_precondition', True) and
+                                          all(item['passed'] for item in case['samples']))
                         print(json.dumps(case), flush=True)
                     finally:
                         if app.poll() is None:
@@ -370,7 +477,7 @@ with desktop(qa, '3200x2000', second_monitor='3840x2160') as env:
         connection.close_sync(None)
 
 assert report['cases'], 'No matching test cases'
-report['passed'] = all(case['passed'] for case in report['cases'] if case['gating'])
+report['passed'] = all(case['passed'] for case in report['cases'])
 path = qa / (name + '.json')
 path.write_text(json.dumps(report, indent=2) + '\n')
 print(path)

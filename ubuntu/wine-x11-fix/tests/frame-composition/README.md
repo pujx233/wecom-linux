@@ -1,186 +1,112 @@
-# 原生合成、弹窗输入与双屏最大化回归
+# 窗口与合成测试
 
-这些实验使用合成像素和测试窗口，不运行企业微信，不读取个人账号。GNOME、Xwayland、
-PipeWire、D-Bus、Wine prefix 与配置都在独立目录和私有会话中运行，测试结果写入该目录。
-输入测试只向私有虚拟显示器发送鼠标事件。退出时先关闭私有 Mutter，再清理其子进程。
+统一运行入口和完整清单见 [tests/README.md](../README.md)。本目录测试使用空白 prefix、私有
+GNOME/Mutter、Xwayland、PipeWire 和 D-Bus；输入只发送到私有显示器。结果保存实际组件指纹。
 
-首帧事务使用 `first-transaction.c`，让正文绘制晚于阴影布局，读取实际 XSync 计数和桌面像素。
-旧版在正文绘制前就提交偶数 4，首次绘制后仍为 4；修复版保持奇数 3，上传并合成后才提交到 4。
-`--cancel` 覆盖首帧未画即关闭、重开后再绘制，预期计数为 3 → 4 → 5 → 6。
+## 运行
+
+首帧、附属坐标、同步、形状裁剪等脚本自行准备目录：
 
 ```sh
-WECOM_QA_SCALE=2 python3 run-first-transaction.py /absolute/new-qa /absolute/private-wine first
-WECOM_QA_SCALE=2 python3 run-first-transaction.py /absolute/new-qa /absolute/private-wine cancel --cancel
+python3 run-attached-anchor.py --runtime /absolute/wine --output /absolute/new-qa
+python3 run-frame-sync.py --runtime /absolute/wine --output /absolute/new-qa
+python3 run-frame-sync-reuse.py --runtime /absolute/wine --output /absolute/new-qa
+python3 run-shape-clip.py --runtime /absolute/wine --output /absolute/new-qa
+WECOM_QA_SCALE=2 python3 run-first-transaction.py /absolute/new-qa /absolute/wine first
+WECOM_QA_SCALE=2 python3 run-first-transaction.py /absolute/new-qa /absolute/wine cancel --cancel
 ```
 
-需要 GNOME Shell/Mutter、Xwayland、PipeWire 命令行工具、GStreamer 的 PipeWire/PNG 插件、
-Python 的 PyGObject/Pillow，以及 `x86_64-w64-mingw32-gcc`。使用完整的私有 Wine WoW64 runtime。
+其他脚本通过 `WECOM_QA_ROOT` 选择已标记的测试目录，每组使用单独目录：
 
 ```sh
-export WECOM_QA_ROOT=/absolute/disposable/wecom-frame-qa
-mkdir -p "$WECOM_QA_ROOT"
+export WECOM_QA_ROOT=/absolute/new-qa
+mkdir "$WECOM_QA_ROOT"
 touch "$WECOM_QA_ROOT/.wecom-frame-qa"
-cp -a /absolute/private-wine "$WECOM_QA_ROOT/wine"
-python3 run-foreign-frame.py
-python3 run-popup-input.py
-python3 run-frame-roles.py
-python3 run-maximize.py
-python3 run-create-reparent.py
-python3 run-card-stack.py
+ln -s /absolute/wine "$WECOM_QA_ROOT/wine"
+python3 run-maximize.py --scale 1 --workarea-cycle --fullscreen
 ```
 
-运行前，该目录中不能有其他测试进程。不存在 prefix 时，脚本在私有显示器中执行 wineboot。
-不要复制已登录的企业微信 prefix。`.wecom-frame-qa` 标记是对可丢弃测试目录的明确确认。
+目录中不能有运行中的测试进程。需要 GNOME/Mutter、Xwayland、PipeWire、GStreamer 的
+PipeWire/PNG 插件、Python GI/Pillow 和双架构 MinGW。`run-suite.py` 负责逐组创建这些目录。
 
-附属层坐标与提交顺序使用独立的新输出目录运行；脚本自行创建标记、runtime 链接和空白 prefix：
+## 合成与坐标
+
+| 脚本 | 检查内容 |
+| --- | --- |
+| `run-first-transaction.py` | 阴影先画、正文延迟时不提前完成 XSync；上传和合成后提交。`--cancel` 检查未画即关闭、重开和再次绘制；`--odd-size --compact` 检查奇数尺寸在 100%/200% 下的宿主取整、Win32 几何和可见像素。 |
+| `run-attached-anchor.py` | owner 提交前后更新、原生位置领先 Win32 的附属更新、独立弹窗的绝对定位；核对外框和各层几何。 |
+| `run-frame-sync.py` | resize 复用 surface 后，未分发合成消息时保留旧像素和奇数计数，分发后更新像素并完成计数。 |
+| `run-frame-sync-reuse.py` | 五阶段布局与缓冲复用的计数、像素和完成顺序。 |
+| `run-resize-drawable.py` | 先更新绘制子窗口，再合成新尺寸，避免复制旧尺寸内容。 |
+| `run-resize-extents.py` | 正文与边距变化、真实几何确认、原生几何不变的提交，以及基础/扩展同步计数。 |
+| `run-foreign-frame.py` | 外进程八次 GDI 更新，包含宿主 resize 回调中的重入；同时检查源 pixmap 与合成像素。 |
+| `run-shape-clip.py` | 故意污染 backing pixmap 的形状外区域；源污染保留，合成目标必须透明，缓冲复用不得积累残留。 |
+
+`AnchorOrderShadow;AnchorOrderTitle` 显式声明为附属类，只有 shadow 声明为装饰；独立弹窗不声明。
+这样分别检查 owner 相对布局和屏幕绝对定位，不把所有 owned 窗口当成装饰。
+
+`run-resize-extents.py` 默认冻结私有 WM 后提交真实移动，等待正确确认。
+`WECOM_QA_STATIONARY=1` 检查几何未变，`WECOM_QA_NO_EXTENDED_SYNC=1` 检查只有基础同步，
+`WECOM_QA_DELAY_WM=0` 检查正常直接提交。基础模式公布一个计数器，扩展模式公布两个。
+
+## 输入与生命周期
+
+| 脚本 | 检查内容 |
+| --- | --- |
+| `run-popup-input.py` | 普通与非分层透明窗口接收完整点击，分层透明窗穿透；不激活菜单保留 owner 焦点，点击命令可执行；预览在 owner 上方。 |
+| `run-frame-roles.py` | 内容与装饰角色、置顶切换、独立/共享框架；0×0 窗口提升后原生窗口为合法 1×1，Win32 空矩形保持不变。 |
+| `run-create-reparent.py` | WM_NCCREATE / WM_CREATE 中改样式或 parent；窗口保持 XID，最终尺寸、父节点和框架正确。 |
+| `run-card-stack.py` | 普通、重显、最大化、还原、同 owner 预览和外部应用插入；检查原生顺序、像素、点击归属及稳定后不持续纠正。 |
+| `run-native-size.py` | 从源码抽取尺寸转换函数，UBSan 检查零值、负值、65535/65536 和 INT32 跨端边界。 |
+
+`run-create-reparent.py` 用 `GetAncestor(GA_PARENT)` 区分 parent 与 owner；就绪后通过消息队列确认状态。
+成功的 CreateWindowEx 不要求清除先前 LastError。`run-native-size.py` 使用
+`--source /absolute/patched-source --out /absolute/new-qa`，不启动 Wine。
+
+## 最大化与显示变化
+
+`run-maximize.py` 使用 3200×2000 和 3840×2160 双屏，覆盖主副屏交换、负原点、位置偏移、
+popup/overlapped、阴影和关闭共享框架。窗口返回相对监视器的最大化约束，工作区由标准 dock strut 公布。
+同时核对 Win32 提议、最终矩形、X11 主体/框架、目标屏幕和原生最小化状态。
+还原必须回到原矩形，可见 configure 事件不得把外框瞬间撑大或缩到正文以下。
 
 ```sh
-python3 run-attached-anchor.py --runtime /absolute/private-wine --output /absolute/new-qa
+python3 run-maximize.py --scale 1
+python3 run-maximize.py --scale 2 --workarea-cycle
+python3 run-maximize.py --scale 1 --workarea-cycle --fullscreen
 ```
 
-`attached-anchor.c` 与 `run-attached-anchor.py` 复用本目录的 `isolated.py`，验证以下四种顺序：
+`--workarea-cycle` 在七种组合下各做三轮面板隐藏/恢复，并发送无尺寸变化的更新。
+期望矩形读取宿主 `_GTK_WORKAREAS_D0`。`--fullscreen` 增加普通主动全屏和保留 WS_MAXIMIZE 的全屏，
+检查退出后恢复。原有失败保留在严格结果中，失败退出码为 1。
+`negative-default-limits` 与自定义约束使用同样的严格判定，任何尺寸跳变也会使该组失败。
+`--reentrant-fullscreen` 检查宿主 WM_SIZE 内的应用全屏请求；`--pending-native-minimize` 检查待绘制时的原生最小化与恢复。
+`run-display-removal.py` 覆盖显示器移除后的重绑定、裁切及恢复。
 
-| 用例 | 检查内容 |
-| --- | --- |
-| `before` | 在 owner 的 `WM_WINDOWPOSCHANGING` 中先更新附属层，再提交 owner；最终外框和各层位置必须正确。 |
-| `after` | 在 `WM_WINDOWPOSCHANGED` 中更新附属层；正文、标题和阴影必须保持正确相对位置。 |
-| `native` | 私有 WM 先将 native owner 移至 T2，应用仍读到 Win32 T1，并按 T1 更新附属层；不得重复叠加移动。 |
-| `popup` | 未声明的独立弹窗按 `GetCursorPos` 返回的屏幕位置显示，且不能共享 owner 的原生 frame。 |
+## niri 与 KWin
 
-脚本将 `AnchorOrderShadow;AnchorOrderTitle` 声明为 `WINE_X11_FRAME_ATTACHED_CLASSES`，
-只将 `AnchorOrderShadow` 声明为 `WINE_X11_FRAME_DECORATION_CLASSES`；标题仍在正文上方。
-`AnchorOrderIndependent` 不作 attached 声明。报告记录两种坐标、原生尺寸、runtime 和夹具指纹。
-迁入前的相同夹具 A/B 中，`e2906e21…` 在 `before` 稳定失败，外框为 656×376、正文局部位置为 `(0,0)`；
-`2796ff99…` 四项均通过，前置更新后恢复为 392×312 和 `(36,36)`。原始报告为 `qano-base2` 与 `qano2`。
-本次产品目录迁移只做编译及语法检查，没有重跑这些场景；应用在前置回调中主动重入消息循环仍未覆盖。
+niri 的形状裁剪用现有私有会话运行：
 
-`run-foreign-frame.py` 创建静止的主窗口和分层装饰，再让另一个进程绘制红、蓝内容。
-它同时检查 GDI 读回、原生源 pixmap 和桌面合成后的像素，防止把“已经画进后台位图”误判为“用户已经看到”。
-共绘制八次；第五次由原生 resize 引起的 Win32 状态同步触发，应用在该回调中等待外部绘制并重入消息循环。
-旧版会消费合成通知却丢掉更新，源已变红而桌面仍显示上一次的蓝色。修订后，解锁会重新提交待合成内容。
-源像素在桌面检查结束后读取，避免读回影响可见性判定。每次更新超过一秒仍未显示即失败。
+```sh
+python3 run-shape-clip.py --runtime /absolute/wine --output /absolute/private-qa/result \
+  --existing-niri --fixture /absolute/shape-clip.exe
+```
 
-`run-popup-input.py` 使用独立 X11 窗口接收穿透事件。普通工具弹窗和非分层透明工具弹窗必须
-各收到三组完整点击，底层窗口不能收到事件；分层透明窗口则必须允许六个按下/松开事件穿过。
-弹窗临时改变激活样式时，原生窗口身份也必须保持不变。
-它还检查头像式 owned 预览在其 owner 上方，以及两个带共享框架的同 owner 窗口能按明确请求往返换序。
-首次映射后的顺序以稳定后的 Win32 枚举为准，避免将窗口管理器激活顺序当作绘制错误。
-另有置顶、不激活的 owned 菜单：三组点击都须到达，owner 不得失焦、菜单不得被提前关闭。
-`popup-input.exe menu` 可在私有 KWin 会话中用真实 Wayland 输入重复运行，覆盖点击触发的原生焦点请求。
+父目录应带测试标记，脚本仍创建空白 prefix。GNOME 控制组也需运行：其旧版可能通过，
+不能据此代替 niri 的裁剪验证。
 
-`run-frame-roles.py` 验证窗口样式相同但角色不同的两个窗口：普通可缩放分层内容必须在主体上方，
-只有通过 `WINE_X11_FRAME_DECORATION_CLASSES` 明确声明的装饰类才放在主体后面。
-该环境变量使用分号分隔、区分大小写的完整 UTF-8 类名；测试同时验证列表中第二项的匹配。
-另一组在普通 owner 上创建置顶弹窗，并对普通弹窗执行置顶、取消置顶。
-检查共享/独立原生框架身份，同时用无关红色窗口遮挡，读取桌面像素确认实际层级。
-这些判定不以 Wine 返回的 Win32 Z 序作为唯一依据。报告记录实际 core 和 driver 指纹。
-同一脚本还验证 0×0 owned 弹窗提升为独立框架、取消置顶和恢复正常尺寸：Win32 空矩形保持不变，
-独立原生框架必须为合法的 1×1。`--zero-size-only` 可单独运行这组回归，旧版会在提升时发出非法的
-0×0 XCreateWindow 并退出。该脚本将系统 D-Bus 指向测试目录下不存在的 socket，隔离宿主蓝牙枚举。
-Ubuntu 启动器声明企微自己的 `PerryShadowWnd`，Wine 中不内置该应用类名；这是明确的应用角色适配。
+KWin 使用 `run-kwin-first-transaction.py --runtime /absolute/wine --output /absolute/private-qa/result`。
+父目录带 `.wecom-frame-qa`，会话启用截图 API。正文未就绪时要求计数为 0、
+`_XWAYLAND_ALLOW_COMMITS=0` 且合成保持 owner 背景；正文完成后才显示目标颜色并允许提交。
+首次打开和两次重开都检查，且核对已加载驱动 inode。默认逻辑高度 1108，可用 `--logical-height` 指定。
+环境、输出和实际缩放另存报告；真实菜单焦点与点击可用 `popup-input.exe menu` 配合原生 Wayland 输入验证。
 
-`run-maximize.py` 创建两块 200% 缩放的虚拟屏幕（3200×2000 与 3840×2160），交换主屏以覆盖
-Wine 坐标中的正、负副屏原点。标准 X11 dock strut 为两屏各保留 102 像素底栏，由 Wine 读取工作区；
-不在应用中人为减小最大化尺寸。测试窗口用监视器相对坐标返回最大化约束，阴影在移动和缩放时跟随。
-它检查从两屏最大化、还原到原矩形、副屏靠近屏幕边界，以及普通和最大化窗口最小化后的恢复。
-除 popup 样式外，还覆盖企微采用的 overlapped 顶层样式，并记录应用在 `WM_WINDOWPOSCHANGING`
-观察到的最大化提议；即使窗口管理器稍后纠正了最终位置，提议原点落错屏也会失败。
-一组非零位置偏移校验通用坐标转换，避免修复只针对 `(0,0)`。主、副屏 overlapped 用例还发出原生激活请求，
-等待宿主自然恢复后，再调用应用的条件恢复逻辑，检查恢复最大化后再次还原的原始矩形。
-这不是企微托盘回调的完整复刻，也不保证触发每一种迟到的宿主状态事件。
-关闭共享框架时也验收主屏最大化后的最小化、恢复，以覆盖 Wine 通用恢复路径；无阴影作为另一控制组。
-默认最大化约束会使无标题窗口进入 Wine 的 fullscreen 路径，
-该组单独记录、不计入本次最大化验收；fullscreen 允许 Win32 与原生矩形存在同屏差异。
-除了 Win32 矩形，它还检查实际 X11 主体与框架
-的几何关系、目标屏幕和原生最小化状态。可见阴影必须与其 Win32 矩形一致，框架必须等于主体与阴影
-的并集，避免只验证逻辑状态而漏掉跳屏、裁切、主体未扩大或旧 padding 膨胀的问题。
-最大化后的标题栏拖动使用私有显示器的原生输入，并先核对实际指针位置和命中 XID。
-还原既覆盖直接点击对应的状态转换，也覆盖最小化恢复后再还原、同一消息中快速最小化再恢复。
-测试收集 frame 的 Map/Unmap 和 ConfigureNotify，区分真实与 synthetic 事件。
-已映射期间，最大化框架不得超过工作区加声明的阴影；还原框架不得瞬缩到原主体尺寸以下。
-未映射的重新管理中间尺寸保留记录，但不作为可见闪动判断。可用 `--case negative-primary-overlapped` 单独复测。
-这些几何断言能发现瞬间错误尺寸，不能代替真实客户端的逐帧视觉验收。
-这项测试输出 JSON 与 Wine 日志，并记录实际 `winex11.so` 与 `win32u.so` 的 SHA256；输入拖动和前两项同时输出截图。
-验收失败时退出码为 1。
+## 历史实验
 
-这些实验用于验证底层机制；真实企微的邮件、图片、分享记录、成员卡和双屏操作仍需要单独验收。
+`run-frame-move-race.py` 是旧实现的定位实验，未迁移到显式附属类协议。它让 owner 保持旧 Win32 坐标，
+另一线程按未来原生坐标更新 overlay，同时要求共享框架，与当前 owner 相对布局合同不一致。
+脚本和 `--pending-move`、`--pending-resize`、`--create-after-move` 模式保留用于定位，不计作当前通过项。
+当前已迁移的顺序由 `run-attached-anchor.py` 检查，回调内跨线程更新仍是覆盖缺口。
+历史回复、对应提交及本轮迁移草稿的问题见[旧测试复核](../../CODE-REVIEW.md#旧测试复核)。
 
-`run-create-reparent.py` 检查窗口尚在 `WM_NCCREATE`、未进入桌面 Z 序时的原生框架迁移。
-一组在该回调中将普通 owned 弹窗改为分层工具窗口，使其从独立框架迁移至 owner 框架；另一组
-在该回调中把 owner 的实际 parent 改为新的顶层 host，使旧 owner 框架销毁。
-两组都要求正在创建的原生主体保持同一 XID，最终仍为 200×200，并且实际 X 父节点与预期框架一致。
-另有不改样式、在 `WM_CREATE` 中改样式及改 parent 的三个控制组；可用 `--phase` 单独运行。
-测试分别记录 `EnumWindows` 成功与是否找到当前 HWND，不能把枚举失败当成“尚未链接”；
-检查窗口的实际 parent 使用 `GetAncestor(GA_PARENT)`，与 `WS_POPUP` 的 owner 区分。
-就绪后通过消息队列完成一次状态请求，再查询原生几何，不使用固定延时作为通过依据。
-报告中的 `last_error` 仅在 `CreateWindowEx` 返回 NULL 时有意义，成功返回不要求清除旧错误码。
-该脚本记录 fixture、runner、driver、core 和 server 的前后指纹，将系统 D-Bus 指向不存在的私有 socket。
-它验证这两条生命周期路径，不证明所有 CEF 白屏、进程退出或跨进程窗口创建问题已解决。
-
-`run-native-size.py --source /absolute/wine-source --out /absolute/new-result-dir` 不启动 Wine 或显示器，
-直接抽取生产代码的 RECT 边长转换函数，用 UBSan 检查零值、负值、65535/65536 和 INT32 跨端边界。
-它只验证原生尺寸转换，不覆盖此前的矩形组合算术，也不能替代上面的真实窗口提升和尺寸恢复测试。
-
-`run-frame-move-race.py` 保留为历史实验，尚未迁移到显式 attached 合同，已移出上方推荐矩阵。
-它同时要求 owner 的 Win32 坐标保持旧值、另一线程按未来 native 屏幕坐标更新 overlay，并断言两者共享 frame。
-这与 attached 层按逻辑 owner 布局的合同不同，不能仅添加 `MoveRaceOverlay` 声明来沿用旧断言。
-当前 attached 跟随与独立弹窗绝对定位的边界由上面的四项回归分别检查。
-以下是该历史实验的原有行为说明，不表示已在当前候选上通过。
-
-该脚本用两个 UI 线程验证共享框架的坐标同步。默认先暂停 owner 消息循环，
-由私有窗口管理器移动 native frame，再让另一线程更新附属层；`--create-after-move` 改为首次创建该层。
-此时明确检查 Win32 owner 仍是旧坐标，附属层的原生坐标必须与请求一致。
-`--pending-move` 检查相反顺序：只暂停私有 GNOME Shell，应用先提交 owner 移动，核对 Win32 已更新、
-native frame 尚未移动，再更新或创建附属层。恢复后框架、正文、附属层和四边 extents 必须同时正确，
-不能只修正系统先移动的路径。测试只暂停由私有环境标记识别的进程，退出时先恢复再清理。
-Wine 服务初始化单独执行并记录耗时；窗口就绪和几何断言仍有独立超时，超时不能作为通过。
-有 gdb 时，失败会在终止私有程序前尝试保存线程栈。该回归不验证真实企微正文或概览选框的视觉效果。
-
-`run-frame-sync.py --runtime /absolute/private-wine --output /absolute/new-result-dir` 验证共享外框的
-绘制完成顺序。测试在同一 128 像素分配区间内调整大小，并从该次 resize 日志确认 surface 确实复用。
-正文绘制结束后暂不处理已排队的框架合成消息：此时桌面仍须保持旧绿色，扩展 XSync 计数必须为奇数。
-处理消息后，桌面变蓝且计数变为偶数。它同时检查装饰与正文共用原生 frame，避免误测直接显示正文的路径。
-测试使用私有 GNOME 会话与空白 prefix，不运行企业微信，也不操作用户桌面。
-私有会话把 GSettings 保存在 QA 目录，关闭热角，避免测试指针初始化触发概览而误读桌面像素；
-该设置不进入应用启动器，也不修改宿主桌面。
-
-`run-shape-clip.py --runtime /absolute/private-wine --output /absolute/new-result-dir` 验证合成时的形状裁剪。
-分层装饰只显示左侧 16 像素，测试直接把其 backing pixmap 的形状外区域写成白色，再反复重绘正文。
-源中的白色必须仍在，外框对应位置必须透明，装饰与正文颜色必须正确，以免把清除源数据当作修复。
-Fedora/niri 的旧驱动失败，新驱动通过；GNOME 的旧驱动也能通过，不能拿该控制组替代 niri 验证。
-复用已运行的私有 niri 容器时可加 `--existing-niri --fixture /absolute/shape-clip.exe`，
-其中 fixture 用同目录的 `shape-clip.c` 编译。该模式要求运行时目录和输出属于带标记的私有 QA 目录，
-仍创建新的空白 Wine prefix，不使用登录账号。报告记录驱动与 fixture 指纹。
-
-`run-resize-extents.py` 的 `WECOM_QA_NO_EXTENDED_SYNC=1` 模式在私有会话中暂时移除扩展同步能力声明，
-保持外框实际位置、尺寸不变，冻结 WM 后改变正文及边距。新版必须直接提交新图像，不能等待空操作确认。
-`WECOM_QA_STATIONARY=1` 在保留扩展同步时检查同一情况；默认模式仍要求真实移动等待 WM 确认。
-这些模式退出时恢复能力声明和 WM，不改桌面全局设置。
-基础模式现在要求公布一个计数器，扩展模式要求公布两个计数器，避免只在 GNOME 的扩展协议下通过。
-
-`run-kwin-first-transaction.py --runtime /absolute/wine --output /absolute/private-qa/result`
-在已运行的私有 KWin 会话中检查基础 XSync。输出的父目录必须包含 `.wecom-frame-qa`，
-测试创建独立空白 prefix，不使用账号。环境应为双屏 2560×1440、130%，逻辑高度 1108；
-其他高度通过 `--logical-height` 指定。`kwin-capture.py` 通过 KWin 截图 API 取得合成后的像素。
-正文未就绪时必须保持 owner 背景、计数器为 0、`_XWAYLAND_ALLOW_COMMITS=0`；
-正文就绪后必须显示目标颜色、确认基础请求并允许提交。首次打开和两次重开均检查。
-同时检查实际加载的驱动 inode。旧驱动没有计数器且提前显示黑矩形，应作为失败对照保留。
-
-`../prefix-settings.py --files /absolute/prepared-package-files --qa /absolute/new-result-dir` 验证真实打包启动器。
-它启动 100%/200% 私有桌面，读取客户端窗口 DPI，检查手工值、忙碌 prefix、字体修复及数据保留。
-可用 `LANG=en_US.UTF-8 LC_ALL=C` 启动测试，验证包装器能够统一所有 Wine 命令的 locale。
-缺字正反例隐藏宿主字体，在客户端 locale 下用 32/64 位、11 像素 Tahoma 绘制真实中文字形。
-测试探针也必须使用客户端 locale，避免探针自己触发 Wine 重写被测字体链接。
-
-`--pending-resize` 检查混合顺序：暂停私有 WM 后，owner 只改变尺寸并阻塞消息循环；再恢复 WM，
-让它移动 frame，最后由另一线程更新阴影。此时尺寸确认尚未消费，但没有待执行的位置请求，
-阴影屏幕坐标必须立即正确；恢复 owner 后还需检查最终并集、边距和主体矩形。
-
-`run-card-stack.py` 检查普通、隐藏重显、最大化、还原及同 owner 卡片的原生层级、像素和点击归属。
-另外直接请求原生层级倒序，保持焦点不变，分别覆盖一张卡片、两张卡片以及外部应用位于顶部。
-纠正后窗口几何必须保持不变，已正确的层级不应持续产生纠正请求。外部应用在整组上方时仍须遮住卡片。
-另一例保持外部应用焦点，将组内下方卡片原生抬到它上方：修复须保留该原生位置，并把 Win32 上方的
-预览放回卡片上方，不能把整组降回去，也不能等不存在的下一次激活才收敛。
-激活回归分别从外部应用切回主窗、隐藏重显后再激活，旁边保留同进程普通层的无激活 helper。
-测试核对真实激活、原生层级和可见像素，防止主窗虽获得焦点却被同组 helper 拖到外部应用下面。
-这些请求只发往 `isolated.py` 创建并验证身份的私有 Xwayland。
+构造像素与几何检查之外，真实客户端清单和本轮失败见[review 记录](../../CODE-REVIEW.md)。

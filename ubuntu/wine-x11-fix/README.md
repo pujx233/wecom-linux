@@ -1,31 +1,28 @@
 # Wine 11.20 企业微信修订
 
-企业微信 5.0.13.6005 / Ubuntu 26.04 amd64，2026-11-02。
-当前源码与本地使用的最终组件一致，完整清单见 [release.json](../release.json)。
-实现说明见 [CODE-REVIEW.md](CODE-REVIEW.md)，测试摘要见 [validation.json](../validation.json)。
+当前源码对应企业微信 5.0.13.6005-5 测试版。
+[组件清单](../release.json)、[测试结果](../validation.json)及[实现 review](CODE-REVIEW.md)分别记录构建、运行与验证状态。
 
-## 当前实现
+## 实现
 
-- 主体、标题和阴影共用原生外框；附属层按 owner 的同一坐标快照提交，局部更新不回写全局位置。
-- 合成等待窗口配置确认，最终像素复制完成后才发布 XSync 完成计数，跨进程更新通过 XDamage 推进。
-- 分组层级同步保留已获得的前台位置，修复前后台切换、最小化恢复和成员卡顺序。
-- 显示链接重绑定及原点换算修复拔屏后的裁切；保留双屏最大化和还原修订。
-- 输入法候选框使用当前输入对应的 caret 底边，保留显式候选点和排除区域语义。
-- PnP 按需查询关系、合并重复通知并清理旧缓存；Mountmgr 只响应 UDisks2。
-- GDI+ 减少重复采样运算；OpenGL、foreign DC 使用实际 visual。
+主体、标题和阴影共用原生外框，附属层按 owner 的同一坐标快照提交。
+几何确认、像素上传与 XSync 完成计数形成同一绘制事务，跨进程内容通过 XDamage 刷新。
+窗口层级、焦点协议、形状裁剪和显示原点分别使用原生窗口状态处理。
 
-`WINE_X11_FRAME_ATTACHED_CLASSES='PerryShadowWnd;TitleBarWindow'` 声明随主体移动的附属层。
-成员卡和独立弹窗不声明该角色，保持绝对定位。
-`WINE_X11_FRAME_DECORATION_CLASSES=PerryShadowWnd` 决定正文后方的绘制顺序。
+适配器声明 `WINE_X11_FRAME_ATTACHED_CLASSES='PerryShadowWnd;TitleBarWindow'`，
+由 `WINE_X11_FRAME_DECORATION_CLASSES=PerryShadowWnd` 指定主体后方的装饰层。
+成员卡和独立弹窗保留各自的坐标及层级。
 
-当前使用 X11/XWayland。GDI ABI 为 112，`win32u.so`、`winex11.so`、`wineps.so`、
-`winewayland.so` 及两份 IMM32 必须配套；设备管理、Wineboot 和其余组件按清单装配。
+其余修订包括输入法候选锚点、文件选择与文件管理器接口、剪贴板文件 URI、字体、
+GDI+ 采样、设备关系查询和 UDisks 通知。-5 还调整了升级启动与最大化窗口的全屏判定。
+后续源码修复了仅 Wine 后台驻留时的升级切换，并调整窗口状态与布局提交的时序。
+具体因果和保留问题见 [CODE-REVIEW.md](CODE-REVIEW.md)。
 
 ## 构建
 
-原始源码：[Wine 11.20](https://github.com/wine-mirror/wine/archive/refs/tags/wine-11.20.tar.gz)。
+原始归档为 [Wine 11.20](https://github.com/wine-mirror/wine/archive/refs/tags/wine-11.20.tar.gz)，
 SHA256：`98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793`。
-DEB 的 `/usr/share/doc/com.qq.wecom.spark/` 提供原始归档、净补丁、构建脚本、适配器源码及 LGPL。
+打包脚本将原始归档、当次累计补丁、构建脚本、适配器源码和 LGPL 放入 DEB 的 `/usr/share/doc/com.qq.wecom.spark/`。
 
 ```sh
 docker build -t wecom-wine-sdk ubuntu/wine-x11-fix
@@ -35,31 +32,21 @@ docker run --rm --network none --user "$(id -u):$(id -g)" \
   /work/wine-11.20.tar.gz /work/new-output
 ```
 
-Unix 组件使用 `--enable-win64 --without-mingw --with-wayland`。
-PE 组件单独使用 MinGW 构建，GDI+、IMM32 和设备管理组件同时提供 x86/x64。
-不同构建路径和工具链会改变二进制哈希，打包前更新完整组件清单。
+Unix 与 PE 组件分别构建，PE 同时提供 x86/x64。
+GDI ABI 保持 112，`win32u.so`、X11、打印和 Wayland 驱动成套部署。
+IMM32 公开调用约定未变；修复后的蓝牙 Unix 模块 `winebth.so` 与其余组件按清单装配。
+构建路径和工具链会影响二进制哈希；打包步骤见[构建说明](../../UBUNTU.md)。
 
-## 测试
+## 回归
 
-- [frame-composition](tests/frame-composition/README.md)：附属层坐标、跨进程显示、输入、层级及显示变化。
-- [draw-completion](tests/draw-completion/README.md)：绘图完成信号与 CS_OWNDC。
-- [ime-position](tests/ime-position/README.md)：DPI、composition、候选锚点与焦点切换。
-- [pnp-relations](tests/pnp-relations/README.md)：设备关系、通知和旧缓存迁移。
-- `tests/package-upgrade.py`：独立环境中的首次启动、繁忙目录处理、升级和再次启动。
-- `tests/run-native-file-dialogs.py`：32/64 位 Portal 结果、取消、回调、服务退出和文件管理器协议。
-
-原生文件接口用例必须使用独立显示会话及无账号 prefix，在其父目录创建 `.wecom-native-file-qa` 标记。
-脚本自动创建私有 D-Bus 会话并启动模拟服务，不替换当前桌面的 Portal：
+[统一测试入口](tests/README.md)覆盖窗口、绘制、输入法、字体、文件接口、剪贴板、设备和升级场景。
+各组也可独立运行，测试创建私有显示会话和空白 prefix，并记录所用组件指纹。
 
 ```sh
-python3 tests/run-native-file-dialogs.py --runtime /absolute/wine \
-  --prefix /absolute/private-qa/prefix --output /absolute/private-qa/results
+python3 ubuntu/wine-x11-fix/tests/run-suite.py \
+  --files /absolute/package-files --source /absolute/patched-wine-source \
+  --previous-files /absolute/previous-package-files --output /absolute/new-qa
 ```
 
-需要 Python GI、dbus-run-session、双架构 MinGW 编译器及已初始化的测试 prefix。
-容器没有编译器时，可用 `--fixtures /absolute/probes` 指定已编译的 `probe32.exe`、`probe64.exe`。
-模拟协议通过后，还应在真实桌面后端验证选择、取消、中文路径和 Linux 文件管理器，不能只验模拟服务。
-
-隔离用例使用私有显示会话及无账号 prefix。当前四项附属坐标回归、现场快速拖动和最大化还原通过。
-低频卡片遮挡、完整混合 DPI 和 CFS_RECT 路径尚未全部验证。
-托盘菜单定位、XWayland 截图黑屏、Wine 蓝牙名称字符串泄漏仍未解决；邮件和头像首次加载仍有耗时。
+KWin、niri 与真实客户端的操作清单单列在测试说明中。
+退出码和报告中的失败均保留，当前遗留问题汇总在实现 review 和验证记录中。

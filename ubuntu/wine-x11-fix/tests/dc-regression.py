@@ -1,29 +1,37 @@
+"""Check cross-process GDI drawing and foreign drawable coordinates on a private Xvfb."""
+import argparse
 import ctypes as C
 import json
 import hashlib
 import os
 from pathlib import Path
 import selectors
-import shutil
 import subprocess
 import time
 
-root = Path('/work')
-work = root / os.environ.get('WECOM_COMPONENT_QA_DIR', 'component-qa')
-variant = os.environ['DC_VARIANT']
-assert variant in ('baseline', 'candidate')
-runtime = root / 'probe-runtime'
-prefix = root / ('qa-prefix-' + variant)
-assert (prefix / 'system.reg').is_file()
-shutil.copyfile(work / ('win32u-' + variant + '.so'), runtime / 'lib/wine/x86_64-unix/win32u.so')
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--runtime', required=True, type=Path)
+parser.add_argument('--output', required=True, type=Path)
+args = parser.parse_args()
+runtime, work = args.runtime.resolve(strict=True), args.output.resolve()
+work.mkdir(parents=True, exist_ok=False)
+prefix = work / 'prefix'
+subprocess.run(['i686-w64-mingw32-gcc', '-O2', '-Wall', '-Wextra',
+                str(Path(__file__).with_name('foreign-dc-test.c')),
+                '-o', str(work / 'foreign-dc-test.exe'), '-lgdi32', '-luser32'], check=True)
 env = os.environ.copy()
-env.update(DISPLAY=':86', WINEPREFIX=str(prefix), WINEDEBUG='-all',
-           WINESERVER=str(runtime / 'bin/wineserver'), XMODIFIERS='@im=none')
-for name in ('WAYLAND_DISPLAY', 'XAUTHORITY', 'LD_PRELOAD', 'WINEDLLPATH'):
+env.update(WINEPREFIX=str(prefix), WINEDEBUG='-all', WINESERVER=str(runtime / 'bin/wineserver'),
+           XMODIFIERS='@im=none', WINEDLLOVERRIDES='mscoree,mshtml,winemenubuilder=',
+           DBUS_SYSTEM_BUS_ADDRESS='unix:path=' + str(work / 'no-system-bus'))
+for name in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'LD_PRELOAD', 'WINEDLLPATH', 'DBUS_SESSION_BUS_ADDRESS'):
     env.pop(name, None)
-log = (work / ('dc-' + variant + '.log')).open('wb')
-xvfb = subprocess.Popen(['Xvfb', ':86', '-screen', '0', '800x600x24', '-nolisten', 'tcp', '-ac'],
-                        stdout=log, stderr=log)
+log = (work / 'wine.log').open('wb')
+read_fd, write_fd = os.pipe()
+try:
+    xvfb = subprocess.Popen(['Xvfb', '-displayfd', str(write_fd), '-screen', '0', '800x600x24',
+                             '-nolisten', 'tcp', '-ac'], pass_fds=(write_fd,), stdout=log, stderr=log, env=env)
+finally:
+    os.close(write_fd)
 app = None
 
 
@@ -35,7 +43,14 @@ class XImage(C.Structure):
 
 
 try:
-    time.sleep(0.4)
+    with os.fdopen(read_fd) as pipe, selectors.DefaultSelector() as ready:
+        ready.register(pipe, selectors.EVENT_READ)
+        assert ready.select(10), 'Xvfb did not become ready'
+        number = pipe.readline().strip()
+        assert number.isdecimal(), 'Xvfb did not allocate a private display'
+    env['DISPLAY'] = ':' + number
+    subprocess.run([str(runtime / 'bin/wine'), 'wineboot.exe', '-u'], env=env,
+                   stdout=log, stderr=log, check=True, timeout=60)
     x = C.CDLL('libX11.so.6')
     x.XOpenDisplay.restype = C.c_void_p
     x.XGetImage.argtypes = [C.c_void_p, C.c_ulong, C.c_int, C.c_int, C.c_uint, C.c_uint, C.c_ulong, C.c_int]
@@ -45,7 +60,8 @@ try:
     x.XClearArea.argtypes = [C.c_void_p, C.c_ulong, C.c_int, C.c_int, C.c_uint, C.c_uint, C.c_int]
     x.XSync.argtypes = [C.c_void_p, C.c_int]
     x.XCloseDisplay.argtypes = [C.c_void_p]
-    display = x.XOpenDisplay(b':86')
+    display = x.XOpenDisplay(env['DISPLAY'].encode())
+    assert display
     app = subprocess.Popen([str(runtime / 'bin/wine'), str(work / 'foreign-dc-test.exe')], env=env,
                            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=log, text=True, bufsize=1)
     reader = selectors.DefaultSelector()
@@ -75,13 +91,14 @@ try:
         x.XDestroyImage(image)
     app.stdin.write('quit\n')
     app.stdin.flush()
-    app.wait(timeout=5)
+    assert app.wait(timeout=5) == 0, 'Probe did not exit normally'
     x.XCloseDisplay(display)
-    report = {'variant': variant, 'host_desktop_used': False, 'account_data_used': False, 'stages': results,
+    report = {'display': env['DISPLAY'], 'host_desktop_used': False, 'account_data_used': False, 'stages': results,
               'win32u_sha256': hashlib.sha256((runtime / 'lib/wine/x86_64-unix/win32u.so').read_bytes()).hexdigest(),
               'winex11_sha256': hashlib.sha256((runtime / 'lib/wine/x86_64-unix/winex11.so').read_bytes()).hexdigest(),
               'test_exe_sha256': hashlib.sha256((work / 'foreign-dc-test.exe').read_bytes()).hexdigest()}
-    (work / ('dc-result-' + variant + '.json')).write_text(json.dumps(report, indent=2) + '\n')
+    report['passed'] = all(stage['passed'] for stage in results)
+    (work / 'result.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report))
 finally:
     subprocess.run([str(runtime / 'bin/wineserver'), '-k'], env=env)

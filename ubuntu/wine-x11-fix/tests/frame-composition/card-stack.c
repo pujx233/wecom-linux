@@ -6,7 +6,7 @@
 
 static HWND main_window, card, sentinel, preview, peer, helper;
 static BOOL foreign;
-static unsigned card_clicks, main_clicks;
+static unsigned card_clicks, main_clicks, card_moves, preview_moves;
 
 static unsigned long frame(HWND hwnd)
 {
@@ -24,12 +24,12 @@ static void state(const char *event)
     }
     printf("{\"event\":\"%s\",\"main\":%lu,\"card\":%lu,\"sentinel\":%lu,\"active\":%lu,"
            "\"card_above_main\":%d,\"card_owner\":%llu,\"card_exstyle\":%lu,\"main_maximized\":%d,"
-           "\"preview\":%lu,\"card_clicks\":%u,\"main_clicks\":%u,\"peer_minimized\":%d,"
+           "\"preview\":%lu,\"card_clicks\":%u,\"main_clicks\":%u,\"card_moves\":%u,\"preview_moves\":%u,\"peer_minimized\":%d,"
            "\"helper\":%lu,\"helper_owner\":%llu,\"helper_style\":%lu,\"helper_exstyle\":%lu,\"order\":[",
            event, frame(main_window), frame(card), frame(sentinel), frame(GetForegroundWindow()),
            card_index >= 0 && card_index < main_index, (unsigned long long)(ULONG_PTR)GetWindow(card, GW_OWNER),
            (unsigned long)GetWindowLongA(card, GWL_EXSTYLE), IsZoomed(main_window), frame(preview),
-           card_clicks, main_clicks, IsIconic(peer), frame(helper),
+           card_clicks, main_clicks, card_moves, preview_moves, IsIconic(peer), frame(helper),
            (unsigned long long)(ULONG_PTR)GetWindow(helper, GW_OWNER),
            (unsigned long)GetWindowLongA(helper, GWL_STYLE), (unsigned long)GetWindowLongA(helper, GWL_EXSTYLE));
     for (hwnd = GetTopWindow(NULL), i = 0; hwnd; hwnd = GetWindow(hwnd, GW_HWNDNEXT))
@@ -51,6 +51,11 @@ static LRESULT CALLBACK proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
     {
         if (hwnd == card) ++card_clicks;
         if (hwnd == main_window) ++main_clicks;
+    }
+    if (msg == WM_MOUSEMOVE)
+    {
+        if (hwnd == card) ++card_moves;
+        if (hwnd == preview) ++preview_moves;
     }
     if (msg == WM_PAINT)
     {

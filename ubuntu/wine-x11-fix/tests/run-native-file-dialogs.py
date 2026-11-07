@@ -13,10 +13,28 @@ from gi.repository import Gio, GLib
 
 parser = argparse.ArgumentParser(description="Exercise the native bridge using a private mock D-Bus service.")
 parser.add_argument("--runtime", required=True, type=Path)
-parser.add_argument("--prefix", required=True, type=Path, help="Owned account-free fixture prefix")
+parser.add_argument("--prefix", type=Path, help="Reuse an owned fixture prefix and its private display")
 parser.add_argument("--output", required=True, type=Path)
 parser.add_argument("--fixtures", type=Path, help="Precompiled probe32.exe and probe64.exe")
 args = parser.parse_args()
+if args.prefix is None:
+    root = args.output.resolve()
+    root.mkdir(parents=True, exist_ok=False)
+    (root / '.wecom-frame-qa').touch()
+    (root / '.wecom-native-file-qa').touch()
+    (root / 'wine').symlink_to(args.runtime.resolve(strict=True))
+    os.environ['WECOM_QA_ROOT'] = str(root)
+    sys.path.insert(0, str(Path(__file__).resolve().parent / 'frame-composition'))
+    from isolated import desktop
+
+    with desktop(root) as env:
+        env.pop('WECOM_QA_PRIVATE_BUS', None)
+        command = [sys.executable, str(Path(__file__)), '--runtime', str(args.runtime.resolve()),
+                   '--prefix', str(root / 'prefix'), '--output', str(root / 'results')]
+        if args.fixtures:
+            command += ['--fixtures', str(args.fixtures.resolve())]
+        result = subprocess.run(command, env=env)
+    raise SystemExit(result.returncode)
 if not os.environ.get("WECOM_QA_PRIVATE_BUS"):
     os.execvp(
         "dbus-run-session",

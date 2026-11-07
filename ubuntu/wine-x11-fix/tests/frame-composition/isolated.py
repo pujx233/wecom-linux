@@ -26,7 +26,7 @@ def processes(qa):
 
 
 @contextmanager
-def desktop(qa, size='1600x1000', bare=False, second_monitor=None):
+def desktop(qa, size='1600x1000', bare=False, second_monitor=None, software=True, allow_eval=False):
     qa = qa.resolve()
     if os.environ.get('WECOM_QA_SCALE') == '2':
         size = '3200x2000'
@@ -49,15 +49,16 @@ def desktop(qa, size='1600x1000', bare=False, second_monitor=None):
         env.pop(name, None)
     env.update(XDG_RUNTIME_DIR=str(qa / 'runtime'), XDG_CONFIG_HOME=str(qa / 'config'),
                XDG_DATA_HOME=str(qa / 'data'), XDG_CACHE_HOME=str(qa / 'cache'),
-               GSETTINGS_BACKEND='keyfile', LIBGL_ALWAYS_SOFTWARE='1', LP_NUM_THREADS='2',
-               MESA_SHADER_CACHE_DISABLE='true', NO_AT_BRIDGE='1')
+               GSETTINGS_BACKEND='keyfile', NO_AT_BRIDGE='1')
+    if software:
+        env.update(LIBGL_ALWAYS_SOFTWARE='1', LP_NUM_THREADS='2', MESA_SHADER_CACHE_DISABLE='true')
     subprocess.run(['gsettings', 'set', 'org.gnome.desktop.interface', 'enable-hot-corners', 'false'],
                    env=env, check=True)
     shell_log = (qa / 'gnome-shell.log').open('a')
     pipewire_log = (qa / 'pipewire.log').open('a')
     shell = subprocess.Popen(['dbus-run-session', '--', sys.executable, str(Path(__file__).resolve()),
                               str(qa), '--bare' if bare else '--shell', size,
-                              *([second_monitor] if second_monitor else [])],
+                              *([second_monitor] if second_monitor else []), *(['--unsafe-mode'] if allow_eval else [])],
                              env=env, stdout=shell_log, stderr=subprocess.STDOUT,
                              start_new_session=True)
     try:
@@ -102,6 +103,14 @@ def desktop(qa, size='1600x1000', bare=False, second_monitor=None):
                         xwayland_start=Path(f'/proc/{pid}/stat').read_text().split()[21],
                         runtime=env['XDG_RUNTIME_DIR'], bus=env['DBUS_SESSION_BUS_ADDRESS'])
         (qa / 'desktop.json').write_text(json.dumps(metadata, indent=2) + '\n')
+        prefix = qa / 'prefix'
+        if not (prefix / 'system.reg').exists():
+            boot_env = env | {'WINEPREFIX': str(prefix), 'WINESERVER': str(qa / 'wine/bin/wineserver'),
+                              'DBUS_SYSTEM_BUS_ADDRESS': 'unix:path=' + str(qa / 'no-system-bus'),
+                              'WINEDEBUG': '-all', 'WINEDLLOVERRIDES': 'mscoree,mshtml,winemenubuilder='}
+            with (qa / 'wineboot.log').open('w') as log:
+                subprocess.run([str(qa / 'wine/bin/wine'), 'wineboot.exe', '-u'],
+                               env=boot_env, stdout=log, stderr=log, check=True, timeout=60)
         if not bare:
             subprocess.Popen(['pipewire'], env=env, stdout=pipewire_log, stderr=subprocess.STDOUT,
                              start_new_session=True)
@@ -149,14 +158,6 @@ def desktop(qa, size='1600x1000', bare=False, second_monitor=None):
             while not (qa / 'runtime/pipewire-0').exists() and time.monotonic() < deadline:
                 time.sleep(0.05)
             assert (qa / 'runtime/pipewire-0').exists()
-        prefix = qa / 'prefix'
-        if not (prefix / 'system.reg').exists():
-            boot_env = env | {'WINEPREFIX': str(prefix), 'WINESERVER': str(qa / 'wine/bin/wineserver'),
-                              'DBUS_SYSTEM_BUS_ADDRESS': 'unix:path=' + str(qa / 'no-system-bus'),
-                              'WINEDEBUG': '-all', 'WINEDLLOVERRIDES': 'mscoree,mshtml,winemenubuilder='}
-            with (qa / 'wineboot.log').open('w') as log:
-                subprocess.run([str(qa / 'wine/bin/wine'), 'wineboot.exe', '-u'],
-                               env=boot_env, stdout=log, stderr=log, check=True, timeout=60)
         # The private compositor needs the host bus; Wine fixtures must not enumerate host Bluetooth devices.
         env['DBUS_SYSTEM_BUS_ADDRESS'] = 'unix:path=' + str(qa / 'no-system-bus')
         yield env
@@ -196,9 +197,10 @@ if __name__ == '__main__':
     qa = Path(sys.argv[1])
     assert sys.argv[2] in ('--shell', '--bare')
     (qa / 'bus-address').write_text(os.environ['DBUS_SESSION_BUS_ADDRESS'] + '\n')
-    monitors = ['--virtual-monitor=' + size for size in sys.argv[3:]]
+    monitors = ['--virtual-monitor=' + size for size in sys.argv[3:] if size != '--unsafe-mode']
     if sys.argv[2] == '--shell':
         os.execlp('gnome-shell', 'gnome-shell', '--headless', '--wayland', *monitors,
+                  *(['--unsafe-mode'] if '--unsafe-mode' in sys.argv else []),
                   '--wayland-display=wecom-qa')
     import gi
     repository = gi.Repository.get_default()

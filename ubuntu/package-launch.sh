@@ -21,17 +21,19 @@ if [[ ! -f "$state/prefix/system.reg" ]]; then
   rmdir -- "$temporary"
   trap - EXIT
 fi
-python3 "$root/configure-prefix.py" "$root" "$state/prefix"
 read -r version revision < "$root/application-version"
-if [[ "$(cat "$state/prefix/.wecom-application" 2>/dev/null || true)" != "$revision" ]]; then
-  # An existing prefix owns account data; update only the packaged application files.
-  if WINEPREFIX="$state/prefix" timeout 3 "$root/wine/bin/wineserver" -w; then
+if python3 "$root/prefix-state.py" "$state/prefix" "$root/wine/bin/wineserver"; then
+  python3 "$root/configure-prefix.py" "$root" "$state/prefix"
+  if [[ "$(cat "$state/prefix/.wecom-application" 2>/dev/null || true)" != "$revision" ]]; then
+    # An existing prefix owns account data; update only the packaged application files.
     # Version registry writes start Wine too; recover an idle prefix before them.
     python3 "$root/template/wecom-compat/scripts/prepare-startup.py" --prefix "$state/prefix"
     app='drive_c/Program Files (x86)/WXWork'
-    cp -a --reflink=auto --no-preserve=links -- "$root/template/$app/." "$state/prefix/$app/"
+    cp -a --reflink=auto --no-preserve=links --remove-destination -- \
+      "$root/template/$app/." "$state/prefix/$app/"
     backup='AppData/Roaming/Tencent/WeMail/WeMailBak/Base'
-    cp -a --reflink=auto --no-preserve=links -- "$root/template/drive_c/users/wecom/$backup/." \
+    cp -a --reflink=auto --no-preserve=links --remove-destination -- \
+      "$root/template/drive_c/users/wecom/$backup/." \
       "$state/prefix/drive_c/users/$(id -un)/$backup/"
     for setting in "Version=$version" "WeMeetDir=C:\\Program Files (x86)\\WXWork\\$version\\WeMeet"; do
       WINEPREFIX="$state/prefix" WINESERVER="$root/wine/bin/wineserver" WINEDEBUG=-all \
@@ -39,10 +41,15 @@ if [[ "$(cat "$state/prefix/.wecom-application" 2>/dev/null || true)" != "$revis
         /v "${setting%%=*}" /t REG_SZ /d "${setting#*=}" /f /reg:32
     done
     printf '%s\n' "$revision" > "$state/prefix/.wecom-application"
-  else
-    status=$?
-    printf '%s\n' '企业微信尚未完全退出，或 Wine 状态检查失败；请退出后重新启动以完成升级。' >&2
+  fi
+else
+  status=$?
+  if [[ "$status" != 124 ]]; then
     exit "$status"
+  fi
+  export WECOM_EMBEDDED_UI_DPI_FIX=0
+  if [[ "$(cat "$state/prefix/.wecom-application" 2>/dev/null || true)" != "$revision" ]]; then
+    printf '%s\n' '企业微信正在运行；本次继续使用当前应用文件，完全退出后下次启动完成更新。' >&2
   fi
 fi
 flock -u 9

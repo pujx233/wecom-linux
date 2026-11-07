@@ -51,6 +51,7 @@ assert digest(repo / 'ubuntu/wine-x11-fix/wine-11.20-x11-popups.patch') == spec[
 required_components = ['wine/bin/wineserver', 'wine/lib/wine/x86_64-unix/ntdll.so',
                        'wine/lib/wine/x86_64-unix/win32u.so', 'wine/lib/wine/x86_64-unix/winex11.so',
                        'wine/lib/wine/x86_64-unix/wineps.so', 'wine/lib/wine/x86_64-unix/winewayland.so',
+                       'wine/lib/wine/x86_64-unix/winebth.so',
                        'wine/lib/wine/x86_64-unix/mountmgr.so',
                        'wine/lib/wine/x86_64-unix/comdlg32.so',
                        'wine/lib/wine/x86_64-windows/wineboot.exe']
@@ -227,7 +228,8 @@ for paths in by_size.values():
 packaged = {name: digest(files / relative) for name, relative in spec['wine_components'].items()}
 print('Wine PE runtime sections preserved; identical files deduplicated', flush=True)
 for name, target in (('launch.sh', 'launch.sh'), ('package-launch.sh', 'start.sh'),
-                     ('relocate-prefix.py', 'relocate-prefix.py'), ('configure-prefix.py', 'configure-prefix.py')):
+                     ('relocate-prefix.py', 'relocate-prefix.py'), ('configure-prefix.py', 'configure-prefix.py'),
+                     ('prefix-state.py', 'prefix-state.py')):
     overlay(repo / 'ubuntu' / name, files / target)
     (files / target).chmod(0o755)
 (files / 'application-version').write_text(spec['wecom_version'] + ' ' + spec['package_version'] + '\n')

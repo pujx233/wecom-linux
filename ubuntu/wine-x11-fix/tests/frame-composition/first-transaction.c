@@ -4,7 +4,7 @@
 #include <string.h>
 
 static HWND owner, popup, shadow;
-static BOOL paint_popup, compact;
+static BOOL paint_popup, compact, odd_size;
 
 static LRESULT CALLBACK proc(HWND hwnd, UINT message, WPARAM wp, LPARAM lp)
 {
@@ -43,7 +43,10 @@ static void pump(void)
 
 static void state(const char *phase)
 {
-    printf("{\"phase\":\"%s\",\"frame\":%llu,\"body\":%llu}\n", phase,
+    RECT rect;
+    GetWindowRect(popup, &rect);
+    printf("{\"phase\":\"%s\",\"rect\":[%ld,%ld,%ld,%ld],\"frame\":%llu,\"body\":%llu}\n", phase,
+           rect.left, rect.top, rect.right, rect.bottom,
            (unsigned long long)(UINT_PTR)GetPropW(popup, L"__wine_x11_wm_window"),
            (unsigned long long)(UINT_PTR)GetPropW(popup, L"__wine_x11_whole_window"));
     fflush(stdout);
@@ -53,8 +56,15 @@ int main(int argc, char **argv)
 {
     WNDCLASSW cls = {.lpfnWndProc = proc, .lpszClassName = L"FirstTransactionBody"};
     char command[32];
+    int i, width, height;
 
-    compact = argc > 1 && !strcmp(argv[1], "--compact");
+    for (i = 1; i < argc; i++)
+    {
+        if (!strcmp(argv[i], "--compact")) compact = TRUE;
+        if (!strcmp(argv[i], "--odd-size")) odd_size = TRUE;
+    }
+    width = (compact ? 240 : 640) + odd_size;
+    height = (compact ? 160 : 960) + odd_size;
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     if (!RegisterClassW(&cls)) return 2;
     cls.lpszClassName = L"FirstTransactionDecoration";
@@ -73,12 +83,11 @@ int main(int argc, char **argv)
                              0, 0, 0, 0, popup, NULL, NULL, NULL);
     if (!shadow) return 3;
     SetLayeredWindowAttributes(shadow, 0, 255, LWA_ALPHA);
-    SetWindowPos(popup, NULL, compact ? 400 : 500, 300, compact ? 240 : 640,
-                 compact ? 160 : 960, SWP_NOZORDER | SWP_NOACTIVATE);
+    SetWindowPos(popup, NULL, compact ? 400 : 500, 300, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
     InvalidateRect(popup, NULL, FALSE);
     ShowWindow(popup, SW_SHOW);
     SetWindowPos(shadow, NULL, compact ? 390 : 452, compact ? 290 : 252,
-                 compact ? 260 : 736, compact ? 180 : 1056, SWP_NOZORDER | SWP_NOACTIVATE);
+                 width + (compact ? 20 : 96), height + (compact ? 20 : 96), SWP_NOZORDER | SWP_NOACTIVATE);
     ShowWindow(shadow, SW_SHOWNOACTIVATE);
     UpdateWindow(shadow);
     pump();

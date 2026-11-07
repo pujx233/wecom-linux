@@ -1,46 +1,46 @@
 # 企业微信
 
-版本
+企业微信 5.0.13.6005 的 Linux 社区适配版，内置 Wine 11.20。
+当前测试版为 **5.0.13.6005-5**。
+本轮修复文件粘贴、升级切换、成员卡及窗口状态，验证状态见[实现与 review 记录](ubuntu/wine-x11-fix/CODE-REVIEW.md)。
 
-企业微信 5.0.13.6005，内置 Wine 11.20，Linux 社区适配测试版。
-DEB 修订 5.0.13.6005-4，glibc 最低要求为 2.38，兼容 t64 与非 t64 运行库包名。
-已在 Ubuntu 26.04 GNOME/Mutter、KWin 6.6.6 和 Fedora 44 嵌套 niri 环境验证对应场景。
+## 安装
 
-修复问题
-
-- 跟随桌面 DPI，修复界面过大，并保留手工 DPI 设置。
-- 修复文件列表中文方块，恢复 Linux 原生上传文件选择窗口和打开文件夹。
-- 修复 niri 下的累积黑斑，补齐 KWin 绘制同步和菜单焦点声明。
-- 修复已读名单首次打开时的轻微跳动。
-- 改善预览弹窗层级，以及窗口尺寸变化、最大化和还原时的画面错位。
-- 适配右键菜单、透明窗口、阴影和绘制裁剪，改善弹窗闪动、残影和遮挡。
-- 修复拖动时正文与外框错位、白框和黑缝，改善聊天记录首次打开的白帧、刷新延迟及历史侧栏闪动。
-- 修复前后台切换、最小化恢复、双屏最大化和还原，以及拔屏后的窗口裁切。
-- 改善成员卡、头像预览和弹窗层级，修复微盘开窗退出及机器人内容独立开窗。
-- 修复输入法候选框定位和遮字，改善邮件光标、高分屏显示及网页组件兼容。
-- 改善跨进程内容刷新、图片缩放，以及托盘图标的透明度和清晰度。
-- 减少重复设备通知、注册表膨胀和磁盘服务 CPU 占用。
-- 内置独立 Wine，直接在现有桌面运行，保留邮件、会议等组件。
-- 精简重复文件和 Wine 调试信息。
-
-遗留问题
-
-- 托盘单击、右键行为仍不完善，“更多操作”会出现回到屏幕中间的问题。
-- XWayland 下截图黑屏。
-- RX580 现场的右键黑框，以及 Plasma X11 下菜单偶发定位到桌面左上角，仍需复测。
-
-安装
-
-从 [Releases](https://github.com/pujx233/wecom-linux/releases/tag/v5.0.13.6005-4) 下载 DEB 和 SHA256SUMS，执行：
+从 [Releases](https://github.com/pujx233/wecom-linux/releases/tag/v5.0.13.6005-5) 下载 DEB 和校验文件：
 
 ```sh
 sha256sum -c SHA256SUMS
-sudo apt install ./com.qq.wecom.spark_5.0.13.6005-4_amd64.deb
+sudo apt install ./com.qq.wecom.spark_5.0.13.6005-5_amd64.deb
 ```
 
-在应用菜单启动“企业微信”。升级保留账号和聊天记录，用户数据位于 `~/.local/share/wecom/prefix`。
+在应用菜单启动“企业微信”。升级沿用账号和聊天记录，用户数据位于 `~/.local/share/wecom/prefix`。
 
-[构建说明](UBUNTU.md) · [Wine 源码与测试](ubuntu/wine-x11-fix/README.md) · [第三方许可](THIRD-PARTY.md)
+## 适配内容
 
-企业微信和图标属于腾讯。基础适配来自
-[tbsangel/archlinux-wine-wecom-setup](https://github.com/tbsangel/archlinux-wine-wecom-setup)。
+- 跟随桌面 DPI，保留手工设置，修复中文字体与文件名显示。
+- 接入 Linux 原生上传文件选择窗口，以及默认文件管理器的目录打开和文件定位。
+- 修复拖动、缩放、最大化、还原及拔屏后的窗口错位，改善菜单、已读名单和预览弹窗的绘制与层级。
+- 修复 niri 的累积黑斑，补齐 KWin 的首帧同步与菜单焦点声明。
+- 改善输入法候选位置、邮件正文刷新、图片缩放及网页组件兼容，减少重复设备枚举和磁盘服务开销。
+
+-5 新增文件粘贴、运行中唤回和工作区变化后的窗口状态修复。
+本轮进一步处理了正常退出后的升级切换、成员卡排序与焦点、特殊全屏及默认最大化、
+蓝牙名称缓存泄漏，并复核了输入法矩形区域的接口与测试。
+回归范围和结果见[测试记录](ubuntu/validation.json)。
+
+## Linux 环境
+
+安装包面向 amd64，核心 glibc 要求为 2.38，无需安装系统 Wine。
+验证环境包括 Ubuntu 26.04 GNOME/Mutter，以及 Fedora 44 嵌套 niri 和 KWin 6.6.6；各版本的测试范围见[验证记录](ubuntu/validation.json)。
+
+目前仍有托盘菜单定位、XWayland 截图黑屏，以及双屏 200% 下的 Mutter 原生全屏选屏问题。
+RX580 上的右键黑框和 Plasma X11 的菜单定位仍需在原环境复测。
+-5 已修复 96 DPI 下部分菜单因尺寸回执反复争用而不显示的问题。
+快速最大化、还原及锁屏恢复后偶发的正文或阴影尺寸异常仍待处理。
+该异常也在上一份本地 -5 中出现，尚未完成与公开 -4 的对照。
+
+[使用与构建](UBUNTU.md) · [Wine 源码](ubuntu/wine-x11-fix/README.md) · [回归清单](ubuntu/wine-x11-fix/tests/README.md) · [第三方许可](THIRD-PARTY.md)
+
+企业微信和图标属于腾讯，基础适配来自 [tbsangel/archlinux-wine-wecom-setup](https://github.com/tbsangel/archlinux-wine-wecom-setup)。
+Linux 发行版和桌面环境较多，欢迎通过 [GitHub Issues](https://github.com/pujx233/wecom-linux/issues) 反馈兼容问题。
+仓库：[pujx233/wecom-linux](https://github.com/pujx233/wecom-linux)。

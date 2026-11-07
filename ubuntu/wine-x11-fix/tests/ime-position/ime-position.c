@@ -100,6 +100,7 @@ static void focus_input(HWND hwnd)
 static void apply(HWND hwnd, UINT operation, POINT point)
 {
     RECT area = {point.x, point.y, point.x + 2, point.y + caret_height};
+    POINT anchor = point;
     BOOL ok = FALSE;
     const char *event = "unknown";
     HIMC context;
@@ -124,6 +125,8 @@ static void apply(HWND hwnd, UINT operation, POINT point)
     case 9:
     case 10:
     case 13:
+    case 16:
+    case 17:
     {
         if (operation == 6 || operation == 13)
         {
@@ -138,12 +141,20 @@ static void apply(HWND hwnd, UINT operation, POINT point)
         }
         if (operation == 7) DestroyCaret();
         COMPOSITIONFORM form = {CFS_POINT, point, {0, 0, 0, 0}};
-        if (operation == 8 || operation == 9)
+        if (operation == 8 || operation == 9 || operation == 16 || operation == 17)
         {
-            area.right = point.x + (operation == 8 ? 200 : 1);
-            area.bottom = point.y + (operation == 8 ? 100 : 1);
+            area.right = point.x + (operation == 8 || operation == 16 ? 200 : 1);
+            area.bottom = point.y + (operation == 8 || operation == 16 ? 100 : 1);
             form.dwStyle = CFS_RECT;
             form.rcArea = area;
+            if (operation == 16 || operation == 17)
+            {
+                form.rcArea.left -= operation == 16 ? 7 : 1;
+                form.rcArea.top -= operation == 16 ? 11 : 1;
+            }
+            area = form.rcArea;
+            /* CFS_RECT locates by rcArea; ptCurrentPos belongs to POINT/FORCE_POSITION. */
+            anchor = (POINT){area.left, area.top};
         }
         if (operation == 10) form.dwStyle = CFS_FORCE_POSITION;
         context = ImmGetContext(hwnd);
@@ -151,7 +162,8 @@ static void apply(HWND hwnd, UINT operation, POINT point)
         if (context) ImmReleaseContext(hwnd, context);
         event = operation == 6 ? "blur" : operation == 7 ? "destroy" :
                 operation == 8 ? "area" : operation == 9 ? "small-area" :
-                operation == 10 ? "force" : operation == 13 ? "stale" : "composition";
+                operation == 10 ? "force" : operation == 13 ? "stale" :
+                operation == 16 ? "offset-area" : operation == 17 ? "offset-small-area" : "composition";
         break;
     }
     case 11:
@@ -176,8 +188,8 @@ static void apply(HWND hwnd, UINT operation, POINT point)
         ok = TRUE;
         break;
     }
-    anchor_point = point;
-    report(event, hwnd, ok, point, area);
+    anchor_point = anchor;
+    report(event, hwnd, ok, anchor, area);
 }
 
 static LRESULT CALLBACK input_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
@@ -244,7 +256,8 @@ static LRESULT CALLBACK root_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM
                         !strcmp(operation, "destroy") ? 7 : !strcmp(operation, "area") ? 8 :
                         !strcmp(operation, "small-area") ? 9 : !strcmp(operation, "force") ? 10 :
                         !strcmp(operation, "candidate") ? 11 : !strcmp(operation, "exclude") ? 12 :
-                        !strcmp(operation, "stale") ? 13 : 0;
+                        !strcmp(operation, "stale") ? 13 :
+                        !strcmp(operation, "offset-area") ? 16 : !strcmp(operation, "offset-small-area") ? 17 : 0;
             SendMessageW(input_window, WM_APPLY, code, MAKELPARAM(x, y));
         }
         return 0;

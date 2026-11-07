@@ -1,73 +1,62 @@
-# Ubuntu 使用、复用与重建
+# 使用与构建
 
-当前社区测试版为企业微信 5.0.13.6005 / 私有 Wine 11.20，DEB 版本号 5.0.13.6005-4。
-本轮使用 Ubuntu 26.04 GNOME/Mutter 的 100%/200% 私有会话，
-以及 Fedora 44 的嵌套 niri 26.04 / xwayland-satellite 0.8.3 软件渲染环境验证。
-另在 Ubuntu 26.04.1 / KWin 6.6.6 / Mesa 26.0.8 的双屏 100%/130% 私有会话验证真实菜单、绘制和文件接口。
-这不等于已验收其他桌面、显卡和物理 Wayland 会话。
+当前测试版为企业微信 5.0.13.6005-5，内置私有 Wine 11.20。
+安装方式见 [README](README.md)，组件指纹与测试结果分别保存在
+[release.json](ubuntu/release.json) 和 [validation.json](ubuntu/validation.json)。
 
-程序与未登录模板位于 `/opt/apps/com.qq.wecom.spark/files`。
-用户 prefix 位于 `${XDG_DATA_HOME:-$HOME/.local/share}/wecom/prefix`，日志在相邻的 `logs` 目录。
-首次启动按当前 Linux 用户重定位模板，升级沿用账号目录并使用安装包内的启动器、助手。
-空闲时同步包内字体和回退配置，并按桌面 DPI 配置专属 prefix；运行中的客户端不改配置。
-企微的配置修改只作用于该 prefix，不改系统 Wine 或桌面全局设置。
+## 用户目录
 
-## 运行库依赖
+程序和未登录模板安装在 `/opt/apps/com.qq.wecom.spark/files`。
+首次启动为当前 Linux 用户创建 `${XDG_DATA_HOME:-$HOME/.local/share}/wecom/prefix`，日志保存在相邻的 `logs` 目录。
+升级保留这个目录中的账号和聊天数据，空闲时更新应用、字体及配套组件。
+-5 支持在运行期间再次启动唤回现有客户端，并区分应用客户端与 Wine 后台服务：
+应用退出后，下次启动会先结束这个 prefix 的残留后台，再完成更新。
+升级切换的实现与测试见[review 记录](ubuntu/wine-x11-fix/CODE-REVIEW.md#升级切换)。
 
-`package.py` 从包内 ELF 的 `GLIBC_*` 符号计算 libc6 下限，当前为 **2.38**。
-构建机的 glibc 版本不作为安装门槛。全部 Unix 模块均为 amd64，32 位 Windows 程序通过 WoW64 运行，
-无需安装 i386 系统库，也无需安装系统 Wine。
-`7zz` 只用于构建时解压官方安装器，首次启动不需要 `7z` 或 `7zz`。
+配置只作用于企业微信自己的 prefix。桌面 DPI 优先取自 XSettings 和 X resources，再读取桌面的显示配置。
+用户手工修改的 DPI 会保留。退出客户端后，可以指定 DPI 或恢复自动配置：
 
-| 分类 | 依赖与用途 |
+```sh
+WECOM_DPI=120 /opt/apps/com.qq.wecom.spark/files/start.sh
+WECOM_DPI=auto /opt/apps/com.qq.wecom.spark/files/start.sh
+```
+
+初始化、升级和启动统一使用中文 locale，避免 Wine 重建代码页时覆盖字体回退表。
+
+## 文件窗口
+
+上传文件使用桌面的 FileChooser Portal，打开目录和定位文件使用 Linux 默认文件管理器。
+支持中文路径、多选、保存、取消及 COM 确认回调。
+带 Win32 自定义控件的窗口，以及旧式文件对话框接口，继续使用 Wine 界面；当前图片菜单的“另存为”属于后者。
+
+桌面需提供 Portal 文件选择后端和目录默认应用。要使用 Wine 界面，可分别设置
+`WINE_NATIVE_FILE_DIALOGS=0` 或 `WINE_NATIVE_FILE_MANAGER=0`。
+
+niri 额外标题栏的中文方块来自 xwayland-satellite 的字体回退，修复位于
+[独立补丁](ubuntu/xwayland-satellite-fonts/README.md)，由使用该组件的桌面单独部署。
+
+## 依赖
+
+核心 glibc 下限由包内 ELF 符号计算，当前为 **2.38**。
+Unix 模块均为 amd64，32 位 Windows 程序通过 WoW64 运行，无需 i386 系统库或系统 Wine。
+`7zz` 用于构建时解压厂商安装器，首次启动直接复制模板。
+
+| 分类 | 用途 |
 | --- | --- |
-| Depends | 启动脚本、Python、libc/libgcc、X11、字体、DBus、GnuTLS 和 CA 证书；声音使用 PulseAudio 或 ALSA 其一 |
-| Recommends | XWayland、GNOME Python 绑定、OpenGL/Vulkan、设备与摄像头、打印、Kerberos 和 Wine 多媒体后端 |
-| Suggests | 扫描仪、相机导入、智能卡、抓包、OpenCL、SMB、ODBC 和 SDL 等通用 Wine 扩展 |
+| Depends | 启动脚本、Python、X11、字体、DBus、GnuTLS、CA 证书，以及 PulseAudio 或 ALSA |
+| Recommends | XWayland、桌面 Python 绑定、OpenGL/Vulkan、音视频、打印和设备支持 |
+| Suggests | 扫描仪、相机导入、智能卡、OpenCL、SMB、ODBC 等扩展 |
 
-`t64` 与非 `t64` 的同 ABI 包名用替代依赖表示，不绑定 Ubuntu 的包名。
-企微和会议组件自带 Windows 编解码库；Wine 多媒体后端仍按其实际链接关系声明：
-`winegstreamer.so` 需要 GLib 2.80、GStreamer 1.14 和 base 库 1.18，
-`winedmo.so` 需要 FFmpeg 8 的 `libavformat.so.62`、`libavcodec.so.62`、`libavutil.so.60`。
-旧版 FFmpeg 不能替代这些 SONAME。缺少推荐库时，对应 Wine 后端不可用，不代表全部音视频功能已兼容。
+同 ABI 的 t64 与非 t64 包名使用替代依赖。Wine 多媒体后端按实际链接声明：
+`winegstreamer.so` 使用 GLib 2.80、GStreamer 1.14 和 base 库 1.18；
+`winedmo.so` 使用 FFmpeg 8 的 `libavformat.so.62`、`libavcodec.so.62` 和 `libavutil.so.60`。
+音视频组件仍保留厂商自带的 Windows 编解码库，实际功能按桌面环境测试。
 
-默认保留安装推荐依赖。Ubuntu 24.04、Deepin 23/25 等系统满足核心 glibc 门槛，
-但各发行版是否提供可选后端及实际功能仍需分别确认。
-模板固定使用 X11；未启用的原生 Wine Wayland 驱动不额外引入 Wayland 1.23 的安装要求。
+## 构建 Wine
 
-## 修复与边界
-
-邮件跨进程正文通过原生像素变化通知更新共享框架；主进程不必再次调用 GDI 才能看到新内容。
-合成内容的待处理状态独立于通知队列，应用重入消息循环时不会丢掉更新，状态解锁后重新排队。
-绘图提交保持应用完成信号和 XSync 协议，移除了持有窗口锁时等待合成器私有属性的轮询。
-人物卡片与头像预览使用稳定的原生 owner 关系，同 owner 的共享框架也能按 Win32 请求换序。
-普通 `WS_EX_TRANSPARENT` 不再被直接当作整窗鼠标穿透；分层透明窗口继续允许穿透。
-
-顶栏、主体和阴影在一个原生框架中提交，缓冲区按窗口尺寸复用。
-原生模式不再为顶栏添加 `WS_SYSMENU` 或清除 `WS_EX_NOACTIVATE`，也不重放普通菜单点击。
-主窗口阴影保持被动输入角色，这是企微适配。实现说明见[当前实现](ubuntu/wine-x11-fix/CODE-REVIEW.md)。
-
-CEF 修订仅接受固定 SHA256 的原厂 x86 DLL，回补 V8 保护模式和 Chromium 光标坐标处理。
-原 CEF 签名因此失效；`WXWork.exe` 没有修改。不能将此补丁直接套用到其他企微版本。
-邮件进程在该 prefix 中设置 IFEO `dpiAwareness=1`，与主进程的 DPI 模式保持一致。
-
-文件选择通过桌面的 FileChooser Portal，打开目录和定位文件使用 Linux 默认文件管理器。
-支持中文路径、多选、保存、取消及 COM 确认回调；带 Win32 自定义控件或不支持的选项时使用 Wine 界面。
-旧式 Win32 对话框接口仍使用 Wine，例如当前客户端图片菜单的“另存为”；其中文字体已修复。
-可分别设置 `WINE_NATIVE_FILE_DIALOGS=0`、`WINE_NATIVE_FILE_MANAGER=0` 切回 Wine。
-桌面需有可用的 Portal 文件选择后端和目录默认应用，包内声明了相应依赖。
-
-文件列表中文方块已通过启动 locale 与字体链接迁移修复。
-niri 下额外标题栏的方块来自 xwayland-satellite 缺少字体回退，详见
-[独立补丁](ubuntu/xwayland-satellite-fonts/README.md)；不通过强改 Wine 标题字体处理。
-托盘菜单定位及 XWayland 截图黑屏仍未修复。图片准备、网络取数与桌面开窗动画仍有耗时。
-附件收发、审批、音视频、已读人数等功能未全面验收，不能据此承诺企业微信全部功能可用。
-
-## 构建 Wine 与助手
-
-Wine 原始归档 SHA256：
+Wine 原始归档 SHA256 为
 `98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793`。
-原始源码、完整净补丁、SDK Dockerfile、构建脚本及 LGPL 随包提供。
+原始源码、累计补丁、SDK Dockerfile、构建脚本及 LGPL 随包提供。
 
 ```sh
 docker build -t wecom-wine-sdk ubuntu/wine-x11-fix
@@ -78,15 +67,16 @@ docker run --rm --network none --user "$(id -u):$(id -g)" \
 bash ubuntu/build-helpers.sh /absolute/helper-output
 ```
 
-运行时需配套部署核心、图形、输入法和设备管理组件，完整清单及构建命令见
-`ubuntu/wine-x11-fix/README.md`。
-当前二进制来自已记录的 SDK 构建，干净源码重建另有验证；不同编译路径和工具链会改变二进制哈希。
+当前源码保留 GDI ABI 112，核心、X11、Wayland 和打印驱动按组件清单配套构建。
+[完整清单](ubuntu/release.json)记录 27 个已装配组件，包含修复后的 `winebth.so`；现有 -5 DEB 使用 ABI 112。
+主程序使用 X11/XWayland。CEF 修订针对固定版本的厂商 x86 DLL，回补 V8 保护模式和光标坐标处理，
+邮件进程通过该 prefix 的 IFEO DPI 设置与主界面配合。
 
-## 重建未登录安装包
+## 构建 DEB
 
-公开 R3 DEB 是已校验的模板来源，无须维护者的历史构建缓存或已登录 prefix。
-`package.py` 校验来源、运行时和助手哈希，剥离 Wine PE 调试数据并核对其运行时 section 不变。
-厂商 DLL 不执行 strip。重复文件在包内去重，首次创建用户目录时解除硬链接以保持文件独立。
+`package.py` 从已校验的公开基包取得未登录模板，再装配官方安装器、Wine 和助手。
+Wine PE 调试信息会被剥离，同时检查运行时 section 保持一致；厂商 DLL 保持原样。
+包内重复文件去重，创建用户目录时解除硬链接。
 
 ```sh
 python3 ubuntu/package.py \
@@ -96,29 +86,8 @@ python3 ubuntu/package.py \
   --wine-source /absolute/wine-11.20.tar.gz \
   --installer /absolute/WeCom_5.0.13.6005.exe \
   --stage /absolute/new-stage \
-  --output /absolute/com.qq.wecom.spark_5.0.13.6005-4_amd64.deb
+  --output /absolute/com.qq.wecom.spark_5.0.13.6005-5_amd64.deb
 ```
 
-自行构建后更新 `release.json` 中的组件指纹，再运行打包。
-公开基包必须匹配元数据中的 SHA256，不能换成任意已登录的账号目录。
-基础安装器、运行库与字体来源保存在 `materials/`，仍须遵循原许可。
-这套流程可重建 Wine 与适配包，不等于从零重现所有第三方安装器的安装过程。
-
-## 独立回归与 DPI
-
-`ubuntu/wine-x11-fix/tests/frame-composition/` 包含跨进程绘制、输入穿透、owner 和共享框架换序用例。
-它们在私有 GNOME/XWayland 会话中运行，使用合成窗口和账号无关的测试 prefix。
-真实客户端的场景与通过范围单列于 `validation.json`，不会以模型测试替代实际客户端验收。
-
-启动器优先读取 X11 的 XSettings `Xft/DPI` 和 X resources，再读取桌面的显示配置。
-原模板中的固定 192 DPI 会迁移到桌面 DPI；手工通过 Wine 配置修改过的 DPI 会保留。
-初始化、升级和实际客户端统一使用中文 locale，避免 Wine 切换代码页时覆盖包内字体回退表。
-
-退出企微后，可以为本次启动指定 DPI，或清除手工 DPI 标记、恢复跟随桌面：
-
-```sh
-WECOM_DPI=120 /opt/apps/com.qq.wecom.spark/files/start.sh
-WECOM_DPI=auto /opt/apps/com.qq.wecom.spark/files/start.sh
-```
-
-新源码、组件或缩放组合须重新验收，不能沿用旧版本的通过结论。
+自行构建后，更新 `release.json` 的组件指纹再打包。原始安装器、运行库及字体来源在 `materials/` 中记录。
+回归入口和完整场景清单见[测试说明](ubuntu/wine-x11-fix/tests/README.md)。

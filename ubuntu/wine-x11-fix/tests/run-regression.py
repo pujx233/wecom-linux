@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Check popup geometry, alpha and input regions on a private Xvfb/Openbox desktop."""
+import argparse
 import ctypes as C
 from datetime import datetime, timezone
 import hashlib
@@ -6,32 +8,32 @@ import json
 import os
 from pathlib import Path
 import selectors
-import shutil
 import subprocess
 import time
 
-root = Path('/work')
-variant = os.environ['WECOM_QA_VARIANT']
-assert variant in ('baseline', 'candidate')
-runtime = root / 'probe-runtime'
-driver = root / ('winex11-baseline.so' if variant == 'baseline' else 'winex11-candidate.so')
-shutil.copyfile(driver, runtime / 'lib/wine/x86_64-unix/winex11.so')
-prefix = root / ('qa-prefix-' + variant)
-assert (prefix / 'system.reg').is_file(), 'Use an initialized, account-free test prefix'
-assert (prefix / 'drive_c/windows/syswow64/kernel32.dll').is_file(), 'A complete WoW64 prefix is required'
-logs = root / ('qa-' + variant)
-logs.mkdir(exist_ok=True)
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--runtime', required=True, type=Path)
+parser.add_argument('--output', required=True, type=Path)
+args = parser.parse_args()
+runtime, root = args.runtime.resolve(strict=True), args.output.resolve()
+root.mkdir(parents=True, exist_ok=False)
+driver = runtime / 'lib/wine/x86_64-unix/winex11.so'
+prefix, logs = root / 'prefix', root
+subprocess.run(['i686-w64-mingw32-gcc', '-O2', '-Wall', '-Wextra',
+                str(Path(__file__).with_name('window-regression.c')),
+                '-o', str(root / 'window-regression.exe'), '-lgdi32', '-luser32'], check=True)
 env = os.environ.copy()
-env.update(DISPLAY=':85', WINEPREFIX=str(prefix), WINEDEBUG='-all', USER='wecom-qa',
+env.update(WINEPREFIX=str(prefix), WINEDEBUG='-all',
            WINEDLLOVERRIDES='mscoree,mshtml,winemenubuilder=',
            WINESERVER=str(runtime / 'bin/wineserver'), XDG_CONFIG_HOME=str(logs / 'config'),
-           XDG_CACHE_HOME=str(logs / 'cache'), XMODIFIERS='@im=none')
-for key in ('WAYLAND_DISPLAY', 'XAUTHORITY', 'WINEDLLPATH', 'LD_PRELOAD'):
+           XDG_CACHE_HOME=str(logs / 'cache'), XMODIFIERS='@im=none',
+           DBUS_SYSTEM_BUS_ADDRESS='unix:path=' + str(root / 'no-system-bus'))
+for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'WINEDLLPATH', 'LD_PRELOAD', 'DBUS_SESSION_BUS_ADDRESS'):
     env.pop(key, None)
 processes = []
 files = []
 completed = False
-report = {'variant': variant, 'started_at': datetime.now(timezone.utc).isoformat(),
+report = {'started_at': datetime.now(timezone.utc).isoformat(),
           'driver_sha256': hashlib.sha256(driver.read_bytes()).hexdigest(),
           'test_exe_sha256': hashlib.sha256((root / 'window-regression.exe').read_bytes()).hexdigest(),
           'test_script_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
@@ -85,15 +87,28 @@ def mask(xid, kind, width, height):
 
 
 try:
-    xvfb = start(['Xvfb', ':85', '-screen', '0', '1600x1000x24', '-nolisten', 'tcp', '-ac'], 'xvfb')
-    deadline = time.monotonic() + 8
-    while not Path('/tmp/.X11-unix/X85').is_socket():
-        if xvfb.poll() is not None or time.monotonic() > deadline:
-            raise RuntimeError('Xvfb failed to start')
-        time.sleep(0.05)
+    read_fd, write_fd = os.pipe()
+    stream = (logs / 'xvfb.log').open('wb')
+    files.append(stream)
+    try:
+        xvfb = subprocess.Popen(['Xvfb', '-displayfd', str(write_fd), '-screen', '0', '1600x1000x24',
+                                 '-nolisten', 'tcp', '-ac'], env=env, pass_fds=(write_fd,),
+                                stdout=stream, stderr=stream)
+        processes.append(xvfb)
+    finally:
+        os.close(write_fd)
+    with os.fdopen(read_fd) as pipe, selectors.DefaultSelector() as ready:
+        ready.register(pipe, selectors.EVENT_READ)
+        assert ready.select(10), 'Xvfb did not become ready'
+        number = pipe.readline().strip()
+        assert number.isdecimal(), 'Xvfb did not allocate a private display'
+    env['DISPLAY'] = ':' + number
+    report['display'] = env['DISPLAY']
     start(['openbox'], 'openbox')
     start(['xcompmgr', '-a'], 'compositor')
-    time.sleep(0.5)
+    with (logs / 'wineboot.log').open('wb') as boot:
+        subprocess.run([str(runtime / 'bin/wine'), 'wineboot.exe', '-u'], env=env,
+                       stdout=boot, stderr=boot, check=True, timeout=60)
     x, shape = C.CDLL('libX11.so.6'), C.CDLL('libXext.so.6')
     x.XOpenDisplay.argtypes = [C.c_char_p]
     x.XOpenDisplay.restype = C.c_void_p
@@ -107,7 +122,7 @@ try:
     x.XDestroyImage.argtypes = [C.c_void_p]
     shape.XShapeGetRectangles.argtypes = [C.c_void_p, C.c_ulong, C.c_int, C.c_void_p, C.c_void_p]
     shape.XShapeGetRectangles.restype = C.POINTER(Rect)
-    display = x.XOpenDisplay(b':85')
+    display = x.XOpenDisplay(env['DISPLAY'].encode())
     assert display
     err = (logs / 'wine.log').open('wb')
     files.append(err)
@@ -170,7 +185,8 @@ try:
                 check('owned tool accepts explicit activation', stage['active'] == stage['hwnd'])
         elif name in ('edgemenu', 'bordered'):
             expected = (648, 900, 320, 100) if name == 'edgemenu' else (600, 852, 416, 196)
-            check(name + ': nonactivating popup stays unmanaged', stage['override_redirect'])
+            if name == 'edgemenu':
+                check('fixed menu stays unmanaged', stage['override_redirect'])
             check(name + ': requested position and size retained at screen bottom', stage['mapped'] and
                   (left.value, top.value, attributes.width, attributes.height) == expected)
             check(name + ': foreground unchanged', stage['foreground'] == first_foreground)
@@ -221,7 +237,7 @@ finally:
     report['passed'] = (completed and len(report['stages']) == len(commands) and
                         all(c['passed'] for c in report['checks']))
     (logs / 'verification.json').write_text(json.dumps(report, indent=2) + '\n')
-    print(json.dumps({'variant': variant, 'checks': len(report['checks']), 'passed': report['passed'],
+    print(json.dumps({'checks': len(report['checks']), 'passed': report['passed'],
                       'failures': [item['name'] for item in report['checks'] if not item['passed']]}))
 
 if not report['passed']:

@@ -16,6 +16,11 @@ qa = Path(sys.argv[1]).resolve()
 runtime = Path(sys.argv[2]).resolve()
 run = sys.argv[3]
 commands = (None, 'hide', 'show', 'paint') if '--cancel' in sys.argv[4:] else (None, 'paint', 'hide')
+odd_size = '--odd-size' in sys.argv[4:]
+compact = '--compact' in sys.argv[4:]
+left, top = (400 if compact else 500), 300
+width, height = ((240, 160) if compact else (640, 960))
+expected = (left, top, left + width + odd_size, top + height + odd_size)
 qa.mkdir(exist_ok=True)
 (qa / '.wecom-frame-qa').touch()
 if not (qa / 'wine').exists():
@@ -26,6 +31,7 @@ source = Path(__file__).with_name('first-transaction.c')
 subprocess.run(['x86_64-w64-mingw32-gcc', '-O2', '-Wall', '-Wextra', '-Werror', str(source),
                 '-o', str(qa / 'first-transaction.exe'), '-luser32', '-lgdi32'], check=True)
 report = {'real_desktop_used': False, 'account_data_used': False, 'phases': [],
+          'odd_size': odd_size,
           'driver': hashlib.sha256((runtime / 'lib/wine/x86_64-unix/winex11.so').read_bytes()).hexdigest()}
 
 class SyncValue(C.Structure):
@@ -49,7 +55,8 @@ with desktop(qa) as env:
     display = x11.XOpenDisplay(env['DISPLAY'].encode())
     assert display
     with recording(qa, env, run) as capture, (qa / (run + '.log')).open('w') as log:
-        app = subprocess.Popen([str(qa / 'wine/bin/wine'), str(qa / 'first-transaction.exe')],
+        app = subprocess.Popen([str(qa / 'wine/bin/wine'), str(qa / 'first-transaction.exe'),
+                                *(['--odd-size'] if odd_size else []), *(['--compact'] if compact else [])],
                                env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                stderr=log, text=True, bufsize=1)
         replies = queue.Queue()
@@ -82,7 +89,7 @@ with desktop(qa) as env:
                 image = qa / (run + '-' + state['phase'] + '.png')
                 capture(image)
                 im = Image.open(image).convert('RGB')
-                state['body_center'] = im.getpixel((660, 420))
+                state['body_center'] = im.getpixel((left + width // 4, top + height // 4))
                 r, g, b = im.split()
                 mask = ImageChops.multiply(g.point(lambda v: 255 if v > 245 else 0),
                                           ImageChops.add(r, b).point(lambda v: 255 if v < 10 else 0))
@@ -98,10 +105,14 @@ with desktop(qa) as env:
             x11.XCloseDisplay(display)
 phases = {state['phase']: state for state in report['phases']}
 pending, painted, hidden = (phases[name] for name in ('pending', 'paint', 'hide'))
+rounding = 1 if odd_size and os.environ.get('WECOM_QA_SCALE') == '2' else 0
+geometry_passed = (painted['green_bounds'] == tuple(painted['rect']) and
+                   tuple(painted['rect'][:2]) == expected[:2] and
+                   all(0 <= painted['rect'][i] - expected[i] <= rounding for i in (2, 3)))
 report['passed'] = (pending['counter'] & 1 and pending['opacity'] == 0xffffffff and
                     pending['body_center'] == (96, 96, 96) and painted['counter'] % 2 == 0 and
                     painted['counter'] > pending['counter'] and painted['opacity'] == 0xffffffff and
-                    painted['green_bounds'] == (500, 300, 1140, 1260) and hidden['counter'] % 2 == 0)
+                    geometry_passed and hidden['counter'] % 2 == 0)
 if 'show' in phases:
     shown = phases['show']
     report['passed'] = (report['passed'] and shown['counter'] & 1 and shown['counter'] > hidden['counter'] and
@@ -109,3 +120,4 @@ if 'show' in phases:
                         shown['body_center'] == (96, 96, 96))
 (qa / (run + '.json')).write_text(json.dumps(report, indent=2) + '\n')
 print(json.dumps(report))
+assert report['passed'], 'first-frame transaction regression'
