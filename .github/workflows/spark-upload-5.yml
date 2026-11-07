@@ -1,0 +1,65 @@
+name: Transfer verified WeCom -5 to Spark Store
+"on":
+  push:
+    branches: [spark-upload-5.0.13.6005-5-20261107]
+permissions:
+  contents: read
+jobs:
+  upload:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Transfer and verify the released DEB
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import json
+          import os
+          import subprocess
+          import urllib.parse
+          import urllib.request
+          import uuid
+
+          os.umask(0o077)
+          package = Path('com.qq.wecom.spark_5.0.13.6005-5_amd64.deb')
+          base = 'https://github.com/pujx233/wecom-linux/releases/download/v5.0.13.6005-5'
+          print('Downloading the published and verified DEB', flush=True)
+          subprocess.run(['curl', '-fL', '--retry', '3', '--max-time', '300', base + '/' + package.name,
+                          '-o', str(package)], check=True)
+          sha256 = hashlib.file_digest(package.open('rb'), 'sha256').hexdigest()
+          assert sha256 == 'c33fa30b5b569231e8a684d9fd4bbf0bad42e2a9972911e980f3f3b2b8715fec'
+          md5 = hashlib.file_digest(package.open('rb'), 'md5').hexdigest()
+          print('Obtaining the public Spark Store upload policy', flush=True)
+          request = urllib.request.Request('https://upload.deepinos.org.cn/aaaapi/indexxxxxxx/upload_deb',
+                                           headers={'User-Agent': 'SparkStore/5.3.2'})
+          with urllib.request.urlopen(request, timeout=30) as response:
+              policy = json.load(response)
+          assert policy['code'] == 0
+          data = policy['data']
+          host = data['host']
+          parsed = urllib.parse.urlparse(host)
+          assert parsed.scheme == 'https' and parsed.hostname.endswith('.aliyuncs.com')
+          filename = uuid.uuid4().hex + '.deb'
+          key = data['dir'] + filename
+          fields = [('key', key), ('OSSAccessKeyId', data['OSSAccessKeyId']), ('policy', data['policy']),
+                    ('signature', data['signature']), ('success_action_status', '200')]
+          config = ['url = ' + json.dumps(host), 'request = "POST"', 'fail-with-body',
+                    'connect-timeout = 30', 'max-time = 2400', 'output = "oss-response.txt"']
+          config += ['form = ' + json.dumps(name + '=' + value) for name, value in fields]
+          form_file = 'file=@' + str(package) + ';filename=' + filename
+          config += ['form = ' + json.dumps(form_file + ';type=application/vnd.debian.binary-package')]
+          Path('upload.curl').write_text('\n'.join(config) + '\n')
+          print('Uploading the DEB to Spark Store object storage', flush=True)
+          subprocess.run(['curl', '--config', 'upload.curl', '--progress-bar'], check=True)
+          url = host.rstrip('/') + '/' + key.lstrip('/')
+          with urllib.request.urlopen(urllib.request.Request(url, method='HEAD'), timeout=30) as response:
+              length = int(response.headers['Content-Length'])
+              etag = response.headers.get('ETag', '').strip('"').lower()
+          assert length == package.stat().st_size and etag == md5
+          result = {'url': url, 'file_name': package.name, 'bytes': length, 'sha256': sha256, 'md5': md5,
+                    'verified': True}
+          Path('upload-result.json').write_text(json.dumps(result, indent=2) + '\n')
+          Path('upload.curl').unlink()
+          print('SPARK_UPLOAD_RESULT ' + json.dumps(result), flush=True)
+          PY
