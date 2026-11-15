@@ -1,6 +1,6 @@
 # 使用与构建
 
-当前测试版为企业微信 5.0.13.6005-5，内置私有 Wine 11.20。
+当前测试版为企业微信 5.0.13.6005-6，内置私有 Wine 11.20。
 安装方式见 [README](README.md)，组件指纹与测试结果分别保存在
 [release.json](ubuntu/release.json) 和 [validation.json](ubuntu/validation.json)。
 
@@ -25,9 +25,10 @@ WECOM_DPI=auto /opt/apps/com.qq.wecom.spark/files/start.sh
 
 ## 文件窗口
 
-上传文件使用桌面的 FileChooser Portal，打开目录和定位文件使用 Linux 默认文件管理器。
+普通文件选择使用桌面的 FileChooser Portal，打开目录和定位文件使用 Linux 默认文件管理器。
 支持中文路径、多选、保存、取消及 COM 确认回调。
-带 Win32 自定义控件的窗口，以及旧式文件对话框接口，继续使用 Wine 界面；当前图片菜单的“另存为”属于后者。
+依赖 Windows 文件视图、带 Win32 自定义控件的窗口，以及旧式文件对话框接口，使用 Wine 界面。
+企微图片选择依赖文件视图；图片菜单的“另存为”使用旧式接口，均保留兼容窗口。
 
 桌面需提供 Portal 文件选择后端和目录默认应用。要使用 Wine 界面，可分别设置
 `WINE_NATIVE_FILE_DIALOGS=0` 或 `WINE_NATIVE_FILE_MANAGER=0`。
@@ -68,9 +69,21 @@ bash ubuntu/build-helpers.sh /absolute/helper-output
 ```
 
 当前源码保留 GDI ABI 112，核心、X11、Wayland 和打印驱动按组件清单配套构建。
-[完整清单](ubuntu/release.json)记录 27 个已装配组件，包含修复后的 `winebth.so`；现有 -5 DEB 使用 ABI 112。
+[完整清单](ubuntu/release.json)记录 29 个候选组件，包含修复后的 `winebth.so` 和双架构 `slwga.dll`。
+本轮 -6 DEB 装配该清单中的修订，使用 ABI 112。
 主程序使用 X11/XWayland。CEF 修订针对固定版本的厂商 x86 DLL，回补 V8 保护模式和光标坐标处理，
 邮件进程通过该 prefix 的 IFEO DPI 设置与主界面配合。
+
+邮件输入使用修补后的 Wine IMM32 跨进程组合输入与光标定位。
+Ubuntu 启动器默认令 CEF 107 选择 IMM32，并停用旧的字符提交桥；
+`WECOM_CEF_IME_FIX=0` 可关闭 CEF 的接口选择，重新启动企微后生效。
+显式对照旧字符桥时，使用 `WECOM_CEF_IME_FIX=0 WECOM_IME_FIX=1`；新路径启用时排除旧桥。
+这项修订需要清单中的 core、X11 驱动和双架构 IMM32 成套装配，不能只替换启动脚本。
+本机 IBus 取消竞态和 XIM 前端生命周期修复另见 [宿主说明](ubuntu/host-ibus/README.md)，需在宿主单独部署。
+
+装配运行库时，将 `build-explorer/dlls/slwga/` 下两种 Windows 架构的 `slwga.dll`
+分别放入运行库的 `lib/wine/i386-windows/` 和 `lib/wine/x86_64-windows/`。
+会议模块需要这个静态导入依赖；打包会检查组件清单和文件指纹。
 
 ## 构建 DEB
 
@@ -80,13 +93,13 @@ Wine PE 调试信息会被剥离，同时检查运行时 section 保持一致；
 
 ```sh
 python3 ubuntu/package.py \
-  --base-package /absolute/com.qq.wecom.spark_5.0.12.6018-3.preview20261025_amd64.deb \
+  --base-package /absolute/com.qq.wecom.spark_5.0.13.6005-5_amd64.deb \
   --runtime /absolute/verified-wine-runtime \
   --helpers /absolute/verified-helpers \
   --wine-source /absolute/wine-11.20.tar.gz \
   --installer /absolute/WeCom_5.0.13.6005.exe \
   --stage /absolute/new-stage \
-  --output /absolute/com.qq.wecom.spark_5.0.13.6005-5_amd64.deb
+  --output /absolute/com.qq.wecom.spark_5.0.13.6005-6_amd64.deb
 ```
 
 自行构建后，更新 `release.json` 的组件指纹再打包。原始安装器、运行库及字体来源在 `materials/` 中记录。

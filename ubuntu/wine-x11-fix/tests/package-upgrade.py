@@ -58,6 +58,12 @@ app = Path('drive_c/Program Files (x86)/WXWork/WXWork.exe')
 expected = digest(files / 'template' / app)
 original = {name: digest(files / 'template' / name) for name in ('user.reg', 'system.reg', str(app))}
 report = {'application_version': version, 'account_used': False, 'main_desktop_used': False, 'phases': []}
+licensing_probes = {}
+for bits, compiler in (('32', 'i686-w64-mingw32-gcc'), ('64', 'x86_64-w64-mingw32-gcc')):
+    probe = qa / ('slwga-' + bits + '.exe')
+    subprocess.run([compiler, '-O2', '-Wall', '-Wextra',
+                    str(Path(__file__).with_name('software-licensing') / 'slwga.c'), '-o', str(probe)], check=True)
+    licensing_probes[bits] = probe
 commands = qa / 'commands-without-archiver'
 commands.mkdir()
 for directory in os.get_exec_path():
@@ -107,11 +113,19 @@ with desktop(qa, '3200x2000') as desktop_env:
                                              r'HKCU\Software\Tencent\WXWork', '/v', 'Version', '/reg:32'],
                                             env=env, text=True, timeout=15)
             assert version in query
+            licensing = {}
+            for bits, probe in licensing_probes.items():
+                result = subprocess.run([str(files / 'wine/bin/wine'), str(probe)], env=env,
+                                        capture_output=True, text=True, timeout=15)
+                assert result.returncode == 0, (phase, bits, result.stdout, result.stderr)
+                licensing[bits] = json.loads(result.stdout)
+                assert licensing[bits]['loaded'] and licensing[bits]['failures'] == 0
             with recording(qa, desktop_env, phase) as capture:
                 time.sleep(3)
                 capture(qa / (phase + '.png'))
             report['phases'].append({'phase': phase, 'new_executable_loaded': True,
-                                     'registry_version': version, 'screenshot': str(qa / (phase + '.png'))})
+                                     'registry_version': version, 'licensing': licensing,
+                                     'screenshot': str(qa / (phase + '.png'))})
         finally:
             stop(data)
             process.wait(timeout=15)
@@ -179,11 +193,14 @@ with desktop(qa, '3200x2000') as desktop_env:
     assert digest(private) == private_digest
     # A second start must keep the already deployed application rather than copy it again.
     os.utime(prefix / app, ns=(1600000000000000000, 1600000000000000000))
+    for directory in ('system32', 'syswow64'):
+        (prefix / 'drive_c/windows' / directory / 'slwga.dll').unlink()
     launch('same-version', upgraded)
     assert (prefix / app).stat().st_mtime_ns == 1600000000000000000
     assert digest(private) == private_digest
     report['private_data_preserved'] = True
     report['same_version_not_recopied'] = True
+    report['same_version_missing_licensing_repaired'] = True
     report['first_start_without_7z_7zz_7za'] = True
 
 assert all(digest(files / 'template' / name) == value for name, value in original.items())

@@ -218,7 +218,8 @@ with desktop(qa, size='3200x2000', bare=True,
                     report['imm32_modules'].extend(
                         {'pid': int(process.name), 'mapping': line,
                          'sha256': hashlib.sha256(Path(line.split()[-1]).read_bytes()).hexdigest()}
-                        for line in maps if 'r-xp' in line and line.endswith('/imm32.dll'))
+                        # Cached code has another backing file; the original PE header retains provenance.
+                        for line in maps if line.split()[2] == '00000000' and line.endswith('/imm32.dll'))
                 except (FileNotFoundError, PermissionError, ProcessLookupError):
                     continue
             names = {entry['mapping'].split()[-1] for entry in report['active_modules']}

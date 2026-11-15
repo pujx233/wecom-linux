@@ -11,7 +11,7 @@ import time
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--wine', type=Path, required=True, help='complete Wine runtime directory')
-parser.add_argument('--manifest', type=Path, required=True, help='JSON containing runtime_sha256')
+parser.add_argument('--manifest', type=Path, required=True, help='JSON containing runtime_sha256 or artifacts_sha256')
 parser.add_argument('--exe', type=Path, required=True, help='compiled foreign-cursor-test.c')
 parser.add_argument('--out', type=Path, required=True, help='new disposable result directory')
 parser.add_argument('--xvfb', default='Xvfb', help='Xvfb executable')
@@ -76,7 +76,8 @@ def fingerprint():
 try:
     before = {name: hashlib.sha256(path.read_bytes()).hexdigest() for name, path in inputs.items()}
     report['sha256_before'] = before
-    manifest = json.loads(args.manifest.read_text())['runtime_sha256']
+    document = json.loads(args.manifest.read_text())
+    manifest = document['artifacts_sha256'] if 'artifacts_sha256' in document else document['runtime_sha256']
     for name in ('wineserver', 'winex11.so', 'win32u.so', 'ntdll.so'):
         assert before[name] == manifest[name], f'runtime manifest mismatch: {name}'
     report['manifest_verified'] = True

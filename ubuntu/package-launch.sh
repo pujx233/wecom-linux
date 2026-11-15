@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export WECOM_SHARED_CEF_IMAGE="${WECOM_SHARED_CEF_IMAGE:-1}"
+export WECOM_SHARED_PE_IMAGE="${WECOM_SHARED_PE_IMAGE:-1}"
 unset WINEARCH WINESERVER WINELOADER WINELOADERNOEXEC WINEDLLPATH WINESERVERSOCKET
 # Wine regenerates locale-dependent font links when its ANSI codepage changes.
 # Configure and upgrade the prefix in the same locale as launch-wecom.sh.

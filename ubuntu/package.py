@@ -56,7 +56,8 @@ required_components = ['wine/bin/wineserver', 'wine/lib/wine/x86_64-unix/ntdll.s
                        'wine/lib/wine/x86_64-unix/comdlg32.so',
                        'wine/lib/wine/x86_64-windows/wineboot.exe']
 for architecture in ('i386-windows', 'x86_64-windows'):
-    for name in ('imm32.dll', 'cfgmgr32.dll', 'setupapi.dll', 'ntoskrnl.exe', 'comdlg32.dll', 'shell32.dll'):
+    for name in ('imm32.dll', 'cfgmgr32.dll', 'setupapi.dll', 'ntoskrnl.exe', 'comdlg32.dll', 'shell32.dll',
+                 'slwga.dll'):
         required_components.append(f'wine/lib/wine/{architecture}/{name}')
 required_components.append('wine/lib/wine/i386-windows/explorer.exe')
 for relative in required_components:

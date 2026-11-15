@@ -12,6 +12,7 @@ API HANDLE FindWindowA(const char *, const char *);
 API HANDLE FindWindowExA(HANDLE,HANDLE,const char *,const char *);
 API BOOL EnumWindows(BOOL (__stdcall *)(HANDLE,long),long);
 API HANDLE GetParent(HANDLE);
+API HANDLE GetWindow(HANDLE,unsigned);
 API int GetClassNameA(HANDLE,char *,int);
 API DWORD GetWindowThreadProcessId(HANDLE,DWORD *);
 API long GetWindowLongA(HANDLE,int);
@@ -72,8 +73,15 @@ static HANDLE pending_menu_restore;static DWORD menu_restore_due,menu_restore_de
 static POINT menu_click;static int click_in_menu;
 static HANDLE pressed_context_menu;
 static char output[2048];static unsigned pos;
-static void text(const char *s){while(*s&&pos<sizeof(output)-64)output[pos++]=*s++;}
-static void hex(DWORD v){text("0x");for(int i=7;i>=0;i--)output[pos++]="0123456789abcdef"[(v>>(4*i))&15];}
+static void text(const char *s){while(*s&&pos<sizeof(output))output[pos++]=*s++;}
+static void hex(DWORD v){
+    char digits[11];digits[0]='0';digits[1]='x';digits[10]=0;
+    for(int i=0;i<8;i++)digits[i+2]="0123456789abcdef"[(v>>((7-i)*4))&15];
+    text(digits);
+}
+static void flush(void){
+    DWORD written;if(pos)WriteFile(GetStdHandle((DWORD)-11),output,pos,&written,0);pos=0;
+}
 static int same(const char*a,const char*b){while(*a&&*a==*b){a++;b++;}return *a==*b;}
 static int is_wecom_exe(const char *name){
     const char *base=name;
@@ -121,35 +129,54 @@ static BOOL __stdcall inspect(HANDLE w,long unused){
     char cls[128];DWORD pid=0;
     if(!GetClassNameA(w,cls,sizeof(cls)))return 1;
     int is_titlebar=same(cls,"TitleBarWindow"),is_shadow=same(cls,"PerryShadowWnd");
-    if((!is_titlebar&&!is_shadow)||GetParent(w)!=main_window)return 1;
+    if(!is_titlebar&&!is_shadow)return 1;
     if(native_frames&&is_titlebar)return 1;
-    HANDLE frame=GetPropA(main_window,"__wine_x11_wm_window");
-    if(is_titlebar&&frame&&frame!=GetPropA(main_window,"__wine_x11_whole_window")&&
-       GetPropA(w,"__wine_x11_wm_window")==frame)return 1;
     GetWindowThreadProcessId(w,&pid);if(pid!=main_pid)return 1;
     DWORD style=GetWindowLongA(w,-16),exstyle=GetWindowLongA(w,-20);RECT before,after;
     if(is_shadow&&!(exstyle&0x00080000))return 1; /* Only layered shadows. */
-    GetWindowRect(w,&before);found++;
+    HANDLE owner=GetParent(w);
+    if(owner!=main_window){
+        char owner_class[128];DWORD owner_pid=0;
+        if(!is_shadow||!owner||GetWindow(w,4)!=owner)return 1; /* GW_OWNER, not a child parent. */
+        if(!GetClassNameA(owner,owner_class,sizeof(owner_class))||!same(owner_class,"ImagePreview"))return 1;
+        GetWindowThreadProcessId(owner,&owner_pid);if(owner_pid!=main_pid)return 1;
+    }
+    HANDLE frame=GetPropA(main_window,"__wine_x11_wm_window");
+    if(is_titlebar&&frame&&frame!=GetPropA(main_window,"__wine_x11_whole_window")&&
+       GetPropA(w,"__wine_x11_wm_window")==frame)return 1;
+    BOOL before_ok=GetWindowRect(w,&before),ok=0,geometry_unchanged=0;
+    DWORD new_style=style,new_exstyle=exstyle;found++;
     int needs_change=is_titlebar?(!(style&0x00080000)||(exstyle&0x08000000)):!(exstyle&0x00000020);
-    if(!watch || needs_change) {text(cls);text(" hwnd=");hex((DWORD)w);text(" owner=");hex((DWORD)main_window);text(" style=");hex(style);text(" exstyle=");hex(exstyle);text("\n");}
     if(apply&&needs_change){
         /* Legacy Wine needs title-bar style changes for native management.
-           The main shadow is passive in both profiles: WeWorkWindow handles
-           resizing, and a transparent title-bar hit must reach that owner. */
+           Main and image-preview shadows are passive in both profiles.
+           Their owners handle resizing and receive title-bar input. */
         if(is_titlebar){
             if(!(style&0x00080000))SetWindowLongA(w,-16,style|0x00080000);
             if(exstyle&0x08000000)SetWindowLongA(w,-20,exstyle&~0x08000000);
         }
         else SetWindowLongA(w,-20,exstyle|0x00000020);
-        BOOL ok=SetWindowPos(w,0,0,0,0,0,0x37); /* FRAMECHANGED,NOMOVE,NOSIZE,NOZORDER,NOACTIVATE */
-        GetWindowRect(w,&after);
-        text("new_style=");hex(GetWindowLongA(w,-16));text(" new_exstyle=");hex(GetWindowLongA(w,-20));text(" position_refresh=");hex(ok);
-        text(" geometry_unchanged=");hex(before.left==after.left&&before.top==after.top&&before.right==after.right&&before.bottom==after.bottom);text("\n");
-        if(ok&&(is_titlebar?((GetWindowLongA(w,-16)&0x00080000)&&!(GetWindowLongA(w,-20)&0x08000000)):(GetWindowLongA(w,-20)&0x00000020)))changed++;
+        ok=SetWindowPos(w,0,0,0,0,0,0x37); /* FRAMECHANGED,NOMOVE,NOSIZE,NOZORDER,NOACTIVATE */
+        BOOL after_ok=GetWindowRect(w,&after);
+        new_style=GetWindowLongA(w,-16);new_exstyle=GetWindowLongA(w,-20);
+        geometry_unchanged=before_ok&&after_ok&&before.left==after.left&&before.top==after.top&&
+                           before.right==after.right&&before.bottom==after.bottom;
+        if(ok&&(is_titlebar?((new_style&0x00080000)&&!(new_exstyle&0x08000000)):(new_exstyle&0x00000020)))
+            changed++;
     }
+    /* Cross-process window calls can dispatch another SHOW callback while waiting.
+       Keep their results on this stack; only format the complete record afterwards. */
+    if(!watch||needs_change){
+        text(cls);text(" hwnd=");hex((DWORD)w);text(" owner=");hex((DWORD)owner);
+        text(" style=");hex(style);text(" exstyle=");hex(exstyle);text("\n");
+        if(apply&&needs_change){
+            text("new_style=");hex(new_style);text(" new_exstyle=");hex(new_exstyle);
+            text(" position_refresh=");hex(ok);text(" geometry_unchanged=");hex(geometry_unchanged);text("\n");
+        }
+    }
+    flush();
     return 1;
 }
-static void flush(void){DWORD written;if(pos)WriteFile(GetStdHandle((DWORD)-11),output,pos,&written,0);pos=0;}
 static int read_values(char **cursor,long *values,unsigned count){
     char *s=*cursor;
     for(unsigned i=0;i<count;i++){
@@ -297,6 +324,10 @@ static void __stdcall popup_shown(HANDLE hook,DWORD event,HANDLE w,long object,l
     if(object||child)return;
     GetWindowThreadProcessId(w,&pid);
     if(!GetClassNameA(w,cls,sizeof(cls)))return;
+    if(pid==main_pid&&same(cls,"PerryShadowWnd")){
+        inspect(w,0);
+        return;
+    }
     if(same(cls,"tooltips_class32")){
         HANDLE owner=GetParent(w);RECT r;POINT p;
         if(!tray_enabled||!is_tray_tooltip(w,owner)||!GetWindowRect(owner,&r)||!GetCursorPos(&p))return;

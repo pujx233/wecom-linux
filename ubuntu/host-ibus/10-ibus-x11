@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+
+# Keep the distribution path for sessions which have not enabled the user unit.
+case ":${XDG_CURRENT_DESKTOP:-}:" in
+    *:GNOME:*) gnome_session=1 ;;
+    *) gnome_session=0 ;;
+esac
+if [ "$gnome_session" != 1 ] || [ "${XDG_SESSION_TYPE:-}" != wayland ] ||
+   [ "$(systemctl --user show -p LoadState --value org.freedesktop.IBus.X11.service 2>/dev/null)" != loaded ]; then
+    /usr/libexec/ibus-x11 &
+    exit 0
+fi
+
+# Xwayland is started lazily; use the credentials from its startup hook.
+: "${DISPLAY:?Xwayland DISPLAY is required}"
+systemctl --user import-environment DISPLAY
+if [ "${XAUTHORITY+x}" = x ]; then
+    systemctl --user import-environment XAUTHORITY
+else
+    systemctl --user unset-environment XAUTHORITY
+fi
+exec systemctl --user --no-block start org.freedesktop.IBus.X11.service

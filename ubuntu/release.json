@@ -1,17 +1,17 @@
 {
   "name": "企业微信",
   "package": "com.qq.wecom.spark",
-  "package_version": "5.0.13.6005-5",
+  "package_version": "5.0.13.6005-6",
   "status": "prerelease",
   "wecom_version": "5.0.13.6005",
   "installer_url": "https://dldir1v6.qq.com/wework/work_weixin/WeCom_5.0.13.6005.exe",
   "installer_sha256": "5df50a240038a2de7c3b17e4f25f4747e74d97f9028be9baec6f7379fc97e1be",
   "wine_version": "11.20",
-  "tested_environment": "QA18 private Ubuntu 26.04 Mutter 100%/200%; original account on daily dual-200% GNOME with Wine 96/192 DPI. QA17 lock/unlock and niri/KWin history retain older driver fingerprints.",
+  "tested_environment": "Ubuntu 26.04.1 LTS / GNOME 50.1 / Xwayland, dual 200%; 72/72 runtime groups and fresh/upgrade payload acceptance passed.",
   "upstream_adapter": "tbsangel/archlinux-wine-wecom-setup@f0ad4711049476bb2d87b40acaff53ca5ee58124",
   "wine_source_sha256": "98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793",
   "prelogin_archive_sha256": "94eb246b3562e8e2e1d672a2f9c1edc91a15034a37106b6a6d7faae8dddcae62",
-  "wine_patch_sha256": "d1bbceaaa7f252196099ec6338ac6f7c9671f27761d3cbf781da4e619cc2a9a8",
+  "wine_patch_sha256": "1e3f752bb0d9341d6dbfe5ccf4444423b6e8a04d4ada105c50d3d09b6bb2b3f1",
   "wine_components": {
     "wineserver": "wine/bin/wineserver",
     "ntdll.so": "wine/lib/wine/x86_64-unix/ntdll.so",
@@ -39,17 +39,19 @@
     "shell32-x86_64.dll": "wine/lib/wine/x86_64-windows/shell32.dll",
     "comdlg32.so": "wine/lib/wine/x86_64-unix/comdlg32.so",
     "explorer-i386.exe": "wine/lib/wine/i386-windows/explorer.exe",
-    "winebth.so": "wine/lib/wine/x86_64-unix/winebth.so"
+    "winebth.so": "wine/lib/wine/x86_64-unix/winebth.so",
+    "slwga-i386.dll": "wine/lib/wine/i386-windows/slwga.dll",
+    "slwga-x86_64.dll": "wine/lib/wine/x86_64-windows/slwga.dll"
   },
   "artifacts_sha256": {
     "libcef.dll": "02b6cd5185af5fa390c41116f9c4a07912dc2175c8f8a75d0ec3f41256220265",
-    "wineserver": "81d3992df47db3e9c36d6400f95364703edaa7421c52106377287fa2720d6fb6",
-    "ntdll.so": "70db13c547010f6ffe97ec289d32bf17ddf4a5b14358ccb5d82a672123d6b2d9",
-    "win32u.so": "e1f490af81f7109b7a38e163c717369e079a152b7d4c15577b051623e37ce136",
-    "winex11.so": "631f6fdedb9ace20b81fd7478652bb9741349dd8e510a9537ceeccbfc9c7af05",
+    "wineserver": "a7bb249f6bb6db811b770f9f6caa1391e5b5eeec218c31128db7c66e3c327c71",
+    "ntdll.so": "2a41b6f4533170777a66bd53bd91010600e0f4c1a467dd308d41fabfe51e2705",
+    "win32u.so": "07b71293d74514e7667c0a6de90b214d1ba39b778afd76e6115a4ddb0436b7b6",
+    "winex11.so": "a46e56ae10d62c1e95dc6f506812042ee2c23356fbf32f757f21ae0894a94527",
     "wineps.so": "30b9b3db1eda53cc307828e05fc51952edcf6771174d196d49c291a78174dc8a",
-    "imm32-i386.dll": "366ff81449d54f365f8e5b64a1be5eb13b67fe30ed684035a1ad064c0e8e3f0d",
-    "imm32-x86_64.dll": "35b25203fa117c7e10c10995ada37edf4d56673e0b98b5c5d108968fc2bccf37",
+    "imm32-i386.dll": "36a05a3a0d144a20ee7dbb47e108c64c1972e3830d1357d27909efa19fc640fc",
+    "imm32-x86_64.dll": "8550278a740c1441fc9f2c802087a19590064cb4687abc5ea56a232729e7059e",
     "explorer.exe": "0e98db85cf10575807cf0e5677be600413739a72b1cfd6a3c0ea21a3b5452ec1",
     "wine": "fa443c7a1f7d289faeffab7cf79ae2f13398bd715ab25267e725e67d6bf765a1",
     "gdiplus-i386.dll": "0623c1e20536c9c734b0d8bef938b54ea6364fed009d98ed3b6f07ce310137ab",
@@ -62,18 +64,20 @@
     "setupapi.dll-x86_64-windows": "32dda67beec9ec7a81d68c036be7313c8f22cfaa04414164a0a2d05adf513e39",
     "wineboot.exe-x86_64-windows": "379440aae4fe7648b938f4ef78f3af4633a47d9ca78e6078580a389c3e5b782e",
     "mountmgr.so": "748de97cc1dfbbb334908a17409f1ad5f4df6d07b17c830a81d8828b1c05956c",
-    "winewayland.so": "6a7a38c28a09d71221f06d1f766ff6c174334bc10637a2e2205594f83babb7d3",
-    "comdlg32-i386.dll": "a74a25be24ba7b89dff0ffe62c2ca656aa1219d123e2d24cfd64aaddfc0a588e",
+    "winewayland.so": "ac11ccecd9854d74a972487dd99b646d887541c81a3853b8fcb76b917e354761",
+    "comdlg32-i386.dll": "0942bd206fee7c3b82947e19787afc2b32f835a057fb5cb809393fb44e83e2b8",
     "shell32-i386.dll": "5fd5a5d5d297bb257a2b7d5f7045aba2281645374e7e0f42d72ebd2a48ad842c",
-    "comdlg32-x86_64.dll": "22b8ff07d0611a3066f5f35be5b7a94acc1f86344150085d49f48715fbe82ec7",
+    "comdlg32-x86_64.dll": "ec7a6ad77525b4d32b4681c3cb334000625b49d54851fe4312c47a511f36adaf",
     "shell32-x86_64.dll": "05984f5c0313d5a2218fb995f61a0c6338dba6324b4becbcaa9eb68dddd930b4",
     "comdlg32.so": "5259b529e2d98d30276839d8eecdd25e81bff33e4e9f7e46746b4921b419131b",
     "explorer-i386.exe": "ce6e6ef4d80836e4a18f052cf5a05df71f508188671dcfa32f217ad3d80f192f",
-    "winebth.so": "31dfdfb3e1d5dc298550efeea0721904606d3cb93bba1fa17e248114b53718e6"
+    "winebth.so": "31dfdfb3e1d5dc298550efeea0721904606d3cb93bba1fa17e248114b53718e6",
+    "slwga-i386.dll": "42c24c9feac1f0d23ded1effd3b09d4498e72f0ac5b725a324fce7f388ef980a",
+    "slwga-x86_64.dll": "8a5dd5b60ca3c59b2c749e262f04a74cd2dc6dc5eb5422bd43791c6472103404"
   },
   "helpers_sha256": {
-    "ime-bridge.so": "9a93e3f60dcc4406a45c559bf388875caff392ce540a7829ae62d238ef1d29e3",
-    "titlebar-managed.exe": "9318ff56fb11f94c68e837246c925aa0f913cb614c0a89a9a21f6547e60018ae",
+    "ime-bridge.so": "291500cb9c84f2daa5765ec87e1b918805bc5f971abfcbf737b7144c806de509",
+    "titlebar-managed.exe": "5db60438d131530e35b7eab4bf15e284bff18bb4242bb0138cae6633c0513e97",
     "set-status-font.exe": "a1cd85a2b3ba68de50bd569e051254be27d09916ef16b312409c87a6205d5de1"
   },
   "release_acceptance_complete": false,
@@ -86,34 +90,37 @@
     "packaged_components": "packaged-runtime.json",
     "template_copy_preserves_file_independence": true,
     "current_runtime_packaged": true,
-    "current_deb_sha256": "c33fa30b5b569231e8a684d9fd4bbf0bad42e2a9972911e980f3f3b2b8715fec",
+    "current_deb_sha256": "045af4c5f710eceea371acf4d846c8c6a5530f045fb0fa1e154e8634b90f554c",
     "post_build_test_and_document_changes_in_deb": false,
-    "current_deb_bytes": 955555076,
-    "documentation_snapshot": "QA18 source and test results before DEB compression. Final DEB hash and installed-client identity are recorded after packaging.",
-    "previous_local_deb_sha256": "8677b84e991eae0b56ca9ba8f2312be9aeb4672c634372b40063fb4640673b05"
+    "current_deb_bytes": 955686872,
+    "documentation_snapshot": "Final revision -6 payload tested before compression. The final DEB digest is recorded externally in SHA256SUMS and the repository manifest.",
+    "previous_local_deb_sha256": "c33fa30b5b569231e8a684d9fd4bbf0bad42e2a9972911e980f3f3b2b8715fec"
   },
-  "updated": "2026-11-07",
+  "updated": "2026-11-16",
   "base_package_sha256": [
     "2bdd9ac63a0a5e1f84da752b7c90f75bab5ebb2dcf84bb92ca99bed5e63afb65",
     "02a959cb4de850df6c584e798cb73506601de019a112dea3a3b85680eb11b324",
     "a12d2542a4248eb476574e7b861d4fea4265c4d31a21a998e0bf645d3d56df9f",
     "44f94cc58ffcadddbb03a532e3a5db8a32126341bdeb98349fa34069d4025894",
-    "94c287b95946e2b68cfaea4ffbcab2e4aa0107ec5205d69f6f86b403c80b6dd2"
+    "94c287b95946e2b68cfaea4ffbcab2e4aa0107ec5205d69f6f86b403c80b6dd2",
+    "c33fa30b5b569231e8a684d9fd4bbf0bad42e2a9972911e980f3f3b2b8715fec"
   ],
   "wine_driver": "winex11.drv on X11/XWayland",
   "installed_compat_scripts": "immutable template; existing profiles use updated helpers and retain account data",
   "architecture_review": "wine-x11-fix/CODE-REVIEW.md",
   "excluded_this_round": [
     "tray menu positioning",
-    "desktop screenshot black",
-    "GNOME/Mutter dual-screen 200% fullscreen monitor selection"
+    "Wayland desktop/share output",
+    "issue4 first GPU fault request",
+    "issue5 reporter complete resize transient",
+    "complete GNOME logout/login of the separate IBus host fix"
   ],
   "focused_scenarios_passed": true,
-  "focused_scenarios_note": "QA18 menu root fix passed its negative/positive tests and authenticated 96/192 DPI checks; retained native fullscreen and maximize/restore issues are in validation.json.",
-  "manifest_scope": "QA18 reviewed menu root fix, packaged as local -5 and running from the fixed DEB install directory; earlier measurements retain their original fingerprints.",
+  "focused_scenarios_note": "Final R8 file-view fallback, IME thread ownership, native focus restoration, word completion and empty-context cancellation verified. Historical evidence retains its dated fingerprints.",
+  "manifest_scope": "Revision -6 runtime and exact Wine source; DEB payload upgrade tested. Final archive digest is recorded externally in SHA256SUMS.",
   "source_bundle": {
-    "filename": "wine-11.20-wecom-20261107-source.tar.zst",
-    "sha256": "ad1820c2f72d9c9f4fadb9290dda980eea159bca3f9eba886eb0b435daa90263",
+    "filename": "wine-11.20-wecom-20261116-source.tar.zst",
+    "sha256": "1f1b4da1483f6a3a1fc9891fb9e89c52c7e31d5eb53ebd0919ee75d2b3ede018",
     "exact_build_source": true
   }
 }

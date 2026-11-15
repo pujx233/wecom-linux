@@ -82,6 +82,10 @@ b = files / "第二个.LOG"
 a.write_text("QA only\n")
 b.write_text("QA only\n")
 (files / "readonly.txt").write_text("QA only\n")
+late_files = files / "子目录"
+late_files.mkdir(exist_ok=True)
+late_file = late_files / "晚选.txt"
+late_file.write_text("QA only\n")
 bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
 flags = Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT | Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION
 spoof = Gio.DBusConnection.new_for_address_sync(os.environ["DBUS_SESSION_BUS_ADDRESS"], flags, None, None)
@@ -172,7 +176,9 @@ def method(conn, sender, path, iface, method, args, invocation):
     else:
         code = 0
         selected = (
-            [files]
+            [late_file]
+            if mode == "view-late"
+            else [files]
             if mode == "folder"
             else [files / "readonly.txt"]
             if mode == "save-readonly"
@@ -245,6 +251,11 @@ results = []
 for bits in (32, 64):
     modes = (
         "open",
+        "initial-folder",
+        "view-required",
+        "view-late",
+        "view-close",
+        "view-reuse",
         "cancel",
         "folder",
         "veto",
@@ -311,7 +322,19 @@ for bits in (32, 64):
         else:
             assert result["owner_enabled"] and result["callbacks_valid"], result
             assert not result["stale_result"], result
-            if mode in ("close", "slow-close", "custom", "reuse-custom", "unavailable", "save-unsupported"):
+            if mode in ("view-required", "view-late"):
+                assert result["hr"] == 0x80004004 and result["ticks"] >= 10, result
+                assert result["view_acquired"] and not result["accepted"], result
+                assert len(calls) - before == (1 if mode == "view-late" else 0), calls[before:]
+                if mode == "view-late":
+                    assert result["view_directory"].endswith("\\子目录"), result
+            elif mode == "view-close":
+                assert result["hr"] == 0x80004004 and result["ticks"] == 0, result
+                assert not result["view_acquired"] and len(calls) == before, result
+            elif mode == "view-reuse":
+                assert result["hr"] == 0 and result["paths"] and result["view_acquired"], result
+                assert result["accepted"] == 1 and len(calls) - before == 1, result
+            elif mode in ("close", "slow-close", "custom", "reuse-custom", "unavailable", "save-unsupported"):
                 assert result["hr"] == 0x80004004 and result["ticks"] >= 10, result
             elif mode in ("cancel", "reuse", "quit"):
                 assert result["hr"] == 0x800704C7 and not result["paths"], result

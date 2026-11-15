@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <shobjidl.h>
 #include <shlobj.h>
+#include <shlguid.h>
 #include <shellapi.h>
 #include <stdio.h>
 #include <string.h>
@@ -12,6 +13,8 @@ static unsigned int ticks, accepted, selection_changed, type_changed, folder_cha
 static DWORD calling_thread;
 static BOOL callbacks_valid = TRUE, close_requested, custom;
 static BOOL quit_requested, fallback_requested;
+static BOOL view_requested, view_late, view_close, view_reuse, view_acquired, require_initial_folder;
+static WCHAR view_directory[32768];
 
 static void text_json(const WCHAR *text)
 {
@@ -63,16 +66,47 @@ static HRESULT WINAPI events_changing(IFileDialogEvents *iface, IFileDialog *dlg
     check_callback(dlg);
     return S_OK;
 }
+
+static void query_view(IFileDialog *dlg)
+{
+    IServiceProvider *service;
+    IShellBrowser *browser;
+    IShellItem *folder;
+    WCHAR *path;
+
+    if (FAILED(IFileDialog_QueryInterface(dlg, &IID_IServiceProvider, (void **)&service))) return;
+    if (SUCCEEDED(IServiceProvider_QueryService(service, &SID_STopLevelBrowser, &IID_IShellBrowser,
+                                               (void **)&browser)))
+    {
+        view_acquired = TRUE;
+        IShellBrowser_Release(browser);
+        if (SUCCEEDED(IFileDialog_GetFolder(dlg, &folder)))
+        {
+            if (SUCCEEDED(IShellItem_GetDisplayName(folder, SIGDN_FILESYSPATH, &path)))
+            {
+                lstrcpynW(view_directory, path, ARRAYSIZE(view_directory));
+                CoTaskMemFree(path);
+            }
+            IShellItem_Release(folder);
+        }
+    }
+    IServiceProvider_Release(service);
+}
+
 static HRESULT WINAPI events_folder(IFileDialogEvents *iface, IFileDialog *dlg)
 {
     folder_changed++;
     check_callback(dlg);
+    if (view_requested && (!view_late || selection_changed)) query_view(dlg);
+    if (view_close) IFileDialog_Close(dlg, E_ABORT);
     return S_OK;
 }
 static HRESULT WINAPI events_selection(IFileDialogEvents *iface, IFileDialog *dlg)
 {
     selection_changed++;
     check_callback(dlg);
+    if (require_initial_folder && folder_changed < 2) callbacks_valid = FALSE;
+    if (view_requested && view_late) query_view(dlg);
     return S_OK;
 }
 static HRESULT WINAPI events_share(IFileDialogEvents *iface, IFileDialog *dlg, IShellItem *item,
@@ -184,6 +218,12 @@ int main(int argc, char **argv)
     custom = argc > 1 && !strcmp(argv[1], "custom");
     quit_requested = argc > 1 && !strcmp(argv[1], "quit");
     fallback_requested = unsupported_save || (argc > 1 && !strcmp(argv[1], "unavailable"));
+    require_initial_folder = argc > 1 && !strcmp(argv[1], "initial-folder");
+    view_requested = argc > 1 && !strncmp(argv[1], "view-", 5);
+    view_late = argc > 1 && !strcmp(argv[1], "view-late");
+    view_close = argc > 1 && !strcmp(argv[1], "view-close");
+    view_reuse = argc > 1 && !strcmp(argv[1], "view-reuse");
+    if (view_requested && !view_close) fallback_requested = TRUE;
     calling_thread = GetCurrentThreadId();
     CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
     if (argc > 1 && !strncmp(argv[1], "manager-", 8)) return check_manager(argv[1]);
@@ -235,6 +275,18 @@ int main(int argc, char **argv)
     SetTimer(owner, 1, 50, NULL);
     hr = IFileDialog_Show(dialog, owner);
     if (readonly) SetFileAttributesW(directory, FILE_ATTRIBUTE_NORMAL);
+    if (view_reuse)
+    {
+        if (hr != E_ABORT || !view_acquired) return 5;
+        view_requested = fallback_requested = FALSE;
+        ticks = 0;
+        hr = IFileDialog_Show(dialog, owner);
+    }
+    if (view_requested && FAILED(hr))
+    {
+        stale_result = SUCCEEDED(IFileDialog_GetResult(dialog, &item));
+        if (stale_result) IShellItem_Release(item);
+    }
     if (reuse)
     {
         if (FAILED(hr)) return 4;
@@ -290,8 +342,11 @@ int main(int argc, char **argv)
             IFileOpenDialog_Release(open);
         }
     }
-    printf("],\"count\":%lu,\"quit_code\":%u,\"stale_result\":%s}\n", count, quit_code,
-           stale_result ? "true" : "false");
+    printf("],\"count\":%lu,\"quit_code\":%u,\"stale_result\":%s,\"view_acquired\":%s,\"view_directory\":",
+           count, quit_code,
+           stale_result ? "true" : "false", view_acquired ? "true" : "false");
+    text_json(view_directory);
+    puts("}");
     IFileDialog_Unadvise(dialog, cookie);
     IFileDialog_Release(dialog);
     DestroyWindow(owner);

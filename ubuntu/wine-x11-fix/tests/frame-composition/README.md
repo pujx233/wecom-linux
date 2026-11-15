@@ -54,12 +54,16 @@ PipeWire/PNG 插件、Python GI/Pillow 和双架构 MinGW。`run-suite.py` 负�
 | 脚本 | 检查内容 |
 | --- | --- |
 | `run-popup-input.py` | 普通与非分层透明窗口接收完整点击，分层透明窗穿透；不激活菜单保留 owner 焦点，点击命令可执行；预览在 owner 上方。 |
+| `run-popup-focus.py` | 32/64 位非受管 owned 弹窗主动持有焦点时，20 次采样保持前台且可见；核对原生 override-redirect 和实际驱动 inode。 |
 | `run-frame-roles.py` | 内容与装饰角色、置顶切换、独立/共享框架；0×0 窗口提升后原生窗口为合法 1×1，Win32 空矩形保持不变。 |
 | `run-create-reparent.py` | WM_NCCREATE / WM_CREATE 中改样式或 parent；窗口保持 XID，最终尺寸、父节点和框架正确。 |
 | `run-card-stack.py` | 普通、重显、最大化、还原、同 owner 预览和外部应用插入；检查原生顺序、像素、点击归属及稳定后不持续纠正。 |
 | `run-native-size.py` | 从源码抽取尺寸转换函数，UBSan 检查零值、负值、65535/65536 和 INT32 跨端边界。 |
 
 `run-create-reparent.py` 用 `GetAncestor(GA_PARENT)` 区分 parent 与 owner；就绪后通过消息队列确认状态。
+
+`run-popup-focus.py --bits 32` 或 `--bits 64` 使用已标记的 `WECOM_QA_ROOT`、200% 私有桌面和空白 prefix。
+`--expect-focus-loss` 专用于验证旧驱动负例，要求真实失焦并隐藏；该结果不计作新版功能通过。
 成功的 CreateWindowEx 不要求清除先前 LastError。`run-native-size.py` 使用
 `--source /absolute/patched-source --out /absolute/new-qa`，不启动 Wine。
 

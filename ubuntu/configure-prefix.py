@@ -150,8 +150,10 @@ def configure(root, prefix):
                                   b''.join(path.read_bytes() for path in font_configs)).hexdigest()
     fonts = root / 'template/drive_c/windows/Fonts'
     runtime_revision = (root / 'application-version').read_text().strip()
-    modules = ['comdlg32.dll', 'shell32.dll']
-    update_runtime = previous.get('runtime') != runtime_revision
+    modules = ['comdlg32.dll', 'shell32.dll', 'slwga.dll']
+    update_runtime = previous.get('runtime') != runtime_revision or any(
+        not (prefix / 'drive_c/windows' / directory / name).is_file()
+        for directory in ('system32', 'syswow64') for name in modules)
     if update_runtime:
         for architecture, directory in (('i386-windows', 'syswow64'), ('x86_64-windows', 'system32')):
             for name in modules:

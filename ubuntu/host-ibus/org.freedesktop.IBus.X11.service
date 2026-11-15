@@ -1,0 +1,14 @@
+[Unit]
+Description=IBus XIM server for GNOME Wayland
+Requires=org.freedesktop.IBus.session.GNOME.service
+After=org.freedesktop.IBus.session.GNOME.service
+PartOf=org.freedesktop.IBus.session.GNOME.service gnome-session-initialized.target
+ConditionEnvironment=XDG_SESSION_TYPE=wayland
+ConditionEnvironment=DISPLAY
+
+[Service]
+Type=simple
+ExecStart=/usr/libexec/ibus-x11
+Restart=always
+RestartSec=1
+Slice=session.slice

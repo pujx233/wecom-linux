@@ -36,7 +36,8 @@ make -j "${WECOM_BUILD_JOBS:-4}" programs/explorer/i386-windows/explorer.exe \
   dlls/cfgmgr32/i386-windows/cfgmgr32.dll dlls/cfgmgr32/x86_64-windows/cfgmgr32.dll \
   dlls/setupapi/i386-windows/setupapi.dll dlls/setupapi/x86_64-windows/setupapi.dll \
   dlls/ntoskrnl.exe/i386-windows/ntoskrnl.exe dlls/ntoskrnl.exe/x86_64-windows/ntoskrnl.exe \
-  programs/wineboot/x86_64-windows/wineboot.exe
+  programs/wineboot/x86_64-windows/wineboot.exe \
+  dlls/slwga/i386-windows/slwga.dll dlls/slwga/x86_64-windows/slwga.dll
 sha256sum programs/explorer/i386-windows/explorer.exe programs/explorer/x86_64-windows/explorer.exe \
   dlls/comdlg32/i386-windows/comdlg32.dll dlls/comdlg32/x86_64-windows/comdlg32.dll \
   dlls/shell32/i386-windows/shell32.dll dlls/shell32/x86_64-windows/shell32.dll \
@@ -45,4 +46,5 @@ sha256sum programs/explorer/i386-windows/explorer.exe programs/explorer/x86_64-w
   dlls/cfgmgr32/i386-windows/cfgmgr32.dll dlls/cfgmgr32/x86_64-windows/cfgmgr32.dll \
   dlls/setupapi/i386-windows/setupapi.dll dlls/setupapi/x86_64-windows/setupapi.dll \
   dlls/ntoskrnl.exe/i386-windows/ntoskrnl.exe dlls/ntoskrnl.exe/x86_64-windows/ntoskrnl.exe \
-  programs/wineboot/x86_64-windows/wineboot.exe
+  programs/wineboot/x86_64-windows/wineboot.exe \
+  dlls/slwga/i386-windows/slwga.dll dlls/slwga/x86_64-windows/slwga.dll

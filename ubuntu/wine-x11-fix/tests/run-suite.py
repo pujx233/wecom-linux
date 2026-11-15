@@ -19,11 +19,15 @@ def main():
     parser.add_argument('--source', required=True, type=Path, help='Patched Wine source tree')
     parser.add_argument('--output', required=True, type=Path, help='New result directory')
     parser.add_argument('--previous-files', type=Path, help='Previous package files for the upgrade test')
+    parser.add_argument('--runtime-manifest', type=Path, default=HERE.parent.parent / 'release.json',
+                        help='Pinned component hashes for the selected runtime')
     parser.add_argument('--case', action='append', help='Run only the named groups; may be repeated')
     parser.add_argument('--keep-prefixes', action='store_true', help="Keep successful groups' disposable Wine prefixes")
     args = parser.parse_args()
     files, source, output = args.files.resolve(), args.source.resolve(), args.output.resolve()
     wine = files / 'wine'
+    features = {name: os.environ.get(name) or '1'
+                for name in ('WECOM_SHARED_CEF_IMAGE', 'WECOM_SHARED_PE_IMAGE')}
     cases = {}
 
     def add(name, script, arguments=(), env=None, prepare=False):
@@ -31,11 +35,28 @@ def main():
 
     add('launcher', 'launcher-startup.py')
     add('launcher-clean', 'launcher-startup.py', ['--clean-env'])
+    version = (files / 'application-version').read_text().split()[0]
+    cef_arguments = ['--runtime', wine, '--output', output / 'cef-image-cache', '--cef-dir',
+                     files / 'template/drive_c/Program Files (x86)/WXWork' / version / 'compatible_web']
+    if args.previous_files:
+        cef_arguments += ['--baseline-runtime', args.previous_files / 'wine']
+    add('cef-image-cache', 'cef-image-cache/run.py', cef_arguments)
+    add('pe-image-cache', 'pe-image-cache/run.py', ['--runtime', wine, '--output', output / 'pe-image-cache',
+        '--resource-dir', files / 'template/drive_c/Program Files (x86)/WXWork' / version])
     add('native-size', 'frame-composition/run-native-size.py', ['--source', source, '--out', output / 'native-size'])
+    add('frame-compositor', 'frame-composition/run-frame-compositor.py',
+        ['--source', source, '--runtime', wine, '--output', output / 'frame-compositor'])
+    add('surface-commit', 'frame-composition/run-surface-commit-routing.py',
+        ['--source', source, '--runtime', wine, '--output', output / 'surface-commit'])
     add('surface-lock', 'draw-completion/run-surface-region-lock.py',
         [source / 'dlls/win32u/window.c', output / 'surface-lock/result.json'])
     add('pnp-queue', 'pnp-relations/run-queue.py', ['--source', source, '--output', output / 'pnp-queue'])
     add('bluetooth-names', 'bluetooth-names.py', ['--source', source, '--output', output / 'bluetooth-names'])
+    add('software-licensing', 'software-licensing/run.py',
+        ['--runtime', wine, '--output', output / 'software-licensing'])
+    add('preview-shadow', 'preview-shadow/run.py',
+        ['--runtime', wine, '--candidate', files / 'template/wecom-compat/scripts/titlebar-managed.exe',
+         '--output', output / 'preview-shadow'])
     add('udisks', 'udisks-dbus/run-match.py',
         ['--source', source / 'dlls/mountmgr.sys/dbus.c', '--out', output / 'udisks'])
     for bits in ('32', '64'):
@@ -45,10 +66,12 @@ def main():
         add(name, script, ['--runtime', wine, '--output', output / name])
     for bits in ('32', '64'):
         name = 'cursor-' + bits
-        add(name, 'cursor-regression.py', ['--wine', wine, '--manifest', HERE.parent.parent / 'validation.json',
+        add(name, 'cursor-regression.py', ['--wine', wine, '--manifest', args.runtime_manifest,
                                          '--exe', output / ('cursor-' + bits + '.exe'), '--out', output / name])
     add('gdiplus', 'run-gdiplus.py', ['--runtime', wine, '--output', output / 'gdiplus'])
     add('foreground-policy', None)
+    for bits in ('32', '64'):
+        add('popup-focus-' + bits, 'frame-composition/run-popup-focus.py', ['--bits', bits], prepare=True)
     for name, extra in [('first', []), ('cancel', ['--cancel'])]:
         add(name, 'frame-composition/run-first-transaction.py', [output / name, wine, name, *extra],
             {'WECOM_QA_SCALE': '2'})
@@ -83,6 +106,20 @@ def main():
         ('ime-mixed', ['--mixed-scale']), ('ime-candidate', ['--candidate'])]:
         add(name, 'ime-position/run-isolated.py',
             ['--runtime', wine, '--output', output / name, '--name', 'run', *extra])
+    for parent_bits, child_bits in [('32', '32'), ('32', '64'), ('64', '32'), ('64', '64')]:
+        name = 'ime-process-' + parent_bits + '-' + child_bits
+        add(name, 'ime-position/run-process.py',
+            ['--runtime', wine, '--source', source, '--output', output / name,
+             '--parent-bits', parent_bits, '--child-bits', child_bits, '--queue-probe'])
+    add('xim-lifecycle', 'ime-position/run-xim-lifecycle.py',
+        ['--source', source, '--output', output / 'xim-lifecycle'])
+    for bits in ('32', '64'):
+        name = 'xim-reconnect-' + bits
+        add(name, 'ime-position/run-reconnect.py',
+            ['--runtime', wine, '--output', output / name, '--bits', bits])
+        name = 'ime-continuous-' + bits
+        add(name, 'ime-position/run-continuous.py',
+            ['--runtime', wine, '--output', output / name, '--bits', bits])
     add('pending-native-minimize', 'frame-composition/run-maximize.py',
         ['--scale', '1', '--case', 'negative-secondary-shadow', '--pending-native-minimize'], prepare=True)
     add('reentrant-fullscreen', 'frame-composition/run-maximize.py',
@@ -99,7 +136,8 @@ def main():
         parser.error('The upgrade group requires --previous-files')
     output.mkdir(parents=True, exist_ok=False)
     report = {'runtime': str(wine), 'source': str(source), 'selected': selected, 'groups': [],
-              'runtime_sha256': {}, 'host_desktop_used': False, 'account_used': False}
+              'runtime_sha256': {}, 'runtime_features': features,
+              'host_desktop_used': False, 'account_used': False}
     for module in ('winex11.so', 'win32u.so'):
         path = wine / 'lib/wine/x86_64-unix' / module
         report['runtime_sha256'][module] = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -112,7 +150,7 @@ def main():
             (directory / 'wine').symlink_to(wine)
         elif name == 'surface-lock':
             directory.mkdir()
-        env = os.environ.copy()
+        env = os.environ | features
         for key in ('WECOM_QA_SCALE', 'WECOM_QA_NO_EXTENDED_SYNC', 'WECOM_QA_STATIONARY', 'WECOM_QA_DELAY_WM'):
             env.pop(key, None)
         env.update(extra, WECOM_QA_ROOT=str(directory))

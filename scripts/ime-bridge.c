@@ -79,7 +79,9 @@ static int forward_commit(Window client, const char *text, int bytes)
     if (!gui_info(0, &info) || !info.focus) return 0;
     Hwnd root = ancestor(info.focus, 2); /* GA_ROOT */
     Hwnd parent = ancestor(info.focus, 1); /* GA_PARENT */
-    if (!has_class(info.focus, "Chrome_WidgetWin_1") ||
+    /* The mail body's foreign CEF editor uses _0; existing editors also use _1. */
+    if ((!has_class(info.focus, "Chrome_WidgetWin_0") &&
+         !has_class(info.focus, "Chrome_WidgetWin_1")) ||
         !has_class(parent, "CefBrowserWindow") ||
         query_window(root, 0) == query_window(info.focus, 0)) return 0;
     /* WeMail hosts standalone mail/doc windows; WXWork hosts embedded docs

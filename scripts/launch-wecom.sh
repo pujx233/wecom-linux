@@ -4,6 +4,11 @@ set -euo pipefail
 WECOM_PREFIX="$(cd -- "$WECOM_PREFIX" && pwd -P)"
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 app="$WECOM_PREFIX/drive_c/Program Files (x86)/WXWork/WXWork.exe"
+app_args=()
+if [[ "${WECOM_CEF_IME_FIX:-0}" == 1 ]]; then
+  # This CEF version supports IMM32; Wine's native IME updates use that interface.
+  app_args+=(--disable-features=TSFImeSupport)
+fi
 test -f "$WECOM_PREFIX/system.reg"
 test -f "$app"
 overrides="$(cat "$script_dir/../configs/dll-overrides.txt")"
@@ -39,12 +44,14 @@ if command -v python3 >/dev/null && [[ -f "$script_dir/prepare-startup.py" ]]; t
     >>"$WECOM_PREFIX/wecom-startup.log" 2>&1
 fi
 if [[ "${WECOM_EMBEDDED_UI_DPI_FIX:-0}" == 1 ]]; then
-  # Wine does not implement Windows' cross-process SetParent DPI reset. Start these
-  # embedded UIs SYSTEM_AWARE like their WeCom host, after idle-prefix recovery.
-  for image in WeMail.exe FlutterPlugins.exe; do
+  # Wine does not implement Windows' cross-process SetParent DPI reset. Start the
+  # embedded mail/Flutter UIs SYSTEM_AWARE like their WeCom host, after idle-prefix recovery.
+  # WeMeet caches its startup DPI after changing process awareness, then creates
+  # its UI from an older, unaware message window. Keep its startup context consistent.
+  for setting in WeMail.exe=1 FlutterPlugins.exe=1 wwmapp.exe=0; do
     "${wine_env[@]}" "$wine_bin" reg add \
-      "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\$image" \
-      /v dpiAwareness /t REG_DWORD /d 1 /f /reg:32
+      "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\${setting%=*}" \
+      /v dpiAwareness /t REG_DWORD /d "${setting#*=}" /f /reg:32
   done
 fi
 if [[ "${WECOM_TRAY_ICON_FIX:-1}" != 0 ]] && command -v python3 >/dev/null && [[ -f "$script_dir/tray-icon.py" ]]; then
@@ -71,7 +78,7 @@ if [[ "${WECOM_TITLEBAR_FIX:-1}" != 0 ]]; then
   "${wine_env[@]}" WECOM_TRAY_GEOMETRY="$tray_geometry" "$wine_bin" "$script_dir/titlebar-managed.exe" -watch \
     </dev/null >>"$WECOM_PREFIX/wecom-titlebar.log" 2>&1 &
 fi
-if [[ "${WECOM_IME_FIX:-1}" != 0 ]]; then
+if [[ "${WECOM_IME_FIX:-1}" != 0 && "${WECOM_CEF_IME_FIX:-0}" != 1 ]]; then
   ime_bridge="$script_dir/ime-bridge.so"
   if [[ -f "$ime_bridge" ]]; then
     # LD_PRELOAD cannot represent filenames containing spaces or colons.
@@ -83,6 +90,6 @@ if [[ "${WECOM_IME_FIX:-1}" != 0 ]]; then
   fi
 fi
 if [[ "${WINE_X11_OWNED_FRAME:-0}" == 1 ]]; then
-  exec "${wine_env[@]}" "$wine_bin" explorer.exe /desktop 'C:\Program Files (x86)\WXWork\WXWork.exe'
+  exec "${wine_env[@]}" "$wine_bin" explorer.exe /desktop 'C:\Program Files (x86)\WXWork\WXWork.exe' "${app_args[@]}"
 fi
-exec "${wine_env[@]}" "$wine_bin" "$app"
+exec "${wine_env[@]}" "$wine_bin" "$app" "${app_args[@]}"

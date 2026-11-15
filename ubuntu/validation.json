@@ -1,15 +1,15 @@
 {
-  "status": "QA18 menu root fix reviewed: 55/56 valid groups passed; dual-200% fullscreen monitor selection and an existing real-client maximize/restore anomaly remain open.",
+  "status": "Final file-view revision: 70 file interface cases and native Chinese PNG selection passed; 72-group stripped-payload regression ongoing.",
   "sanitized": true,
-  "environment": "QA18 private Ubuntu 26.04 Mutter 100%/200%; original account on daily dual-200% GNOME with Wine 96/192 DPI. QA17 lock/unlock and niri/KWin history retain older driver fingerprints.",
+  "environment": "R6 live GNOME/Mutter 50.1 now maps the validated user-level Mutter fix; private sessions use the same guarded loader. Historical results retain their own runtime fingerprints.",
   "runtime_sha256": {
-    "wineserver": "81d3992df47db3e9c36d6400f95364703edaa7421c52106377287fa2720d6fb6",
-    "ntdll.so": "70db13c547010f6ffe97ec289d32bf17ddf4a5b14358ccb5d82a672123d6b2d9",
-    "win32u.so": "e1f490af81f7109b7a38e163c717369e079a152b7d4c15577b051623e37ce136",
-    "winex11.so": "631f6fdedb9ace20b81fd7478652bb9741349dd8e510a9537ceeccbfc9c7af05",
+    "wineserver": "a7bb249f6bb6db811b770f9f6caa1391e5b5eeec218c31128db7c66e3c327c71",
+    "ntdll.so": "2a41b6f4533170777a66bd53bd91010600e0f4c1a467dd308d41fabfe51e2705",
+    "win32u.so": "07b71293d74514e7667c0a6de90b214d1ba39b778afd76e6115a4ddb0436b7b6",
+    "winex11.so": "a46e56ae10d62c1e95dc6f506812042ee2c23356fbf32f757f21ae0894a94527",
     "wineps.so": "30b9b3db1eda53cc307828e05fc51952edcf6771174d196d49c291a78174dc8a",
-    "imm32-i386.dll": "366ff81449d54f365f8e5b64a1be5eb13b67fe30ed684035a1ad064c0e8e3f0d",
-    "imm32-x86_64.dll": "35b25203fa117c7e10c10995ada37edf4d56673e0b98b5c5d108968fc2bccf37",
+    "imm32-i386.dll": "36a05a3a0d144a20ee7dbb47e108c64c1972e3830d1357d27909efa19fc640fc",
+    "imm32-x86_64.dll": "8550278a740c1441fc9f2c802087a19590064cb4687abc5ea56a232729e7059e",
     "explorer.exe": "0e98db85cf10575807cf0e5677be600413739a72b1cfd6a3c0ea21a3b5452ec1",
     "wine": "fa443c7a1f7d289faeffab7cf79ae2f13398bd715ab25267e725e67d6bf765a1",
     "gdiplus-i386.dll": "0623c1e20536c9c734b0d8bef938b54ea6364fed009d98ed3b6f07ce310137ab",
@@ -22,24 +22,23 @@
     "setupapi.dll-x86_64-windows": "32dda67beec9ec7a81d68c036be7313c8f22cfaa04414164a0a2d05adf513e39",
     "wineboot.exe-x86_64-windows": "379440aae4fe7648b938f4ef78f3af4633a47d9ca78e6078580a389c3e5b782e",
     "mountmgr.so": "748de97cc1dfbbb334908a17409f1ad5f4df6d07b17c830a81d8828b1c05956c",
-    "winewayland.so": "6a7a38c28a09d71221f06d1f766ff6c174334bc10637a2e2205594f83babb7d3",
+    "winewayland.so": "ac11ccecd9854d74a972487dd99b646d887541c81a3853b8fcb76b917e354761",
     "comdlg32-i386.dll": "a74a25be24ba7b89dff0ffe62c2ca656aa1219d123e2d24cfd64aaddfc0a588e",
     "shell32-i386.dll": "5fd5a5d5d297bb257a2b7d5f7045aba2281645374e7e0f42d72ebd2a48ad842c",
     "comdlg32-x86_64.dll": "22b8ff07d0611a3066f5f35be5b7a94acc1f86344150085d49f48715fbe82ec7",
     "shell32-x86_64.dll": "05984f5c0313d5a2218fb995f61a0c6338dba6324b4becbcaa9eb68dddd930b4",
     "comdlg32.so": "5259b529e2d98d30276839d8eecdd25e81bff33e4e9f7e46746b4921b419131b",
     "explorer-i386.exe": "ce6e6ef4d80836e4a18f052cf5a05df71f508188671dcfa32f217ad3d80f192f",
-    "winebth.so": "31dfdfb3e1d5dc298550efeea0721904606d3cb93bba1fa17e248114b53718e6"
+    "winebth.so": "31dfdfb3e1d5dc298550efeea0721904606d3cb93bba1fa17e248114b53718e6",
+    "slwga-i386.dll": "42c24c9feac1f0d23ded1effd3b09d4498e72f0ac5b725a324fce7f388ef980a",
+    "slwga-x86_64.dll": "8a5dd5b60ca3c59b2c749e262f04a74cd2dc6dc5eb5422bd43791c6472103404"
   },
   "source_patch_replay": {
-    "source_archive_sha256": "98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793",
-    "patch_sha256": "d1bbceaaa7f252196099ec6338ac6f7c9671f27761d3cbf781da4e619cc2a9a8",
-    "modified_files": 66,
-    "exact_content_and_modes": true,
-    "full_tree_entries": 12471,
-    "full_tree_matches_build_source": true,
-    "replay_manifest_sha256": "d5ffed9116d406f7c8ad986afb88e3aaca9ab4ea2fad9c420656fa1af936e90e",
-    "mode_scope": "Git executable bits; all source file contents and paths match"
+    "unchanged_upstream_files": 12399,
+    "patched_files": 76,
+    "mismatches": [],
+    "zero_fuzz": true,
+    "patch_sha256": "1e3f752bb0d9341d6dbfe5ccf4444423b6e8a04d4ada105c50d3d09b6bb2b3f1"
   },
   "isolated": {
     "attached_coordinates": {
@@ -891,10 +890,13 @@
     "In the standalone KWin session, live scale changes left stale EWMH work-area dimensions until an ordinary output layout change; no Wine scale heuristic was added.",
     "Image context-menu Save As uses the legacy Wine dialog; its Chinese text is valid. IFileDialog uploads use the desktop Portal.",
     "The no-7zip startup check covers this DEB template; third-party Fedora transplant launchers were not obtained.",
-    "GNOME/Mutter 50.1: 200% native X11 fullscreen can select the wrong monitor, also without Wine.",
+    "GNOME/Mutter 50.1 dual-200% fullscreen: separate host fix is now active and passed four real-screen requests; the DEB does not contain it.",
     "QA17 after unlock: an application-button restore once left PerryShadowWnd at 3912x2066 while the main body was 2114x1338. Win32 shadow geometry itself was oversized; three subsequent button cycles passed, without erasing the failure.",
     "Current authenticated candidate tests cover the local GNOME desktop only; niri/KWin authenticated history retains older runtime hashes.",
-    "Intermittent native maximize/restore geometry reproduced in current and preceding local -5 builds. Comparison with published -4 is pending; regression status relative to -4 is unresolved."
+    "Intermittent native maximize/restore geometry reproduced in current and preceding local -5 builds. Comparison with published -4 is pending; regression status relative to -4 is unresolved.",
+    "R7 mail composition/candidate root fixes passed real local GNOME testing; current KWin/niri authenticated results still use older runtimes.",
+    "Meeting menu already open during maximize retains its old position until reopened; regression attribution is pending.",
+    "Host IBus daemon and supervised XIM frontend recovery passed locally; the next complete GNOME logout/login remains untested."
   ],
   "release_acceptance_complete": false,
   "package_validation": {
@@ -938,7 +940,7 @@
     "package_rebuilt": true,
     "scope": "Historical 5.0.13.6005-3 measurement. The previous local -5 DEB is in baseline_local_deb_before_root_fixes.package; the rebuilt current -5 is in current_authenticated_desktop.package."
   },
-  "history_note": "Historical records keep their original runtime, package, test validity and deployment scope; current root-fix results are in current_candidate_root_fixes.",
+  "history_note": "The current release entry is release_6_2026_11_16. All earlier dated or current_candidate-named sections retain their historical runtime/package/test scope; they are not the revision -6 acceptance result.",
   "current_candidate_package_built": true,
   "historical_candidate_package_4": {
     "version": "5.0.13.6005-4",
@@ -988,22 +990,6 @@
     "prefix_settings_report_sha256": "b3d623d99b8d5c3e5517846e140adf5c2d8c8d374c3d6c4a55850e3ea35b8f67",
     "no_archiver_report_sha256": "3d89552234ca0c3bf7ad321d1590888bee69f181786fc3be66baf4aa53a90da1",
     "no_new_oom_kill": true
-  },
-  "current_candidate_package": {
-    "version": "5.0.13.6005-5",
-    "development_only": true,
-    "deb_built": true,
-    "published": true,
-    "user_runtime_replaced": true,
-    "focused_fixes_passed": true,
-    "matches_existing_local_deb": true,
-    "existing_local_deb_sha256": "c33fa30b5b569231e8a684d9fd4bbf0bad42e2a9972911e980f3f3b2b8715fec",
-    "existing_local_deb_record": "current_menu_fix.package",
-    "runtime_fingerprints": "runtime_sha256",
-    "test_results": "current_menu_fix; earlier sections are historical",
-    "deb_sha256": "c33fa30b5b569231e8a684d9fd4bbf0bad42e2a9972911e980f3f3b2b8715fec",
-    "deb_bytes": 955555076,
-    "baseline_before_repackage": "baseline_local_deb_before_root_fixes.package"
   },
   "regression_2026_11_07": {
     "date": "2026-11-07",
@@ -1723,7 +1709,7 @@
     "daily_prefix_settings_unchanged": true,
     "scope": "QA16 private-display formal regression before repackaging; flags and retained daily-runtime snapshot describe that time. QA17 packaging/deployment/authenticated observations follow separately."
   },
-  "actual_scope": "Current QA18 authenticated menu and drag verification is in current_menu_fix.authenticated. current_authenticated_desktop is the QA17 history for driver 67a974e3.",
+  "actual_scope": "R8 local GNOME runtime; older authenticated results retain their component hashes.",
   "current_authenticated_desktop": {
     "date": "2026-11-07",
     "git_base": "c351bdc34fca63f0247613fd43b6e8ef90af568d",
@@ -2117,5 +2103,1578 @@
     },
     "publication_channel": "GitHub Pre-release",
     "tag": "v5.0.13.6005-5"
+  },
+  "cef_image_cache": {
+    "scope": "Private runtime deployed; focused DLL tests and live client memory verified.",
+    "runtime_sha256": {
+      "wineserver": "a6a428ffac088fef81fb1138393a38839be8dccd2771eee7d292f58b99936048",
+      "ntdll.so": "3d7cc79c25ba6ca06ebfba87e96be68ceb76e14c0e6c2835ea9d7aeacbea10fe"
+    },
+    "wine_patch_sha256": "94ca988ae86024abeca46ef264749927a9a934e807e17b2092c88565a32d5d48",
+    "source_bundle_sha256": "3d49fbf818899855e65cbc16e92cf8135ca550a05d1b25400cc21b2b27737141",
+    "isolated_cases": {
+      "concurrency_relocation_identity_and_cow": true,
+      "last_unload_releases_cache": true,
+      "ordinary_shared_writable_sections": true,
+      "unsupported_cache_relocation_uses_native_loader": true,
+      "cef_initialization_exports_and_client_crash": true,
+      "disabled": true,
+      "allocation-failure": true
+    },
+    "concurrent_normal_loaders": 6,
+    "conflicting_address_verified": true,
+    "immutable_cache_seals": 15,
+    "cef_major": 107,
+    "cef_dll_sha256": "02b6cd5185af5fa390c41116f9c4a07912dc2175c8f8a75d0ec3f41256220265",
+    "three_loader_baseline_pss_mib": 521.69,
+    "three_loader_candidate_pss_mib": 175.15,
+    "launcher_cases_passed": 11,
+    "actual_client": {
+      "status": "active_verified",
+      "before_total_pss_mib": 4960.798,
+      "after_total_pss_mib": 2403.096,
+      "before_cef_processes": 11,
+      "after_cef_processes": 8,
+      "shared_cache_allocated_mib": 173.28125,
+      "same_worker_count_dll_saving_estimate_mib": 1212.97,
+      "cef_log_fatal_entries": 0,
+      "comparison": "Before: long-running session. After: fresh session; total decrease includes restart cleanup."
+    }
+  },
+  "pe_image_cache": {
+    "scope": "Private runtime deployed and fully restarted; isolated tests plus live runtime and memory verified.",
+    "runtime_sha256": {
+      "wineserver": "97525ce36e4891c42005167c0174e82c964ddc76c86cc7da258631f307bb3f47",
+      "ntdll.so": "2a41b6f4533170777a66bd53bd91010600e0f4c1a467dd308d41fabfe51e2705"
+    },
+    "wine_patch_sha256": "60dae972bc7823cf2c6967d9f3e6d7bb6cef5363bb92a39c0bf57848c66145e3",
+    "source_bundle": {
+      "filename": "wine-11.20-pe-cache-source.tar.zst",
+      "sha256": "612aeaeb36a04e26d3522208a07e278e5bb9d6df3a1c34288ff01f1fbc02e517",
+      "exact_build_source": true
+    },
+    "isolated_cases": {
+      "x86_relocations_cow_conflict_identity_crash_lifetime_and_shared_data": true,
+      "x86_main_executable_shared_without_changing_base": true,
+      "x64_relocations_cow_conflict_identity_crash_lifetime_and_shared_data": true,
+      "x64_main_executable_shared_without_changing_base": true,
+      "real_resource_dlls_demand_paged_clean_and_released": true,
+      "disabled_native_loader_and_resource_contents": true,
+      "disk_allocation_failure_keeps_native_loader": true
+    },
+    "resources": {
+      "WXWorkResources.dll": {
+        "candidate_initial_pss_mib": 0.016,
+        "candidate_full_anon_mib": 0.004,
+        "checksum": 4503512,
+        "baseline_initial_pss_mib": 159.309
+      },
+      "WXWorkStrings.dll": {
+        "candidate_initial_pss_mib": 0.016,
+        "candidate_full_anon_mib": 0.004,
+        "checksum": 369526,
+        "baseline_initial_pss_mib": 16.262
+      }
+    },
+    "sharing": {
+      "x86": {
+        "candidate_pss_mib": 16.187,
+        "baseline_pss_mib": 64.453
+      },
+      "x64": {
+        "candidate_pss_mib": 16.198,
+        "baseline_pss_mib": 64.5
+      }
+    },
+    "retained_cef_cases": {
+      "concurrency_relocation_identity_and_cow": true,
+      "last_unload_releases_cache": true,
+      "ordinary_shared_writable_sections": true,
+      "unsupported_cache_relocation_uses_native_loader": true,
+      "cef_initialization_exports_and_client_crash": true,
+      "disabled": true,
+      "allocation-failure": true
+    },
+    "cef_major": 107,
+    "launcher_cases_passed": 12,
+    "patch_replay": {
+      "passed": true,
+      "source_files": 12472,
+      "patch_sha256": "60dae972bc7823cf2c6967d9f3e6d7bb6cef5363bb92a39c0bf57848c66145e3",
+      "fuzz": 0,
+      "reverse_dry_run": true
+    },
+    "live_client_total_after_update": 2386.819,
+    "live_client_total_before_update_pss_mib": 2820.115,
+    "measurement_scope": "Resource DLL load-only and four-loader image tests; these are not authenticated-client totals.",
+    "compatibility_groups": [
+      {
+        "name": "popup",
+        "passed": true,
+        "exit_code": 0
+      },
+      {
+        "name": "foreign-dc",
+        "passed": true,
+        "exit_code": 0
+      },
+      {
+        "name": "ime-32",
+        "passed": true,
+        "exit_code": 0
+      },
+      {
+        "name": "gdiplus",
+        "passed": true,
+        "exit_code": 0
+      },
+      {
+        "name": "first-odd-2",
+        "passed": true,
+        "exit_code": 0
+      }
+    ],
+    "actual_client": {
+      "status": "active_verified",
+      "time": "2026-11-12T20:25:50.399750+08:00",
+      "total_pss_mib": 2386.819,
+      "processes": 37,
+      "cef_processes": 13,
+      "ntdll_paths": [
+        "/home/sai/.local/share/wecom-local-deb/5.0.13.6005-5-pe-cache/package/opt/apps/com.qq.wecom.spark/files/wine/lib/wine/x86_64-unix/ntdll.so"
+      ],
+      "wineserver_path": "/home/sai/.local/share/wecom-local-deb/5.0.13.6005-5-pe-cache/package/opt/apps/com.qq.wecom.spark/files/wine/bin/wineserver",
+      "pe_cache_count": 180,
+      "resource_dll_pss_mib": 8.023,
+      "tray_and_dock_icons_observed": true,
+      "user_requested_restart": true,
+      "gui_functional_testing": "left to user",
+      "comparison_limit": "Old live sample had 33 processes and 11 CEF workers; the fresh sample has a different process count. Total reduction includes restart cleanup."
+    }
+  },
+  "issue_fixes_2026_11_13": {
+    "checkout_sha": "7aa4263f7bc8d4d9156b0163fc2431acaddd7d3e",
+    "uncommitted": true,
+    "issue6": {
+      "status": "fixed in source and helper",
+      "contract_regression": "/home/sai/work/.wecom-build/ime6-fix-20261112/regression/result.json",
+      "actual_client": "/home/sai/work/.wecom-build/field-20261112/kde666gl/issue6-real-client-result.json",
+      "input_engine": "Fcitx5 Pinyin XIM; WeTypeX engine not end-to-end tested"
+    },
+    "issue7": {
+      "status": "preview shadow ownership gap fixed in helper",
+      "contract_regression": "/home/sai/work/.wecom-build/issue7-reentry-fix-20261113/output/after-ubuntu/result.json",
+      "actual_client": "/home/sai/work/.wecom-build/field-20261112/ubuntu2404/issue7-reviewed-real-client-result.json",
+      "actual_scope": "Ubuntu 24.04 GNOME 46 X11: OCR selection/copy, maximize/restore, drag, edge resize and close",
+      "reporter_complete_symptom_reproduced": false,
+      "fedora_release2_contract_regression": "/home/sai/work/.wecom-build/issue7-reentry-fix-20261113/output/after-fedora/result.json",
+      "negative_scope": "Other owners/classes, non-layered windows, child windows and foreign processes unchanged; geometry preserved",
+      "review_regression_before_fix": "/home/sai/work/.wecom-build/issue-fixes-20261113/fedora-helper-check/output/batch-boundary-before-review/result.json",
+      "review_regression": "24 independent preview shadows and 32 reentrant SHOW callbacks; 95 checks per runtime/frame case",
+      "helper_sha256": "5db60438d131530e35b7eab4bf15e284bff18bb4242bb0138cae6633c0513e97",
+      "log_reentry_regression": {
+        "before_helper_sha256": "7d282cae9f4a3af49c36d29f05e6cd1ad50da9834dc8ede0c00ccf2a03172cf5",
+        "before_ubuntu": "/home/sai/work/.wecom-build/issue7-reentry-fix-20261113/output/before-ubuntu/result.json",
+        "before_fedora": "/home/sai/work/.wecom-build/issue7-reentry-fix-20261113/output/before-fedora/result.json",
+        "after_ubuntu": "/home/sai/work/.wecom-build/issue7-reentry-fix-20261113/output/after-ubuntu/result.json",
+        "after_fedora": "/home/sai/work/.wecom-build/issue7-reentry-fix-20261113/output/after-fedora/result.json",
+        "before": "25 opening records, 32 completion records; 32 paired-record checks fail per case",
+        "after": "33 complete pairs including preceding single SHOW; all 32 burst windows handled; 95 checks pass per case",
+        "root_fix": "Finish reentrant window calls and collect results before formatting a complete record; all appends bounded",
+        "review": "/home/sai/work/.wecom-build/issue7-reentry-fix-20261113/review.json",
+        "cleanup": "/home/sai/work/.wecom-build/issue7-reentry-fix-20261113/cleanup.json"
+      },
+      "actual_client_helper_sha256": "7d282cae9f4a3af49c36d29f05e6cd1ad50da9834dc8ede0c00ccf2a03172cf5"
+    },
+    "issue8": {
+      "status": "Wine built-in module added; real quick meeting entered and ended",
+      "api_regression": "/home/sai/work/.wecom-build/issue-fixes-20261113/slwga-private-regression/result.json",
+      "actual_client": "/home/sai/work/.wecom-build/field-20261112/ubuntu2404/issue8-diagnosis.json",
+      "contract": "E_NOTIMPL for unsupported licensing provider; no forced success or output mutation"
+    },
+    "source_replay": "/home/sai/work/.wecom-build/issue-fixes-20261113/source-replay-result.json",
+    "current_deb_contains_these_fixes": false,
+    "release_acceptance_complete": false,
+    "issue5": {
+      "status": "partial reproduction; no product fix",
+      "matching_kwin": "/home/sai/work/.wecom-build/field-20261112/kde666gl/issue5-real-client-diagnosis.json",
+      "followup": "/home/sai/work/.wecom-build/field-20261112/ubuntu2404/issue5-followup-diagnosis.json"
+    },
+    "issue4": {
+      "status": "no local reproduction or specific triggering Wine/X11 request",
+      "matching_software": "/home/sai/work/.wecom-build/field-20261112/debian13/issue4-matched-stack-result.json"
+    },
+    "review": "wine-x11-fix/CODE-REVIEW.md#2026-11-13-遗留-issue-修订",
+    "review_verdict": "Confirmed log reentry regression fixed and reviewed; broader fixes retain their recorded validation limits",
+    "test_cleanup": "/home/sai/work/.wecom-build/issue-fixes-20261113/disposable-prefix-cleanup.json"
+  },
+  "issue45_2026_11_14": {
+    "checkout_sha": "7aa4263f7bc8d4d9156b0163fc2431acaddd7d3e",
+    "uncommitted": true,
+    "current_deb_contains_these_fixes": false,
+    "release_acceptance_complete": false,
+    "runtime_driver_sha256": "4d73f07b8f32c3474887f2c2c4bd7e09aed425509f0eb999988754f028dfd232",
+    "baseline_rebuilt_driver_sha256": "b2e289e0a7344fcfa4aa7587d6d859697e0711e723faf00c78a0c63d5888c5a8",
+    "build": {
+      "required_features": [
+        "SONAME_LIBDBUS_1",
+        "SONAME_LIBXCOMPOSITE",
+        "SONAME_LIBXDAMAGE",
+        "SONAME_LIBXRENDER",
+        "HAVE_LIBXSHAPE"
+      ],
+      "gdi_abi": 112,
+      "glibc_max_version": "2.38",
+      "no_xrender_link_passed": true,
+      "no_xrender_log": "/home/sai/work/.wecom-build/issue5-async-20261114/no-render-root-notify-build.log",
+      "configure_arguments": [
+        "--enable-win64",
+        "--without-mingw",
+        "--with-wayland",
+        "--without-xxf86vm"
+      ],
+      "published_optional_libraries_match": true,
+      "optional_libraries_report": "/home/sai/work/.wecom-build/issue5-async-20261114/dynamic-library-compare-root-notify.json",
+      "manifest": "/home/sai/work/.wecom-build/issue5-async-20261114/candidate-final-manifest.json"
+    },
+    "issue5": {
+      "status": "Completed-buffer presentation and ancestor-owner commit notification fixed; authenticated Documents passed three mixed-scale rounds",
+      "root": "Redirected children clip the background; nested child commits also failed to invalidate the top-level frame in its owning process",
+      "reproduced_environment": "KWin 6.6.6, Qt 6.10.2, Mesa 26.0.8 Intel OpenGL, dual 130/200 percent",
+      "baseline": "/home/sai/work/.wecom-build/issue5-async-20261114/final-sdk-profile-original/result.json",
+      "candidate": "/home/sai/work/.wecom-build/issue5-async-20261114/final-sdk-profile-candidate/result.json",
+      "baseline_mismatched_atomic_samples": 34,
+      "candidate_matching_atomic_samples": 36,
+      "loaded_driver_verified": true,
+      "unpainted_pixels_not_synthesized": true,
+      "actual_client_retested": true,
+      "reporter_complete_symptom_confirmed": false,
+      "roots": [
+        "Native resize did not publish the completed buffer over manually redirected children",
+        "WINE_SURFACE_COMMIT targeted a nested child with no local frame, dropping ancestor invalidation"
+      ],
+      "presentation_fixture_candidate_driver_sha256": "cc1a28ad972f7ca850f8782f79e48a60f274a41d8c4d057c09f3b78b8421e414",
+      "actual_client_report": "/home/sai/work/.wecom-build/field-20261112/kde666gl/issue5-root-notify-real-client-result.json",
+      "actual_client_stages": 18,
+      "actual_client_atomic_samples": 1155,
+      "actual_client_driver_sha256": "4d73f07b8f32c3474887f2c2c4bd7e09aed425509f0eb999988754f028dfd232",
+      "persistent_stale_frame_after_fix": false,
+      "old_source_real_client_failure": "/home/sai/work/.wecom-build/field-20261112/kde666gl/issue5-live-trace-repeat-20261114-2/result.json",
+      "old_source_trace": "/home/sai/work/.wecom-build/field-20261112/kde666gl/issue5-live-trace-client-20261114.log",
+      "baseline_control": "Persistent stale layout reproduced in rebuilt unmodified source and resource-only control as well as the first candidate",
+      "shape_and_drawable_controls": "Root body shape covers the final client area and XIDs remain stable; Qt client geometry reaches the new size",
+      "reporter_remaining": "Entire solid black drag border not reproduced; AMD reporter hardware not tested"
+    },
+    "issue4": {
+      "status": "separate Wine X11 resource exits fixed; original GPU fault trigger remains unknown",
+      "cases": [
+        "destroy before pixmap naming",
+        "unmap before pixmap naming",
+        "InputOnly",
+        "destroy after naming before Shape"
+      ],
+      "native_candidate_mutter": "/home/sai/work/.wecom-build/i5nc/result.json",
+      "native_candidate_debian13": "/home/sai/work/.wecom-build/i5nc/debian13-result.json",
+      "native_baseline": "/home/sai/work/.wecom-build/i5no/result.json",
+      "gpu_fault_reproduced": false,
+      "gpu_fault_fixed": false
+    },
+    "regression": {
+      "first_candidate_17_passed": "/home/sai/work/.wecom-build/issue5-async-20261114/regression-valid/result.json",
+      "two_cases_retried_shorter_socket_paths": "/home/sai/work/.wecom-build/i5r2/result.json",
+      "final_candidate_7_passed": "/home/sai/work/.wecom-build/i5r3/result.json",
+      "source_native_cases": 6,
+      "native_environments": 2,
+      "native_suite_registration": "/home/sai/work/.wecom-build/i5suite/result.json",
+      "discarded_profile_reason": "Initial ad-hoc builds omitted XDamage and never exercised manual composition",
+      "final_sdk_profile_7_passed": "/home/sai/work/.wecom-build/i5sdk/result.json",
+      "initial_effective_groups_passed": 19,
+      "initial_report_kept_exit_code": 1,
+      "initial_startup_failures_retried": 2,
+      "root_notify_final": "/home/sai/work/.wecom-build/issue5-async-20261114/root-notify-regression-summary.json",
+      "root_notify_effective_groups_passed": 18,
+      "root_notify_original_run_passed": false,
+      "root_notify_missing_xvfb_retry_passed": true,
+      "surface_commit_candidate": "/home/sai/work/.wecom-build/i5crn2/result.json",
+      "surface_commit_old_source": "/home/sai/work/.wecom-build/i5cro2/result.json",
+      "surface_commit_candidate_checks_passed": 32,
+      "surface_commit_old_source_checks_failed": 10,
+      "surface_commit_scope": "Extracted production routing with real Win32 topology; XSync and compositor calls recorded. Actual client pixels tested separately."
+    },
+    "source_replay": "/home/sai/work/.wecom-build/issue5-async-20261114/source-replay-final.json",
+    "source_bundle": "/home/sai/work/.wecom-build/issue5-async-20261114/wine-11.20-issue45-source.tar.zst",
+    "review": "wine-x11-fix/CODE-REVIEW.md#2026-11-14-外框合成与资源竞争",
+    "scope": "Account-free fixtures and authenticated Documents in private KWin; published -5 base runtime. No new DEB or combined-package acceptance.",
+    "cleanup": "/home/sai/work/.wecom-build/issue5-async-20261114/cleanup.json",
+    "cleanup_summary": {
+      "prefixes_removed": 27,
+      "freed_bytes": 18159173632,
+      "free_bytes": 95569203200,
+      "additional_prefixes_removed": 2,
+      "additional_freed_bytes": 1864642560,
+      "current_free_bytes": 95148281856,
+      "authenticated_field_prefix_retained": true
+    },
+    "source_bundle_sha256": "81b72f127a7a88aae1ba9d88233e7c1c6da9e4e65cc68b16390b2922b47723cc",
+    "patch_sha256": "113bfa03a532d2830ccd5db7c0a2b34deca2fbc82b5a6d681dbdb900949360d3",
+    "cleanup_after_root_notify": "/home/sai/work/.wecom-build/issue5-async-20261114/cleanup-root-notify.json"
+  },
+  "pe_cache_space_fix_2026_11_14": {
+    "checkout_sha": "7aa4263f7bc8d4d9156b0163fc2431acaddd7d3e",
+    "uncommitted": true,
+    "status": "PE disk-cache sparse mapped-write SIGBUS fixed through reservation before mmap",
+    "root": "Sparse extension did not reserve blocks; writing the cache header could SIGBUS before msync error handling",
+    "fix": "Reserve header and complete read-only section ranges before writable mapping; use existing cleanup and native-loader fallback on failure",
+    "cef_memfd_path_changed": false,
+    "writable_pe_sections_cached": false,
+    "signal_handler_added": false,
+    "source_mapping_sha256": "d584ba67b8b69fba4dbc9ea8ba491532257cb1eb85b61e6fb6376b669b0a79b8",
+    "wineserver_sha256": "a7bb249f6bb6db811b770f9f6caa1391e5b5eeec218c31128db7c66e3c327c71",
+    "previous_wineserver_sha256": "97525ce36e4891c42005167c0174e82c964ddc76c86cc7da258631f307bb3f47",
+    "wineserver_glibc_max": "2.38",
+    "baseline_sigbus_reproduced": true,
+    "same_real_ext4_image_used": true,
+    "native_fixed_space_cases_passed": 12,
+    "native_before_after": "/home/sai/work/.wecom-build/pe-cache-space-fix-20261114/disk-comparison-result.json",
+    "native_fixture_scope": "Exact production cache functions and real OS operations; Wine object allocation and file identity supplied by fixture",
+    "baseline_reservation_test_failed_as_expected": "/home/sai/work/.wecom-build/pe-cache-space-fix-20261114/baseline-reservation-negative.json",
+    "pe_regression": "/home/sai/work/.wecom-build/pcsfinal/pe-image-cache/result.json",
+    "cef_regression": "/home/sai/work/.wecom-build/pe-cache-space-fix-20261114/integration/cef-image-cache/result.json",
+    "effective_combined_regression_groups_passed": 12,
+    "combined_regression": "/home/sai/work/.wecom-build/pe-cache-space-fix-20261114/regression-summary.json",
+    "all_release_components_match": true,
+    "candidate_manifest": "/home/sai/work/.wecom-build/pe-cache-space-fix-20261114/candidate-manifest.json",
+    "source_replay": "/home/sai/work/.wecom-build/pe-cache-space-fix-20261114/source-replay.json",
+    "source_bundle": "/home/sai/work/.wecom-build/pe-cache-space-fix-20261114/wine-11.20-wecom-source-20261114.tar.zst",
+    "patch_sha256": "f61c8a8598769fd6de22258817b64e72486095b7ba81f7034f2505727433617e",
+    "source_bundle_sha256": "e3cd90d02a0f05d5e8bc678cf82a283320582440c75bb5062df01497f8fb1388",
+    "review": "wine-x11-fix/CODE-REVIEW.md#2026-11-14-pe-缓存分配",
+    "reviewed_boundaries": [
+      "Header and read-only zero-filled ranges reserved before mapped writes",
+      "Writable PE sections and gaps left on original paths",
+      "Partial reservation cleaned through existing fd release",
+      "Saved Wine error restored after optional-cache failure",
+      "Read-only publication and cache lifetime preserved"
+    ],
+    "current_deb_contains_fix": false,
+    "release_acceptance_complete": false,
+    "account_data_used": false,
+    "host_desktop_used": false,
+    "previous_review": "/home/sai/work/.wecom-build/review-20261114-full/review-result.json",
+    "review_result": "/home/sai/work/.wecom-build/pe-cache-space-fix-20261114/review-result.json",
+    "cleanup": "/home/sai/work/.wecom-build/pe-cache-space-fix-20261114/cleanup.json",
+    "final_pe_suite": "/home/sai/work/.wecom-build/pcsfinal/result.json",
+    "review_verdict": "Disk allocation root fixed; no new confirmed regressions in reviewed paths"
+  },
+  "frame_damage_order_2026_11_14": {
+    "base_git_sha": "7aa4263f7bc8d4d9156b0163fc2431acaddd7d3e",
+    "product_change": "XSync on the owning connection before queuing frame composition after XDamageSubtract",
+    "driver_sha256": "997cd2e6dcf5870b392505f91ef405ae99a45f41556ff274539dfa0d9a7deb89",
+    "patch_sha256": "3e1312efd50c93dd49dc4a5a1aeb0d27894c5d69dac152cee5cb53c9ecb2b2b5",
+    "native_negative_control": "/home/sai/work/.wecom-build/r4/fb-old/result.json",
+    "native_positive": "/home/sai/work/.wecom-build/r4/fb-fixed/result.json",
+    "production_function_ab": "/home/sai/work/.wecom-build/r4/damage-production-result.json",
+    "regression": "/home/sai/work/.wecom-build/r4/suite/result.json",
+    "regression_groups_passed": 9,
+    "source_files_verified": 12475,
+    "source_verification": "/home/sai/work/.wecom-build/r4/source-delta-verification.json",
+    "patch_delta_verification": "/home/sai/work/.wecom-build/r4/patch-delta-verification.json",
+    "live_deployment": "/home/sai/work/.wecom-build/r4/live-deployment.json",
+    "installed_driver_verified_in_process": 293680,
+    "published": false,
+    "scope": "Independent lost-Damage ordering defect fixed. Original input incident, GPU failure and reporter full black frame are not declared resolved.",
+    "live_scenarios": "/home/sai/work/.wecom-build/r4/live-scenarios.json",
+    "final_review": "/home/sai/work/.wecom-build/r4/final-review.json",
+    "cleanup_summary": "/home/sai/work/.wecom-build/r4/cleanup-summary.json",
+    "live_remaining_observation": "Transient old/black frame during geometry changes still observed; stable frames correct."
+  },
+  "local_regression_2026_11_15": {
+    "base_git_sha": "7aa4263f7bc8d4d9156b0163fc2431acaddd7d3e",
+    "evidence_root": "/home/sai/work/.wecom-build/r5",
+    "regression": "final-suite/result.json",
+    "regression_groups_passed": 61,
+    "regression_groups_selected": 61,
+    "regression_passed": true,
+    "host_compositor": "Patched Mutter 50.1 in private sessions",
+    "upgrade_group": "Not repeated; prior cross-release evidence retained. No old runtime recreated.",
+    "launcher_fixture": "Added the required slwga.dll to the packaged-runtime stub.",
+    "mutter_native_matrix": "mutter-matrix3/result.json",
+    "mutter_native_matrix_passed": 48,
+    "mutter_native_matrix_selected": 48,
+    "mutter_user_installation": "mutter-user-files.json",
+    "mutter_daily_activation": "Next desktop login; current Wayland shell still uses the stock library.",
+    "live_scenarios": "live-final-scenarios.json",
+    "live_account_login_retained": true,
+    "runtime_components_verified": 29,
+    "runtime_verification": "runtime-components-verified.json",
+    "source_rollback_verified": "source-core-rollback-verified.json",
+    "meeting_experiments": "Rejected; source, registry, runtime and launch environment restored.",
+    "remaining": {
+      "issue4": "GPU VM fault trigger remains unknown; separate Wine resource fixes do not prove it resolved.",
+      "issue5": "Transient redraw remains; complete reporter black border not reproduced.",
+      "input_incident": "Input passed after scene transitions; the original incident root is unconfirmed.",
+      "meeting_size": "Component loads; initial Qt window size remains incorrect at 200%.",
+      "mail_candidate": "Rime commit works; body candidate is below the whole window rather than at the caret."
+    },
+    "cleanup": "cleanup-final.json",
+    "published": false,
+    "combined_package_acceptance_complete": false
+  },
+  "meeting_focus_2026_11_15": {
+    "base_git_sha": "7aa4263f7bc8d4d9156b0163fc2431acaddd7d3e",
+    "evidence_root": "/home/sai/work/.wecom-build/r6",
+    "wine_patch_sha256": "1a541b28996e3899d2e56909a39ba2e5bda108cd72ad53c5d9570eb29f2c704d",
+    "winex11_sha256": "32fcfdb0d3dee22b2eacfab449cca283381433d63e92b32612975b6caa701af7",
+    "win32u_sha256": "e1f490af81f7109b7a38e163c717369e079a152b7d4c15577b051623e37ce136",
+    "launcher_sha256": "6c24b0b6611c30917cb734a8124d9efedda02cd7ef8421c9e71dd4c8bba80468",
+    "wecom": "5.0.13.6005",
+    "wemeet": "3.26.511.637",
+    "qt": "5.15.8",
+    "host_scale": 2,
+    "dpi_root": "WeMeet changes process awareness after creating unaware message windows. Qt caches a startup scale of 2 while the UI is later created from an older unaware context.",
+    "dpi_adaptation": "IFEO dpiAwareness=0 for wwmapp.exe before startup keeps Qt scale 1 and consistent unaware windows; no global Wine DPI lock or hardcoded window sizes.",
+    "before_main_physical": [
+      3848,
+      2568
+    ],
+    "after_main_physical": [
+      1924,
+      1284
+    ],
+    "after_main_logical": [
+      962,
+      642
+    ],
+    "settings_logical": [
+      720,
+      640
+    ],
+    "focus_root": "An override-redirect Qt popup holds native X focus but never becomes _NET_ACTIVE_WINDOW. Wine foreground reconciliation replaces it with the managed owner/desktop and Qt closes it.",
+    "focus_fix": "Retain the same-thread unmanaged foreground only while XGetInputFocus resolves to that exact HWND.",
+    "negative_control": "popup-focus-negative-regression.json",
+    "negative_driver_sha256": "997cd2e6dcf5870b392505f91ef405ae99a45f41556ff274539dfa0d9a7deb89",
+    "negative_result": {
+      "samples": 20,
+      "focused": 0,
+      "lost": 1,
+      "visible": false
+    },
+    "positive_result": {
+      "bits": [
+        32,
+        64
+      ],
+      "samples_each": 20,
+      "focused_each": 20,
+      "lost_each": 0,
+      "visible": true
+    },
+    "targeted_results": [
+      "reg/result.json",
+      "cursor-retry/result.json",
+      "focus-tests/result.json"
+    ],
+    "cursor_initial_failure": "Xvfb was absent from PATH; both groups pass with the existing QA tools in PATH.",
+    "full_regression": "full-regression-result.json",
+    "full_regression_complete": true,
+    "runtime_verification": "runtime-components-final.json",
+    "runtime_components_verified": 29,
+    "mapped_driver_verified": "popup-focus-driver-mapped.json",
+    "host_mutter_active": "host-mutter-active.json",
+    "host_fullscreen": "host-fullscreen-result.json",
+    "host_fullscreen_cases_passed": 4,
+    "live_passed": [
+      "normal meeting size",
+      "microphone mute",
+      "audio settings",
+      "settings dropdown anchor",
+      "settings close",
+      "end-menu first click stays open",
+      "external-app focus dismisses menu",
+      "maximize to 1600x917 logical workarea",
+      "maximized end-menu anchor",
+      "end meeting by mouse menu",
+      "chat Chinese candidate/commit and draft removal",
+      "documents home size/layout",
+      "mail composer 1000x680 logical size and Chinese commit",
+      "main application-button maximize to native/Win32 3200x1834 physical",
+      "main application-button restore to 1080x760 logical",
+      "main Settings size 800x560 logical",
+      "chat Chinese candidate/commit after meeting, sharing attempt, main maximize/restore and Settings transitions"
+    ],
+    "live_room_ended": "Own one-participant room 05:35-05:44; no invites, messages or mail sent. Second single-person test 06:04-06:07 ended by mouse; blank Notepad closed. Original-startup control 06:22-06:26 and restored-candidate check 06:27-06:28 both ended by mouse confirmation.",
+    "mail_candidate_limit": "Rime body candidate remains below the entire composer rather than at the caret.",
+    "remaining": [
+      "issue4 first GPU request",
+      "issue5 complete reporter black border and full-frame transient timing",
+      "historical input incident root",
+      "mail body candidate anchor",
+      "reporter-specific environments",
+      "hotplug BadRRCrtc/BadWindow attribution",
+      "camera and multiparty call coverage"
+    ],
+    "published": false,
+    "packaged": false,
+    "release_acceptance_complete": false,
+    "source_bundle_refresh_required": true,
+    "mail_test_draft_cleared": true,
+    "full_regression_initial_target_groups": 63,
+    "cleanup": {
+      "removed": [
+        "/home/sai/work/.wecom-build/r6/pfocus/prefix",
+        "/home/sai/work/.wecom-build/r6/final-suite/workarea-1/prefix"
+      ],
+      "logical_bytes": 1252990227,
+      "no_live_prefix_processes": true,
+      "account_data_removed": false,
+      "retained": "individual 3.8 MiB old driver and evidence, no full runtime/account/source copy",
+      "interrupted_private_processes_stopped": [
+        {
+          "pid": 600723,
+          "name": "pipewire"
+        }
+      ],
+      "partial_negative_runtime_overlay_removed": true
+    },
+    "cumulative_patch_reverse_dry_run": true,
+    "mail_test_empty_draft_removed": true,
+    "sharing_ui_result": "Picker size 764x597 logical and tile/start-button hit positions pass; desktop thumbnail black, app thumbnail content empty. Starting Notepad share returns to the ordinary main window without a persistent share indicator, so sharing output remains unresolved.",
+    "full_regression_initial_interruption": "Execution session exited 143 after 43 completed passing groups; incomplete workarea group restarted in a new isolated session. No incomplete group counted as passed.",
+    "full_regression_reports": [
+      "final-suite/result.json",
+      "final-suite-rest/result.json"
+    ],
+    "review": {
+      "patch_body_delta_added_lines": 12,
+      "patch_body_delta_removed_lines": 0,
+      "generic_process_dpi_lock_retained": false,
+      "native_focus_is_exact_hwnd": true,
+      "managed_windows_follow_original_path": true,
+      "x_focus_query_outside_window_data_lock": true,
+      "primary_test_source": "popup-focus.c",
+      "old_negative_control_retained": true
+    },
+    "live_test_messages_sent": 0,
+    "live_test_mail_sent": 0,
+    "live_test_chat_draft_cleared": true,
+    "screen_regression_finished": true,
+    "final_desktop_state": "WeCom 1080x760 logical, File Assistant selected, draft empty; no meeting or Notepad window. Fresh pointer MCP stopped.",
+    "sharing_old_startup_control": "sharing-old-dpi-trial.json",
+    "sharing_control_limit": "Original startup reproduces 1924x1284 logical main and awareness 0/2 mixing; its share picker remains blank, so no successful baseline capture is available. DPI override restored to 0. No claim that capture output was fixed or proved unchanged.",
+    "full_regression_passed": true,
+    "full_regression_groups_passed": 63,
+    "full_regression_groups_selected": 63,
+    "full_regression_report_sha256": "aed5ea226be51df7fdc8186bea48ac186487967bc231fa8486c7e983acceaca8",
+    "final_dpi_override": 0,
+    "final_fresh_meeting_logical": [
+      962,
+      642
+    ],
+    "final_fresh_meeting_context": "candidate-final-meeting-dpi.txt",
+    "sharing_control_comparison_completed": true,
+    "final_screen_controller_stopped": true,
+    "final_fresh_candidate_room_ended": "06:27-06:28, 1m02s; mouse end-menu command"
+  },
+  "current_validation_entry": "release_6_2026_11_16",
+  "input_root_2026_11_15": {
+    "base_git_sha": "7aa4263f7bc8d4d9156b0163fc2431acaddd7d3e",
+    "evidence_root": "/home/sai/work/.wecom-build/r7",
+    "wine_patch_sha256": "1295f5c2fa5e7bcca42bc2c75bde18d7eec9be92222c03f75d74921c219ade57",
+    "runtime_sha256": {
+      "win32u.so": "07b71293d74514e7667c0a6de90b214d1ba39b778afd76e6115a4ddb0436b7b6",
+      "winex11.so": "1f81aa1aa391b10148de026467e09652d3c184a61141e1ee2d26cf1caf381b4f",
+      "winewayland.so": "ac11ccecd9854d74a972487dd99b646d887541c81a3853b8fcb76b917e354761",
+      "imm32-i386.dll": "ddb80b4cc3cd68256dbd38c2b9907b5e4e0469e87d8d5b29cd20dd4bcbb9f155",
+      "imm32-x86_64.dll": "514ffd3ada39117dd23b5beb21157fee18203d8d53627c82ec773c3652f1c101"
+    },
+    "launcher_sha256": {
+      "ubuntu/launch.sh": "b22d247474442dbeed9beadc48bbab8df50673befca9f640912cfbd04f99c7bb",
+      "scripts/launch-wecom.sh": "8deb61e3daf95d1d625308358e3b4f8b1275e75cbdd9b7c4b43dc61341bf47d3"
+    },
+    "wecom": "5.0.13.6005",
+    "cef": "107.0.0.0",
+    "wecom_runtime_packaged": false,
+    "source_bundle_exact": false,
+    "patch_replay": "patch-context-final-replay-result.json",
+    "patch_source_files_replayed": 12,
+    "abi": "Existing internal message numbers and driver ABI remain unchanged; new private messages are appended. IMM32 public ABI is unchanged.",
+    "cross_process_root": "The native XIC belongs to the outer Qt root thread, but the focused mail CEF child belongs to another process. Per-process IMM update IDs and the old character bridge cannot deliver composition/caret state to that child.",
+    "cross_process_fix": "Pointer-free UTF-16 async payload to the exact foreign focus within the same GA_ROOT, receiver validation/stale-focus checks and owner-thread XIC spot positioning; focus activation runs in the destination process.",
+    "cef_root": "CEF107 defaults to TSF and ignores the IMM composition path. Select its supported IMM32 backend through --disable-features=TSFImeSupport; do not inject committed WM_CHAR or change Windows version.",
+    "cef_defaults": {
+      "ubuntu_native_ime": true,
+      "ubuntu_legacy_bridge": false,
+      "generic_arch_unchanged": true,
+      "native_and_legacy_paths_mutually_exclusive": true
+    },
+    "reset_root": "Completion, cancellation and ImeSetActiveContext(FALSE) previously ended only Windows-side composition. Each native XIC now owns its own buffer/cursor/reset state, with referenced lifetime during reset/focus and detached ownership before destruction. Reset inactive roots too. New native focus with no owned Windows composition rejects preedit inherited from another XIC; own preedit and non-callback styles retain their behavior.",
+    "buffered_event_root": "Synchronous Xlib calls can leave native events in Xlib after the fd is drained. Full message pumps check that queue and final flush re-drains it before acknowledging the driver as empty.",
+    "buffered_event_negative": "ime-queue-negative/result.json records queue_stall_reproduced, not an overall positive test.",
+    "cross_architecture_results": {
+      "32-32": "reset-ime/32-32/result.json",
+      "32-64": "reset-ime/32-64/result.json",
+      "64-32": "reset-ime/64-32/result.json",
+      "64-64": "reset-ime/64-64/result.json"
+    },
+    "final_reset_result": "final-reset/32-32/result.json",
+    "final_full_regression": "full-regression-final.json",
+    "full_regression_complete": true,
+    "launcher_selector_results": [
+      "launcher-ime-exclusive.json",
+      "launcher-ime-exclusive-clean.json"
+    ],
+    "native_mail": "native-ime-context-result.json",
+    "native_mail_passed": [
+      "inline preedit",
+      "single commit",
+      "body-to-subject active preedit then new word",
+      "subject cancellation without native pinyin leakage into body",
+      "candidate follows lines",
+      "Escape cancellation",
+      "Chinese/English switching",
+      "maximize/restore position",
+      "mail-to-chat native-root composition isolation",
+      "chat-to-mail native-root composition isolation",
+      "three rapid alternating native-root rounds",
+      "committed body text preserved after native focus changes",
+      "English mode retained after native focus changes",
+      "two mail XICs in the same process across two physical monitors",
+      "candidate follows moving the active mail window"
+    ],
+    "native_normal_mode": {
+      "WINEDEBUG": "-all",
+      "search_chinese": true,
+      "chat_composition_and_candidate": true,
+      "chat_draft_cleared": true,
+      "single_person_meeting": true,
+      "camera_enabled": false,
+      "microphone_muted_after_join": true,
+      "normal_and_maximized_end_menu": true,
+      "ended_by_mouse": true,
+      "room_still_active": false,
+      "messages_sent": 0,
+      "mail_sent": 0,
+      "final_runtime_retested": true,
+      "final_meeting": "native-ime-context-result.json"
+    },
+    "meeting_menu_remaining": "Menu left open during maximize keeps the old absolute position until closed/reopened. A newly opened maximized menu anchors correctly. Root and regression attribution remain unconfirmed.",
+    "ibus": {
+      "upstream": "https://github.com/ibus/ibus/pull/2958",
+      "commit": "14ec1665333d74cc696453e4ba12bc10840dabd1",
+      "distro_version": "1.5.34~rc2-1",
+      "baseline_asan_failed_cases": 2,
+      "fixed_asan_lsan_cases": 100,
+      "fixed_repeated_runs": 50,
+      "local_deployment": "ibus-local-deployment.json",
+      "system_daemon_unchanged": true,
+      "host_fix_in_deb": false,
+      "same_wine_process_restored": true,
+      "automatic_wayland_xim_lifecycle_fixed": false
+    },
+    "sharing": {
+      "passed": false,
+      "DwmRegisterThumbnail": "E_NOTIMPL; empty application thumbnails",
+      "DuplicateOutput": "Original E_NOTIMPL; E_UNSUPPORTED trial still failed real Notepad sharing",
+      "trial_retained": false,
+      "source_and_four_dlls_restored": "dxgi-trial-rollback.json",
+      "correct_wayland_capture_not_implemented": true
+    },
+    "issue4": {
+      "closed": false,
+      "known": "Reporter GPUVM fault/reset precedes abort; first triggering Wine GPU request remains unknown.",
+      "local_gpu_reset_reproduced": false,
+      "local_kernel_review": "kernel-regression-review.json"
+    },
+    "issue5": {
+      "closed": false,
+      "real_whole_frame_observation": "doc-frame-resize-summary.json",
+      "completed_phase_samples": 214,
+      "pending_phase_samples": 6,
+      "max_completed_mismatch_fraction": 0.00034996345029239767,
+      "completed_frame_only_black_fraction": 5.177875243664717e-05,
+      "pending_pixmap_not_presented_frame": "Observed large black backing regions only while the extended sync counter was odd. This does not prove compositor output was black.",
+      "reporter_kwin_130_200_closed": false
+    },
+    "remaining": [
+      "Wayland/meeting outgoing capture and thumbnail APIs",
+      "issue4 first GPU request",
+      "issue5 complete reporter black-border/old-frame transient",
+      "automatic Wayland ibus-x11 frontend lifecycle after daemon restart",
+      "historical input failure not uniquely attributable without its original logs",
+      "meeting menu position when maximizing with the menu already open"
+    ],
+    "cleanup": [
+      "qa-cleanup.json",
+      "qa-cleanup-final.json",
+      "qa-cleanup-completed-suite.json"
+    ],
+    "notes": [
+      "No account/runtime/source tree copies created. Individual component rollback files and account-free disposable test prefixes only.",
+      "Debug traces bounded during diagnosis; normal launcher restored to WINEDEBUG=-all.",
+      "This round is source and local runtime work; no new DEB, source archive, release, commit or push."
+    ],
+    "intermediate_full_regression": {
+      "path": "final-suite/result.json",
+      "passed": 67,
+      "total": 67,
+      "not_final_runtime": true,
+      "remaining_failure": "native uncommitted preedit transferred across native root focus"
+    },
+    "xim_lifecycle_test": "xim-context-final/xim-context-lifecycle-result.json",
+    "source_files_replayed": 12,
+    "runtime_verification": "runtime-context-final-verification.json",
+    "final_native_context": "native-ime-context-result.json",
+    "full_regression_groups_passed": 68,
+    "launcher_cases_each": 19,
+    "final_native_state": "native-ime-context-result.json",
+    "host_ibus_final": {
+      "active": true,
+      "pid": 699273,
+      "restarts_after_install": 0
+    }
+  },
+  "release_6_2026_11_16": {
+    "base_git_sha": "7aa4263f7bc8d4d9156b0163fc2431acaddd7d3e",
+    "scope": "Final revision -6 source, same-component runtime regression, full package and authenticated local acceptance. Historical entries below keep their original fingerprints.",
+    "wine_patch_sha256": "1e3f752bb0d9341d6dbfe5ccf4444423b6e8a04d4ada105c50d3d09b6bb2b3f1",
+    "runtime_sha256": {
+      "wineserver": "a7bb249f6bb6db811b770f9f6caa1391e5b5eeec218c31128db7c66e3c327c71",
+      "ntdll.so": "2a41b6f4533170777a66bd53bd91010600e0f4c1a467dd308d41fabfe51e2705",
+      "win32u.so": "07b71293d74514e7667c0a6de90b214d1ba39b778afd76e6115a4ddb0436b7b6",
+      "winex11.so": "a46e56ae10d62c1e95dc6f506812042ee2c23356fbf32f757f21ae0894a94527",
+      "wineps.so": "30b9b3db1eda53cc307828e05fc51952edcf6771174d196d49c291a78174dc8a",
+      "imm32-i386.dll": "36a05a3a0d144a20ee7dbb47e108c64c1972e3830d1357d27909efa19fc640fc",
+      "imm32-x86_64.dll": "8550278a740c1441fc9f2c802087a19590064cb4687abc5ea56a232729e7059e",
+      "explorer.exe": "0e98db85cf10575807cf0e5677be600413739a72b1cfd6a3c0ea21a3b5452ec1",
+      "wine": "fa443c7a1f7d289faeffab7cf79ae2f13398bd715ab25267e725e67d6bf765a1",
+      "gdiplus-i386.dll": "0623c1e20536c9c734b0d8bef938b54ea6364fed009d98ed3b6f07ce310137ab",
+      "gdiplus-x86_64.dll": "d5d9f1b7cf9b6635033749ed6af14e3d1e8e7a184fb4c0bc69ebefb6fa925251",
+      "ntoskrnl.exe-i386-windows": "abfb279712d58a7528190dc04fb04a14910e0f695a95ab84b1676b37e65ec1e1",
+      "cfgmgr32.dll-i386-windows": "54e25039987bf47341a900bec6610a4bccf81078737f42e69abab950dbbcf5b0",
+      "setupapi.dll-i386-windows": "13098d8736e845bab49ae1c75bb437a1ee2c89eb17e17168b084e55a08e2cc11",
+      "ntoskrnl.exe-x86_64-windows": "ffd18005098f8b94a4d54f1a5e6c8d280a3e6c6368d4e7681b351048c6936e39",
+      "cfgmgr32.dll-x86_64-windows": "688951c468f0c19f1c1f70be82afd0e5332c745655d7f002c092ba9f29b64593",
+      "setupapi.dll-x86_64-windows": "32dda67beec9ec7a81d68c036be7313c8f22cfaa04414164a0a2d05adf513e39",
+      "wineboot.exe-x86_64-windows": "379440aae4fe7648b938f4ef78f3af4633a47d9ca78e6078580a389c3e5b782e",
+      "mountmgr.so": "748de97cc1dfbbb334908a17409f1ad5f4df6d07b17c830a81d8828b1c05956c",
+      "winewayland.so": "ac11ccecd9854d74a972487dd99b646d887541c81a3853b8fcb76b917e354761",
+      "comdlg32-i386.dll": "0942bd206fee7c3b82947e19787afc2b32f835a057fb5cb809393fb44e83e2b8",
+      "shell32-i386.dll": "5fd5a5d5d297bb257a2b7d5f7045aba2281645374e7e0f42d72ebd2a48ad842c",
+      "comdlg32-x86_64.dll": "ec7a6ad77525b4d32b4681c3cb334000625b49d54851fe4312c47a511f36adaf",
+      "shell32-x86_64.dll": "05984f5c0313d5a2218fb995f61a0c6338dba6324b4becbcaa9eb68dddd930b4",
+      "comdlg32.so": "5259b529e2d98d30276839d8eecdd25e81bff33e4e9f7e46746b4921b419131b",
+      "explorer-i386.exe": "ce6e6ef4d80836e4a18f052cf5a05df71f508188671dcfa32f217ad3d80f192f",
+      "winebth.so": "31dfdfb3e1d5dc298550efeea0721904606d3cb93bba1fa17e248114b53718e6",
+      "slwga-i386.dll": "42c24c9feac1f0d23ded1effd3b09d4498e72f0ac5b725a324fce7f388ef980a",
+      "slwga-x86_64.dll": "8a5dd5b60ca3c59b2c749e262f04a74cd2dc6dc5eb5422bd43791c6472103404"
+    },
+    "status": "Final -6 payload: 72/72 runtime groups, 70 file interface cases, fresh/upgrade/same-version acceptance, exact source replay and all 18,207 DEB entries verified. Known native limits remain explicit.",
+    "source_replay": {
+      "unchanged_upstream_files": 12399,
+      "patched_files": 76,
+      "mismatches": [],
+      "zero_fuzz": true,
+      "patch_sha256": "1e3f752bb0d9341d6dbfe5ccf4444423b6e8a04d4ada105c50d3d09b6bb2b3f1"
+    },
+    "source_bundle": {
+      "archive": "/home/sai/work/wecom-linux/dist/wine-11.20-wecom-20261116-source.tar.zst",
+      "sha256": "1f1b4da1483f6a3a1fc9891fb9e89c52c7e31d5eb53ebd0919ee75d2b3ede018",
+      "entries": 13855,
+      "mismatches": [],
+      "exact_build_source": true
+    },
+    "helper_rebuild": {
+      "ime-bridge.so": {
+        "rebuilt_sha256": "291500cb9c84f2daa5765ec87e1b918805bc5f971abfcbf737b7144c806de509",
+        "shipped_sha256": "291500cb9c84f2daa5765ec87e1b918805bc5f971abfcbf737b7144c806de509",
+        "identical": true
+      },
+      "titlebar-managed.exe": {
+        "rebuilt_sha256": "b0ac26061f6798c549648a9a386f7575b85c42cbe68a748716375665682078e2",
+        "shipped_sha256": "5db60438d131530e35b7eab4bf15e284bff18bb4242bb0138cae6633c0513e97",
+        "identical": false,
+        "identical_except_pe_timestamp_checksum": true
+      },
+      "set-status-font.exe": {
+        "rebuilt_sha256": "dc69dd51ba859f646d376f7d176287b149f46a3d1e782f17eafa808ee7e5ac56",
+        "shipped_sha256": "a1cd85a2b3ba68de50bd569e051254be27d09916ef16b312409c87a6205d5de1",
+        "identical": false,
+        "identical_except_pe_timestamp_checksum": true
+      }
+    },
+    "native": {
+      "runtime": {
+        "imm32-i386.dll": "36a05a3a0d144a20ee7dbb47e108c64c1972e3830d1357d27909efa19fc640fc",
+        "imm32-x86_64.dll": "8550278a740c1441fc9f2c802087a19590064cb4687abc5ea56a232729e7059e",
+        "winex11.so": "a46e56ae10d62c1e95dc6f506812042ee2c23356fbf32f757f21ae0894a94527",
+        "patch_sha256": "5cb7007071e1b331680f77f8983cbbc843fcbd8025a494e71b5cfb80335d2641"
+      },
+      "wecom_pid": 1326521,
+      "scenarios": [
+        {
+          "name": "chat-continuous-words",
+          "input": "ceshi wenjian zhongwen ",
+          "observed": "测试文件中文",
+          "passed": true,
+          "sent": false
+        },
+        {
+          "name": "pending-composition-ibus-restart",
+          "observed": "same WeCom process; automatic new XIM frontend; first new word 中文 with no raw z or old composition",
+          "passed": true,
+          "sent": false
+        },
+        {
+          "name": "mail-foreign-cef-continuous-words",
+          "observed": "测试文件中文 in body",
+          "passed": true,
+          "sent": false
+        },
+        {
+          "name": "mail-body-preedit-to-subject",
+          "observed": "body preedit ceshi ends on blur; subject independently contains 文件",
+          "passed": true,
+          "sent": false
+        },
+        {
+          "name": "mail-English-switch-and-cancel",
+          "observed": "Escape cancels pending abc composition; Shift switches to English; literal abc persists in body",
+          "passed": true,
+          "sent": false
+        },
+        {
+          "name": "mail-maximize-restore-second-screen-candidate",
+          "observed": "steady maximized body and candidate follow second-line caret; restored 1000x680 logical; moved composer to secondary x2300 with correct preedit/candidate position",
+          "passed": true,
+          "transition_limit": "old-size contents remain briefly during maximize",
+          "sent": false
+        },
+        {
+          "name": "document-open-and-maximize",
+          "observed": "existing document loaded in foreign CEF process; steady maximized content fills frame and preserves document position",
+          "passed": true,
+          "edited": false,
+          "transition_limit": "old-size contents visible briefly during maximize"
+        },
+        {
+          "name": "document-restore-and-native-drag",
+          "observed": "document restored to 1080x700 logical and moved by native title-bar drag; read-only session closed",
+          "passed": true,
+          "edited": false,
+          "transition_limit": "CEF can show an intermediate unpainted view during layout"
+        },
+        {
+          "name": "package6-own-meeting-start",
+          "observed": "one-participant meeting opens; new SLWGA loaded; window 962x642 logical with correctly sized content; camera remains off",
+          "passed": true,
+          "others_invited": false,
+          "runtime": "full -6 payload"
+        },
+        {
+          "name": "package6-meeting-audio-controls",
+          "observed": "mute button responds and shows 解除静音; camera off; only one participant",
+          "passed": true,
+          "others_invited": false
+        },
+        {
+          "name": "package6-meeting-share-preview",
+          "observed": "screen 1 and 2 previews remain black; no sharing started",
+          "passed": false,
+          "known_limit": true,
+          "root": "Desktop Duplication and DWM thumbnail capabilities remain unimplemented"
+        },
+        {
+          "name": "package6-meeting-maximize-restore",
+          "observed": "stable maximized content fills 3840x1994 physical frame; controls retain correct size; returned to normal 962x642 logical",
+          "passed": true,
+          "transition_limit": "old-size content briefly visible during transition"
+        },
+        {
+          "name": "package6-meeting-ended",
+          "observed": "End meeting button closed the own one-participant room; no wwmapp top-level windows remain",
+          "passed": true,
+          "others_invited": false
+        },
+        {
+          "name": "package6-account-and-DPI-retained",
+          "observed": "existing account remained logged in without QR; 192 desktop DPI retained; first Chinese search word 文件 entered correctly",
+          "passed": true,
+          "new_login_required": false
+        },
+        {
+          "name": "package6-public-PNG-Wine-view-selection",
+          "passed": true,
+          "observed": "selecting own PNG row in Wine file view stages the image in FileAssistant; direct filename entry produced empty view selection",
+          "sent": false,
+          "native_dialogs_enabled": false
+        },
+        {
+          "name": "package6-public-image-preview",
+          "passed": true,
+          "observed": "own staged 640x360 RGB grid opens in real 1280x960 preview and closes with Alt-F4; composer cleared",
+          "sent": false
+        },
+        {
+          "name": "package6-view-dependent-image-selection",
+          "passed": true,
+          "observed": "WINE_NATIVE_FILE_DIALOGS remains 1; WeCom shell-view query selects real Wine chooser before any portal request; selecting own Chinese-named PNG stages the image in FileAssistant",
+          "sent": false,
+          "requires_view_fallback": true,
+          "runtime_comdlg32_i386_unstripped": "0942bd206fee7c3b82947e19787afc2b32f835a057fb5cb809393fb44e83e2b8"
+        },
+        {
+          "name": "package6-preview-mouse-zoom-maximize-close",
+          "passed": true,
+          "observed": "Own public PNG zoom responds; maximize and restore maintain proper stable geometry; mouse close button closes preview without a blocking shadow",
+          "sent": false,
+          "runtime_comdlg32_i386_unstripped": "0942bd206fee7c3b82947e19787afc2b32f835a057fb5cb809393fb44e83e2b8"
+        },
+        {
+          "name": "package6-background-XIM-reconnect-focus",
+          "passed": true,
+          "observed": "IBus daemon and X11 frontend restarted while Chrome held focus; Chrome remained focused, same WeCom process alive, returning to composer first word 中文 entered intact",
+          "sent": false
+        },
+        {
+          "name": "final-stripped-package-normal-mode-file-view-preview-OCR",
+          "passed": true,
+          "observed": "WINEDEBUG=-all; final stripped comdlg32 eb93ff loaded from the -6 package with matching mapped inode; Chinese-named PNG selected in Wine shell view and staged; preview opens and OCR extracts public fixture text WECOM LOCAL REGRESSION 2026-11-16",
+          "sent": false,
+          "normal_wecom_pid": 1528613
+        },
+        {
+          "name": "final-stripped-package-normal-mode-continuous-input",
+          "passed": true,
+          "observed": "After normal restart and native image/OCR round trip, ceshi wenjian zhongwen rendered exactly 测试文件中文; 192 DPI and compact sidebar retained",
+          "sent": false,
+          "normal_wecom_pid": 1528613
+        }
+      ],
+      "scope_note": "Early input scenarios used the same final a46 X11 driver and IMM32 before the independent comdlg32 revision. Later package6 file-view scenarios identify their own comdlg32 revision. The final stripped package regression and module mapping are recorded separately."
+    },
+    "host_ibus": {
+      "upstream_cancel_uaf_fix": true,
+      "xim_frontend_supervised": true,
+      "system_xwayland_hook_installed": true,
+      "system_hook_matches_repo": true,
+      "complete_desktop_relogin_tested": false,
+      "installed_by_deb": false,
+      "background_reconnect": {
+        "before": {
+          "org.freedesktop.IBus.session.GNOME.service": "ActiveState=active\nMainPID=1342198",
+          "org.freedesktop.IBus.X11.service": "ActiveState=active\nMainPID=1342217"
+        },
+        "restart_exit": 0,
+        "stderr": "",
+        "after": {
+          "org.freedesktop.IBus.session.GNOME.service": "ActiveState=active\nMainPID=1526840",
+          "org.freedesktop.IBus.X11.service": "ActiveState=active\nMainPID=1526857"
+        },
+        "same_wecom_process_alive": true,
+        "focus_after_restart": [
+          {
+            "window_id": 3036754156,
+            "wm_class": "google-chrome"
+          }
+        ],
+        "focus_unchanged": true,
+        "focus_evidence": "Observed list_windows response immediately after systemctl restart and before returning to WeCom: Chrome focused true, WeCom focused false",
+        "first_word_after_return": "中文",
+        "first_word_no_raw_letter": true,
+        "test_input_sent": false,
+        "passed": true
+      }
+    },
+    "new_continuous_input_regression": {
+      "old_driver_negative_control_reproduced": true,
+      "old_imm32_first_word_loss_reproduced": true,
+      "architectures_passed": [
+        "32",
+        "64"
+      ],
+      "words_per_architecture": 12,
+      "key_interval_ms": 8,
+      "fixture_engine": "Deterministic words through real IBus daemon and XIM frontend",
+      "messages_sent": false
+    },
+    "review": {
+      "source_files_against_published_base": 27,
+      "helper_code_matches_shipped_binaries": true,
+      "syntax_and_diff_checks_passed": true,
+      "new_root_fixes": [
+        "Own-display event thread reopens XIM instead of Xlib process-global callbacks",
+        "Restore the current XIC focus after a server restart",
+        "A completed native word does not close the input method",
+        "Cancelling an empty Windows composition does not reset a pending native word",
+        "File-dialog clients requiring a Windows shell view use the existing Wine implementation, preserving Portal for independent clients"
+      ],
+      "introduced_regression_corrected": "R7 unconditional native cancellation during layout selection could discard the first word",
+      "review_result": "No further actionable regression found in reviewed paths after the root fixes and final regression; unimplemented sharing, transient rendering and reporter GPU trigger remain open."
+    },
+    "known_remaining": [
+      "Shared screen output lacks Desktop Duplication and DWM thumbnail support; Xwayland capture remains black",
+      "Issue #4 first GPU fault request unconfirmed",
+      "Issue #5 reporter-specific KWin resize black/old frame remains unclosed",
+      "Open WeMeet Qt Tool menu stays at its old absolute position when the main meeting window is maximized",
+      "Host IBus/Mutter fixes are separate from the DEB; next full GNOME login is untested"
+    ],
+    "regression": {
+      "complete": true,
+      "passed": true,
+      "groups_total": 72,
+      "groups_passed": 72,
+      "wine_patch_sha256": "1e3f752bb0d9341d6dbfe5ccf4444423b6e8a04d4ada105c50d3d09b6bb2b3f1",
+      "setup_retry": {
+        "group": "frame-compositor",
+        "initial_failure": "Missing XDamage.h during fixture compilation; no runtime assertion executed",
+        "initial_attempt": {
+          "name": "frame-compositor",
+          "exit_code": 1,
+          "passed": false,
+          "removed_prefixes": 0,
+          "seconds": 0.29,
+          "log": "/home/sai/work/.wecom-build/r8/final-view-b/frame-compositor.log"
+        },
+        "correction": "Use the existing dependency include/library directories via CPATH and LIBRARY_PATH",
+        "same_runtime_and_source": true,
+        "successful_retry": {
+          "name": "frame-compositor",
+          "exit_code": 0,
+          "passed": true,
+          "removed_prefixes": 1,
+          "seconds": 14.24,
+          "log": "/home/sai/work/.wecom-build/r8/view-frame-check/frame-compositor.log"
+        }
+      },
+      "report_sha256": "a1d08bc132cfeea8c722bb83b31f82620166446751bd27da795dfffe793d6b37",
+      "failed_groups": [],
+      "groups": [
+        {
+          "name": "launcher",
+          "passed": true,
+          "seconds": 5.75
+        },
+        {
+          "name": "cef-image-cache",
+          "passed": true,
+          "seconds": 47.2
+        },
+        {
+          "name": "native-size",
+          "passed": true,
+          "seconds": 0.58
+        },
+        {
+          "name": "surface-commit",
+          "passed": true,
+          "seconds": 19.5
+        },
+        {
+          "name": "pnp-queue",
+          "passed": true,
+          "seconds": 0.28
+        },
+        {
+          "name": "software-licensing",
+          "passed": true,
+          "seconds": 13.49
+        },
+        {
+          "name": "udisks",
+          "passed": true,
+          "seconds": 0.23
+        },
+        {
+          "name": "pnp-64",
+          "passed": true,
+          "seconds": 12.34
+        },
+        {
+          "name": "foreign-dc",
+          "passed": true,
+          "seconds": 14.41
+        },
+        {
+          "name": "cursor-64",
+          "passed": true,
+          "seconds": 14.23
+        },
+        {
+          "name": "foreground-policy",
+          "passed": true,
+          "seconds": 0.26
+        },
+        {
+          "name": "cancel",
+          "passed": true,
+          "seconds": 16.37
+        },
+        {
+          "name": "first-odd-2",
+          "passed": true,
+          "seconds": 15.29
+        },
+        {
+          "name": "anchor",
+          "passed": true,
+          "seconds": 20.53
+        },
+        {
+          "name": "frame-reuse",
+          "passed": true,
+          "seconds": 16.31
+        },
+        {
+          "name": "own-dc",
+          "passed": true,
+          "seconds": 52.5
+        },
+        {
+          "name": "extents-move",
+          "passed": true,
+          "seconds": 17.09
+        },
+        {
+          "name": "extents-still",
+          "passed": true,
+          "seconds": 16.39
+        },
+        {
+          "name": "foreign",
+          "passed": true,
+          "seconds": 17.25
+        },
+        {
+          "name": "input",
+          "passed": true,
+          "seconds": 31.14
+        },
+        {
+          "name": "cards",
+          "passed": true,
+          "seconds": 38.83
+        },
+        {
+          "name": "maximize-1",
+          "passed": true,
+          "seconds": 84.73
+        },
+        {
+          "name": "fullscreen-1",
+          "passed": true,
+          "seconds": 116.41
+        },
+        {
+          "name": "workarea-2",
+          "passed": true,
+          "seconds": 83.35
+        },
+        {
+          "name": "ime-96",
+          "passed": true,
+          "seconds": 31.47
+        },
+        {
+          "name": "ime-unaware",
+          "passed": true,
+          "seconds": 31.59
+        },
+        {
+          "name": "ime-plain",
+          "passed": true,
+          "seconds": 31.58
+        },
+        {
+          "name": "ime-mixed",
+          "passed": true,
+          "seconds": 35.69
+        },
+        {
+          "name": "pending-native-minimize",
+          "passed": true,
+          "seconds": 24.81
+        },
+        {
+          "name": "clipboard",
+          "passed": true,
+          "seconds": 19.29
+        },
+        {
+          "name": "native-dialogs",
+          "passed": true,
+          "seconds": 145.21
+        },
+        {
+          "name": "popup-focus-64",
+          "passed": true,
+          "seconds": 19.81
+        },
+        {
+          "name": "ime-process-32-64",
+          "passed": true,
+          "seconds": 22.95
+        },
+        {
+          "name": "ime-process-64-64",
+          "passed": true,
+          "seconds": 25.49
+        },
+        {
+          "name": "xim-reconnect-32",
+          "passed": true,
+          "seconds": 26.83
+        },
+        {
+          "name": "ime-continuous-32",
+          "passed": true,
+          "seconds": 23.64
+        },
+        {
+          "name": "launcher-clean",
+          "passed": true,
+          "seconds": 5.83
+        },
+        {
+          "name": "pe-image-cache",
+          "passed": true,
+          "seconds": 54.12
+        },
+        {
+          "name": "frame-compositor",
+          "passed": true,
+          "seconds": 14.24
+        },
+        {
+          "name": "surface-lock",
+          "passed": true,
+          "seconds": 0.18
+        },
+        {
+          "name": "bluetooth-names",
+          "passed": true,
+          "seconds": 0.33
+        },
+        {
+          "name": "preview-shadow",
+          "passed": true,
+          "seconds": 19.03
+        },
+        {
+          "name": "pnp-32",
+          "passed": true,
+          "seconds": 13.52
+        },
+        {
+          "name": "popup",
+          "passed": true,
+          "seconds": 16.61
+        },
+        {
+          "name": "cursor-32",
+          "passed": true,
+          "seconds": 15.19
+        },
+        {
+          "name": "gdiplus",
+          "passed": true,
+          "seconds": 25.68
+        },
+        {
+          "name": "first",
+          "passed": true,
+          "seconds": 15.96
+        },
+        {
+          "name": "first-odd-1",
+          "passed": true,
+          "seconds": 15.53
+        },
+        {
+          "name": "cancel-odd-2",
+          "passed": true,
+          "seconds": 16.19
+        },
+        {
+          "name": "frame-sync",
+          "passed": true,
+          "seconds": 15.16
+        },
+        {
+          "name": "shape",
+          "passed": true,
+          "seconds": 15.91
+        },
+        {
+          "name": "resize",
+          "passed": true,
+          "seconds": 14.73
+        },
+        {
+          "name": "extents-no-ack",
+          "passed": true,
+          "seconds": 17.27
+        },
+        {
+          "name": "extents-direct",
+          "passed": true,
+          "seconds": 17.1
+        },
+        {
+          "name": "roles",
+          "passed": true,
+          "seconds": 18.88
+        },
+        {
+          "name": "create",
+          "passed": true,
+          "seconds": 15.25
+        },
+        {
+          "name": "display-removal",
+          "passed": true,
+          "seconds": 22.48
+        },
+        {
+          "name": "workarea-1",
+          "passed": true,
+          "seconds": 83.29
+        },
+        {
+          "name": "maximize-2",
+          "passed": true,
+          "seconds": 83.29
+        },
+        {
+          "name": "fullscreen-2",
+          "passed": true,
+          "seconds": 115.0
+        },
+        {
+          "name": "ime-192",
+          "passed": true,
+          "seconds": 31.67
+        },
+        {
+          "name": "ime-32",
+          "passed": true,
+          "seconds": 30.88
+        },
+        {
+          "name": "ime-position",
+          "passed": true,
+          "seconds": 33.62
+        },
+        {
+          "name": "ime-candidate",
+          "passed": true,
+          "seconds": 32.32
+        },
+        {
+          "name": "reentrant-fullscreen",
+          "passed": true,
+          "seconds": 25.04
+        },
+        {
+          "name": "prefix-settings",
+          "passed": true,
+          "seconds": 60.26
+        },
+        {
+          "name": "popup-focus-32",
+          "passed": true,
+          "seconds": 20.08
+        },
+        {
+          "name": "ime-process-32-32",
+          "passed": true,
+          "seconds": 25.91
+        },
+        {
+          "name": "ime-process-64-32",
+          "passed": true,
+          "seconds": 24.06
+        },
+        {
+          "name": "xim-lifecycle",
+          "passed": true,
+          "seconds": 0.36
+        },
+        {
+          "name": "xim-reconnect-64",
+          "passed": true,
+          "seconds": 27.09
+        },
+        {
+          "name": "ime-continuous-64",
+          "passed": true,
+          "seconds": 23.33
+        }
+      ]
+    },
+    "package_upgrade": {
+      "application_version": "5.0.13.6005",
+      "account_used": false,
+      "main_desktop_used": false,
+      "phases": [
+        {
+          "phase": "fresh",
+          "new_executable_loaded": true,
+          "registry_version": "5.0.13.6005",
+          "licensing": {
+            "32": {
+              "loaded": true,
+              "checks": 10,
+              "failures": 0
+            },
+            "64": {
+              "loaded": true,
+              "checks": 10,
+              "failures": 0
+            }
+          },
+          "screenshot": "/home/sai/work/.wecom-build/r8/upgrade-view-6/fresh.png"
+        },
+        {
+          "phase": "upgrade",
+          "new_executable_loaded": true,
+          "registry_version": "5.0.13.6005",
+          "licensing": {
+            "32": {
+              "loaded": true,
+              "checks": 10,
+              "failures": 0
+            },
+            "64": {
+              "loaded": true,
+              "checks": 10,
+              "failures": 0
+            }
+          },
+          "screenshot": "/home/sai/work/.wecom-build/r8/upgrade-view-6/upgrade.png"
+        },
+        {
+          "phase": "same-version",
+          "new_executable_loaded": true,
+          "registry_version": "5.0.13.6005",
+          "licensing": {
+            "32": {
+              "loaded": true,
+              "checks": 10,
+              "failures": 0
+            },
+            "64": {
+              "loaded": true,
+              "checks": 10,
+              "failures": 0
+            }
+          },
+          "screenshot": "/home/sai/work/.wecom-build/r8/upgrade-view-6/same-version.png"
+        }
+      ],
+      "busy_prefix_unchanged": true,
+      "running_client_continued": true,
+      "normal_exit_left_background": true,
+      "private_data_preserved": true,
+      "same_version_not_recopied": true,
+      "same_version_missing_licensing_repaired": true,
+      "first_start_without_7z_7zz_7za": true,
+      "template_unchanged": true,
+      "passed": true
+    },
+    "package_archive": {
+      "exit_code": 0,
+      "seconds": 308.92,
+      "path": "/home/sai/work/wecom-linux/dist/com.qq.wecom.spark_5.0.13.6005-6_amd64.deb",
+      "sha256": "045af4c5f710eceea371acf4d846c8c6a5530f045fb0fa1e154e8634b90f554c",
+      "bytes": 955686872,
+      "all_entries_match_tested_payload": true,
+      "entries": 18207,
+      "owner_and_modes_verified": true,
+      "archive_comparison_report_sha256": "25c072f48785259400ae5d743985271d1f11d9d86678bfda9e16e150758259b5"
+    },
+    "installed_modules": {
+      "pid": 1528613,
+      "application_marker": "5.0.13.6005-6",
+      "WINEDEBUG": "-all",
+      "WINEPREFIX": "/home/sai/.local/share/wecom/prefix",
+      "modules": {
+        "/home/sai/.local/share/wecom-local-deb/5.0.13.6005-6/package/opt/apps/com.qq.wecom.spark/files/wine/lib/wine/i386-windows/imm32.dll": "1cb011215a17a71eba145029866ee6511203b0bd52bfcc683122d3658f62e7e2",
+        "/home/sai/.local/share/wecom-local-deb/5.0.13.6005-6/package/opt/apps/com.qq.wecom.spark/files/wine/lib/wine/x86_64-unix/winex11.so": "a46e56ae10d62c1e95dc6f506812042ee2c23356fbf32f757f21ae0894a94527",
+        "/home/sai/.local/share/wecom-local-deb/5.0.13.6005-6/package/opt/apps/com.qq.wecom.spark/files/wine/lib/wine/x86_64-unix/win32u.so": "07b71293d74514e7667c0a6de90b214d1ba39b778afd76e6115a4ddb0436b7b6",
+        "/home/sai/.local/share/wecom-local-deb/5.0.13.6005-6/package/opt/apps/com.qq.wecom.spark/files/wine/lib/wine/i386-windows/comdlg32.dll": "eb93ff024d385318524aaf110dc4fb3f5e9ab4e2b3ca60a8379297e48d18fc0f"
+      },
+      "template_contains_account": false,
+      "account_retained": true,
+      "source_patch_sha256": "1e3f752bb0d9341d6dbfe5ccf4444423b6e8a04d4ada105c50d3d09b6bb2b3f1",
+      "scope": "Mapped canonical final payload; exact archive comparison recorded separately",
+      "mapped_inodes_match_packaged_files": true,
+      "deb_sha256": "045af4c5f710eceea371acf4d846c8c6a5530f045fb0fa1e154e8634b90f554c"
+    },
+    "view_dependent_dialogs": {
+      "passed": true,
+      "cases": 70,
+      "report_sha256": "aea1456f9c4db04a10bd762afa2bc5eec530b84301cd106592abf353fb236a95",
+      "architectures": [
+        "32",
+        "64"
+      ],
+      "old_runtime_negative_reproduced": true,
+      "initial_notification_only_candidate_failed_native": true,
+      "native_flag_kept_enabled": true,
+      "private_fixture_account_used": false,
+      "stripping": {
+        "comdlg32-i386.dll": {
+          "source_binary": "0942bd206fee7c3b82947e19787afc2b32f835a057fb5cb809393fb44e83e2b8",
+          "packaged_binary": "eb93ff024d385318524aaf110dc4fb3f5e9ab4e2b3ca60a8379297e48d18fc0f",
+          "non_debug_sections_identical": true,
+          "template_matches": true
+        },
+        "comdlg32-x86_64.dll": {
+          "source_binary": "ec7a6ad77525b4d32b4681c3cb334000625b49d54851fe4312c47a511f36adaf",
+          "packaged_binary": "c89afcf6ca6e145d16e6b167484c516ec90c59b6d96622408e7645f1d353bc78",
+          "non_debug_sections_identical": true,
+          "template_matches": true
+        }
+      }
+    },
+    "superseded_unpublished_package_archive": {
+      "exit_code": 0,
+      "seconds": 277.24,
+      "path": "/home/sai/work/wecom-linux/dist/com.qq.wecom.spark_5.0.13.6005-6_amd64.deb",
+      "sha256": "dabf5b64433110eeaefc55da93b17187c0b4baf6c2e0a959ff3b0e07b82a1b88",
+      "bytes": 955682508,
+      "entries": 18207,
+      "all_entries_match_tested_payload": true,
+      "owner_and_modes_verified": true
+    }
+  },
+  "historical_candidate_package_5": {
+    "version": "5.0.13.6005-5",
+    "development_only": true,
+    "deb_built": true,
+    "published": true,
+    "user_runtime_replaced": true,
+    "focused_fixes_passed": true,
+    "matches_existing_local_deb": true,
+    "existing_local_deb_sha256": "c33fa30b5b569231e8a684d9fd4bbf0bad42e2a9972911e980f3f3b2b8715fec",
+    "existing_local_deb_record": "current_menu_fix.package",
+    "runtime_fingerprints": "runtime_sha256",
+    "test_results": "current_menu_fix; earlier sections are historical",
+    "deb_sha256": "c33fa30b5b569231e8a684d9fd4bbf0bad42e2a9972911e980f3f3b2b8715fec",
+    "deb_bytes": 955555076,
+    "baseline_before_repackage": "baseline_local_deb_before_root_fixes.package"
+  },
+  "current_candidate_package": {
+    "version": "5.0.13.6005-6",
+    "deb_built": true,
+    "user_runtime_replaced": true,
+    "test_results": "release_6_2026_11_16",
+    "runtime_fingerprints": "packaged-runtime.json",
+    "previous_full_deb_sha256": "c33fa30b5b569231e8a684d9fd4bbf0bad42e2a9972911e980f3f3b2b8715fec",
+    "superseded_unpublished_deb_sha256": "dabf5b64433110eeaefc55da93b17187c0b4baf6c2e0a959ff3b0e07b82a1b88",
+    "deb_sha256": "045af4c5f710eceea371acf4d846c8c6a5530f045fb0fa1e154e8634b90f554c",
+    "deb_bytes": 955686872,
+    "release_url": "https://github.com/pujx233/wecom-linux/releases/tag/v5.0.13.6005-6",
+    "publication_state": "See linked GitHub release; this file records source and payload acceptance before publication"
   }
 }

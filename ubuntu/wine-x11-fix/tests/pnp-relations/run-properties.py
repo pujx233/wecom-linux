@@ -73,7 +73,10 @@ with (out / 'wine.log').open('w') as log:
                 if any(line.endswith(str(exe)) for line in mappings):
                     report['fixture_pids'].append(int(process.name))
                 for line in mappings:
-                    if 'r-xp' not in line or not line.endswith(('/setupapi.dll', '/cfgmgr32.dll')):
+                    # Cached code uses shared backing files; the original PE header retains the DLL identity.
+                    fields = line.split()
+                    if not fields[1].startswith('r') or int(fields[2], 16) != 0 or not line.endswith(
+                            ('/setupapi.dll', '/cfgmgr32.dll')):
                         continue
                     module = Path(line.split()[-1])
                     digest = hashlib.sha256(module.read_bytes()).hexdigest()
