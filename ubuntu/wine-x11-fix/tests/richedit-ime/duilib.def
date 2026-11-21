@@ -1,0 +1,3 @@
+LIBRARY DuiLib
+EXPORTS
+    "?SetFixRichEditImeContext@CRichEditUI@DuiLib@@SAX_N@Z"=SetFlag

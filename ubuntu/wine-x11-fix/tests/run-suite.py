@@ -17,11 +17,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--files', required=True, type=Path, help='Prepared package files directory')
     parser.add_argument('--source', required=True, type=Path, help='Patched Wine source tree')
+    parser.add_argument('--xlib-source', type=Path, default=HERE.parents[3] / 'libX11-wecom-source.tar.zst',
+                        help='Matching private libX11 source directory or bundled archive')
     parser.add_argument('--output', required=True, type=Path, help='New result directory')
     parser.add_argument('--previous-files', type=Path, help='Previous package files for the upgrade test')
     parser.add_argument('--runtime-manifest', type=Path, default=HERE.parent.parent / 'release.json',
                         help='Pinned component hashes for the selected runtime')
     parser.add_argument('--case', action='append', help='Run only the named groups; may be repeated')
+    parser.add_argument('--list-cases', action='store_true', help='List the registered groups without running them')
+    parser.add_argument('--camera', action='store_true',
+                        help='Include format enumeration; requires an available camera')
     parser.add_argument('--keep-prefixes', action='store_true', help="Keep successful groups' disposable Wine prefixes")
     args = parser.parse_args()
     files, source, output = args.files.resolve(), args.source.resolve(), args.output.resolve()
@@ -33,8 +38,11 @@ def main():
     def add(name, script, arguments=(), env=None, prepare=False):
         cases[name] = (script, [str(a) for a in arguments], env or {}, prepare)
 
-    add('launcher', 'launcher-startup.py')
-    add('launcher-clean', 'launcher-startup.py', ['--clean-env'])
+    add('launcher', 'launcher-startup.py', ['--files', files])
+    add('display-dpi', 'display-dpi.py')
+    add('initial-thread-dpi', 'run-initial-thread-dpi.py', ['--runtime', wine, '--output', output / 'initial-thread-dpi'])
+    add('dpi-message', 'run-dpi-message.py', ['--runtime', wine, '--output', output / 'dpi-message'])
+    add('launcher-clean', 'launcher-startup.py', ['--files', files, '--clean-env'])
     version = (files / 'application-version').read_text().split()[0]
     cef_arguments = ['--runtime', wine, '--output', output / 'cef-image-cache', '--cef-dir',
                      files / 'template/drive_c/Program Files (x86)/WXWork' / version / 'compatible_web']
@@ -48,6 +56,8 @@ def main():
         ['--source', source, '--runtime', wine, '--output', output / 'frame-compositor'])
     add('surface-commit', 'frame-composition/run-surface-commit-routing.py',
         ['--source', source, '--runtime', wine, '--output', output / 'surface-commit'])
+    add('surface-transition', 'run-surface-transition.py',
+        ['--runtime', wine, '--output', output / 'surface-transition'])
     add('surface-lock', 'draw-completion/run-surface-region-lock.py',
         [source / 'dlls/win32u/window.c', output / 'surface-lock/result.json'])
     add('pnp-queue', 'pnp-relations/run-queue.py', ['--source', source, '--output', output / 'pnp-queue'])
@@ -68,10 +78,21 @@ def main():
         name = 'cursor-' + bits
         add(name, 'cursor-regression.py', ['--wine', wine, '--manifest', args.runtime_manifest,
                                          '--exe', output / ('cursor-' + bits + '.exe'), '--out', output / name])
+    add('mouse-queue', 'run-mouse-queue.py', ['--runtime', wine, '--output', output / 'mouse-queue'])
+    add('richedit-ime', 'run-richedit-ime.py', ['--runtime', wine, '--output', output / 'richedit-ime'])
+    add('xim-callbacks', 'run-xim-callbacks.py',
+        ['--runtime', wine, '--source', args.xlib_source, '--output', output / 'xim-callbacks'])
+    add('clipboard-ole', 'run-clipboard-ole.py', ['--runtime', wine, '--output', output / 'clipboard-ole'])
     add('gdiplus', 'run-gdiplus.py', ['--runtime', wine, '--output', output / 'gdiplus'])
+    if args.camera:
+        add('camera', 'run-camera-media-type.py', ['--runtime', wine, '--output', output / 'camera'])
     add('foreground-policy', None)
     for bits in ('32', '64'):
         add('popup-focus-' + bits, 'frame-composition/run-popup-focus.py', ['--bits', bits], prepare=True)
+        for name, extra in [('restore-focus-', []), ('restore-foreground-', ['--foreground-first'])]:
+            case = name + bits
+            add(case, 'frame-composition/run-restore-focus.py',
+                ['--runtime', wine, '--output', output / case, '--bits', bits, *extra])
     for name, extra in [('first', []), ('cancel', ['--cancel'])]:
         add(name, 'frame-composition/run-first-transaction.py', [output / name, wine, name, *extra],
             {'WECOM_QA_SCALE': '2'})
@@ -88,9 +109,17 @@ def main():
         ('extents-no-ack', 'resize-extents', {'WECOM_QA_NO_EXTENDED_SYNC': '1'}),
         ('extents-still', 'resize-extents', {'WECOM_QA_STATIONARY': '1'}),
         ('extents-direct', 'resize-extents', {'WECOM_QA_DELAY_WM': '0'}),
+        ('extents-native-gdi', 'resize-extents', {'WECOM_QA_DIRECT_GDI': '1'}),
+        ('extents-native-dc', 'resize-extents', {'WECOM_QA_DIRECT_GDI': '1', 'WECOM_QA_DIRECT_DC': '1'}),
+        ('extents-native-child-dc', 'resize-extents', {'WECOM_QA_DIRECT_GDI': '1', 'WECOM_QA_CHILD_DC': '1'}),
+        ('extents-native-foreign-dc', 'resize-extents', {'WECOM_QA_DIRECT_GDI': '1', 'WECOM_QA_FOREIGN_DC': '1'}),
         ('foreign', 'foreign-frame', {}), ('roles', 'frame-roles', {}),
         ('input', 'popup-input', {}), ('create', 'create-reparent', {}),
-        ('cards', 'card-stack', {}), ('display-removal', 'display-removal', {})]:
+        ('cards', 'card-stack', {}), ('display-removal', 'display-removal', {}),
+        ('display-removal-resize', 'display-removal', {'WECOM_HOTPLUG_PENDING': 'resize'}),
+        ('display-removal-move', 'display-removal', {'WECOM_HOTPLUG_PENDING': 'move'}),
+        ('display-removal-update', 'display-removal', {'WECOM_HOTPLUG_PENDING': 'update'}),
+        ('display-removal-minimized', 'display-removal', {'WECOM_HOTPLUG_MINIMIZED': '1'})]:
         add(name, 'frame-composition/run-' + script + '.py', env=env, prepare=True)
     for scale in ('1', '2'):
         add('maximize-' + scale, 'frame-composition/run-maximize.py', ['--scale', scale], prepare=True)
@@ -113,10 +142,15 @@ def main():
              '--parent-bits', parent_bits, '--child-bits', child_bits, '--queue-probe'])
     add('xim-lifecycle', 'ime-position/run-xim-lifecycle.py',
         ['--source', source, '--output', output / 'xim-lifecycle'])
+    add('xim-stock-hook-control', 'ime-position/run-reconnect.py',
+        ['--runtime', wine, '--output', output / 'xim-stock-hook-control', '--one-shot-frontend', '--rounds', '2'])
     for bits in ('32', '64'):
         name = 'xim-reconnect-' + bits
         add(name, 'ime-position/run-reconnect.py',
             ['--runtime', wine, '--output', output / name, '--bits', bits])
+        name = 'ime-gnome-restarts-' + bits
+        add(name, 'ime-position/run-continuous.py',
+            ['--runtime', wine, '--output', output / name, '--bits', bits, '--gnome-restarts'])
         name = 'ime-continuous-' + bits
         add(name, 'ime-position/run-continuous.py',
             ['--runtime', wine, '--output', output / name, '--bits', bits])
@@ -124,22 +158,44 @@ def main():
         ['--scale', '1', '--case', 'negative-secondary-shadow', '--pending-native-minimize'], prepare=True)
     add('reentrant-fullscreen', 'frame-composition/run-maximize.py',
         ['--scale', '1', '--case', 'negative-secondary-shadow', '--reentrant-fullscreen'], prepare=True)
+    add('initial-fullscreen', 'frame-composition/run-fullscreen-map.py', prepare=True)
+    add('fullscreen-host-reply', 'frame-composition/run-fullscreen-map.py', ['--host-reply'], prepare=True)
+    add('display-change-fullscreen', 'frame-composition/run-fullscreen-map.py', ['--display-change'], prepare=True)
     add('clipboard', 'run-clipboard-files.py', ['--runtime', wine, '--qa', output / 'clipboard'])
+    bitmap_args = ['--runtime', wine, '--output', output / 'clipboard-bitmap']
+    if args.previous_files:
+        bitmap_args += ['--previous-runtime', args.previous_files / 'wine']
+    add('clipboard-bitmap', 'run-clipboard-bitmap.py', bitmap_args)
     add('prefix-settings', 'prefix-settings.py', ['--files', files, '--qa', output / 'prefix-settings'])
     add('upgrade', 'package-upgrade.py',
         ['--files', files, '--old-files', args.previous_files, '--qa', output / 'upgrade'])
     add('native-dialogs', 'run-native-file-dialogs.py', ['--runtime', wine, '--output', output / 'native-dialogs'])
+    if args.list_cases:
+        print('\n'.join(cases))
+        return 0
     selected = args.case or list(cases)
     if unknown := set(selected) - cases.keys():
         parser.error('Unknown groups: ' + ', '.join(sorted(unknown)))
     if 'upgrade' in selected and args.previous_files is None:
         parser.error('The upgrade group requires --previous-files')
+    if len(selected) != len(set(selected)):
+        parser.error('Case names must be unique')
+    base_env = {key: value for key, value in os.environ.items()
+                if not key.startswith(('WECOM_QA_', 'WECOM_HOTPLUG_')) and key != 'PYTHONOPTIMIZE'}
     output.mkdir(parents=True, exist_ok=False)
     report = {'runtime': str(wine), 'source': str(source), 'selected': selected, 'groups': [],
               'runtime_sha256': {}, 'runtime_features': features,
               'host_desktop_used': False, 'account_used': False}
-    for module in ('winex11.so', 'win32u.so'):
-        path = wine / 'lib/wine/x86_64-unix' / module
+    components = {'wineserver': 'bin/wineserver'}
+    for module in ('winex11.so', 'win32u.so', 'qcap.so'):
+        components[module] = 'lib/wine/x86_64-unix/' + module
+    for architecture in ('i386', 'x86_64'):
+        components['user32-' + architecture + '.dll'] = 'lib/wine/' + architecture + '-windows/user32.dll'
+        components['ole32-' + architecture + '.dll'] = 'lib/wine/' + architecture + '-windows/ole32.dll'
+        components['msftedit-' + architecture + '.dll'] = 'lib/wine/' + architecture + '-windows/msftedit.dll'
+    components['libX11.so.6'] = 'lib/libX11.so.6'
+    for module, relative in components.items():
+        path = wine / relative
         report['runtime_sha256'][module] = hashlib.sha256(path.read_bytes()).hexdigest()
     for name in selected:
         script, arguments, extra, prepare = cases[name]
@@ -150,9 +206,7 @@ def main():
             (directory / 'wine').symlink_to(wine)
         elif name == 'surface-lock':
             directory.mkdir()
-        env = os.environ | features
-        for key in ('WECOM_QA_SCALE', 'WECOM_QA_NO_EXTENDED_SYNC', 'WECOM_QA_STATIONARY', 'WECOM_QA_DELAY_WM'):
-            env.pop(key, None)
+        env = base_env | features
         env.update(extra, WECOM_QA_ROOT=str(directory))
         started = time.monotonic()
         print('START ' + name, flush=True)
@@ -172,8 +226,22 @@ def main():
             else:
                 result = subprocess.run([sys.executable, str(HERE / script), *arguments],
                                         env=env, stdout=log, stderr=log)
+        passed = result.returncode == 0
+        coverage = {}
+        if passed and name == 'native-dialogs':
+            details = directory / 'results' / 'review-result.json'
+            if details.is_file():
+                summary = json.loads(details.read_text())
+                coverage = {'expected_cases': summary['expected_cases'], 'executed_cases': len(summary['cases'])}
+                passed = (summary['passed'] and not summary['filtered'] and
+                          coverage['executed_cases'] == coverage['expected_cases'])
+            else:
+                passed = False
+            if not passed:
+                with log_path.open('a') as log:
+                    print('The file-dialog group did not report its complete unfiltered matrix.', file=log)
         removed_prefixes = 0
-        if result.returncode == 0 and not args.keep_prefixes:
+        if passed and not args.keep_prefixes:
             prefixes = []
             for root, directories, names in os.walk(directory, followlinks=False):
                 # Runtime directories may contain the document portal's FUSE mount.
@@ -192,13 +260,13 @@ def main():
                                    stdout=log, stderr=log, check=True, timeout=10)
                 shutil.rmtree(prefix)
                 removed_prefixes += 1
-        report['groups'].append({'name': name, 'exit_code': result.returncode, 'passed': result.returncode == 0,
+        report['groups'].append({'name': name, 'exit_code': result.returncode, 'passed': passed, **coverage,
                                 'removed_prefixes': removed_prefixes,
                                  'seconds': round(time.monotonic() - started, 2), 'log': str(log_path)})
         report['complete'] = len(report['groups']) == len(selected)
         report['passed'] = report['complete'] and all(g['passed'] for g in report['groups'])
         (output / 'result.json').write_text(json.dumps(report, indent=2) + '\n')
-        print(f'END {name}: {result.returncode}', flush=True)
+        print(f'END {name}: {0 if passed else result.returncode or 1}', flush=True)
     return 0 if report['passed'] else 1
 
 

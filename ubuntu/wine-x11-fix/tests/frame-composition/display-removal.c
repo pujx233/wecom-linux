@@ -6,7 +6,7 @@
 #include <string.h>
 
 static HWND main_window, shadow, helper;
-static unsigned display_changes, position_changes;
+static unsigned display_changes, position_changes, paints;
 static HANDLE resume_event;
 
 static void json_string(const char *value)
@@ -109,6 +109,7 @@ static void state(void)
     printf("{\"origin\":[%d,%d],\"monitors\":%d,\"display_changes\":%u,\"position_changes\":%u,",
            GetSystemMetrics(SM_XVIRTUALSCREEN), GetSystemMetrics(SM_YVIRTUALSCREEN),
            GetSystemMetrics(SM_CMONITORS), display_changes, position_changes);
+    printf("\"paints\":%u,\"dirty\":%d,", paints, GetUpdateRect(main_window, NULL, FALSE));
     window_state("main", main_window);
     putchar(',');
     window_state("shadow", shadow);
@@ -141,6 +142,7 @@ static LRESULT CALLBACK proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
     {
         PAINTSTRUCT paint;
         HDC dc = BeginPaint(hwnd, &paint);
+        if (hwnd == main_window) ++paints;
         FillRect(dc, &paint.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
         EndPaint(hwnd, &paint);
         return 0;

@@ -81,6 +81,9 @@ class Prefix:
                         WINEDLLOVERRIDES='winewayland.drv,mscoree,mshtml,winemenubuilder=',
                         DBUS_SESSION_BUS_ADDRESS='unix:path=/nonexistent-cef-cache-qa',
                         XDG_CACHE_HOME=str(root / 'cache'), XDG_CONFIG_HOME=str(root / 'config'))
+        if not enabled:
+            # A newer baseline can also share libcef.dll through the generic PE image cache.
+            self.env['WECOM_SHARED_PE_IMAGE'] = '0'
         if preload:
             self.env['LD_PRELOAD'] = str(preload)
         subprocess.run([str(runtime / 'bin/wine'), 'wineboot.exe', '-i'], env=self.env,
@@ -316,7 +319,8 @@ def main():
             clients = [prefix.start(real / 'libcef.dll') for _ in range(3)]
             metrics = [image_stats(client['pid'], client['info']['base'], client['info']['size']) for client in clients]
             report['baseline_image_pss_mib'] = round(sum(row['Pss'] for row in metrics) / 1024, 2)
-            assert report['candidate_image_pss_mib'] < report['baseline_image_pss_mib'] * .5
+            assert report['candidate_image_pss_mib'] < report['baseline_image_pss_mib'] * .5, (
+                report['candidate_image_pss_mib'], report['baseline_image_pss_mib'])
         finally:
             prefix.close()
     assert source_before == {name: fingerprint(cef_dir / name) for name in source_before}

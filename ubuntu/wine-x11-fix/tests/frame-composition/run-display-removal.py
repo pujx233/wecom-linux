@@ -229,6 +229,9 @@ with desktop(qa, '3200x2000', second_monitor='3840x2160') as env:
             expected = [value - origin[i % 2] for i, value in enumerate(requested['main']['rect'])]
             report['pending_expected'] = expected
             report['pending_passed'] = report['after']['native']['main']['body'] == expected
+            if pending == 'resize':
+                report['pending_passed'] &= (report['after']['win32']['paints'] > requested['paints'] and
+                                             not report['after']['win32']['dirty'])
         report['passed'] = report['geometry_passed'] and report['bindings_passed'] and report['pending_passed']
     except Exception as error:
         report['error'] = repr(error)

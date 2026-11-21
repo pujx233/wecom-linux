@@ -99,16 +99,47 @@ static void composite_owned_frame(HWND hwnd, BOOL configure) { atomic_store(&com
 #include "frame-production.h"
 #undef XGetWindowAttributes
 
-static unsigned long pixel(Window window, int left, int top)
+static unsigned long argb_pixel(Window window, int left, int top)
 {
     Pixmap pixmap = XCompositeNameWindowPixmap(gdi_display, window);
     XImage *image = XGetImage(gdi_display, pixmap, left, top, 1, 1, AllPlanes, ZPixmap);
     assert(image);
-    unsigned long result = XGetPixel(image, 0, 0) & 0xffffff;
+    unsigned long result = XGetPixel(image, 0, 0);
     XDestroyImage(image);
     XFreePixmap(gdi_display, pixmap);
     return result;
 }
+
+static unsigned long pixel(Window window, int left, int top)
+{
+    return argb_pixel(window, left, top) & 0xffffff;
+}
+
+#ifdef HAVE_FRAME_PRESENT
+static int host_growth(Window frame, struct frame_compositor **state)
+{
+    SIZE larger = {800, 600};
+    XGCValues values = {.foreground = 0xff445566, .subwindow_mode = IncludeInferiors};
+    GC gc = XCreateGC(gdi_display, frame, GCForeground | GCSubwindowMode, &values);
+    int passed;
+
+    XResizeWindow(gdi_display, frame, larger.cx, larger.cy);
+    XFillRectangle(gdi_display, frame, gc, 0, 0, larger.cx, larger.cy);
+    X11DRV_PresentFrame(frame, *state, &larger);
+    passed = argb_pixel(frame, 30, 30) == 0xff000000 &&
+             !argb_pixel(frame, 650, 30) && !argb_pixel(frame, 30, 550);
+    XFillRectangle(gdi_display, frame, gc, 0, 0, larger.cx, larger.cy);
+    X11DRV_PresentFrame(frame, *state, NULL);
+    passed &= argb_pixel(frame, 30, 30) == 0xff000000 && !argb_pixel(frame, 650, 550);
+    XResizeWindow(gdi_display, victim, larger.cx, larger.cy);
+    XFillRectangle(gdi_display, victim, gc, 0, 0, larger.cx, larger.cy);
+    assert(X11DRV_CompositeFrame(frame, state, NULL));
+    passed &= argb_pixel(frame, 650, 550) == 0xff445566;
+    printf("{\"preserved_black_and_alpha\":%s}\n", passed ? "true" : "false");
+    XFreeGC(gdi_display, gc);
+    return passed;
+}
+#endif
 
 static int presentation(Window frame, struct frame_compositor **state)
 {
@@ -253,12 +284,25 @@ int main(int argc, char **argv)
     pict_formats[0] = XRenderFindStandardFormat(gdi_display, PictStandardARGB32);
     old_error_handler = XSetErrorHandler(error_handler);
     XRenderQueryExtension(gdi_display, &(int){0}, &xrender_error_base);
-    Window frame = XCreateSimpleWindow(gdi_display, root_window, 30, 30, 500, 350, 0, 0, 0);
+    Window frame;
+    Colormap colormap = None;
+    if (!strcmp(mode, "host-growth"))
+    {
+        XVisualInfo visual;
+        assert(XMatchVisualInfo(gdi_display, DefaultScreen(gdi_display), 32, TrueColor, &visual));
+        colormap = XCreateColormap(gdi_display, root_window, visual.visual, AllocNone);
+        XSetWindowAttributes attr = {.colormap = colormap,
+                                     .border_pixel = 0, .background_pixel = 0};
+        frame = XCreateWindow(gdi_display, root_window, 30, 30, 500, 350, 0, 32, InputOutput, visual.visual,
+                              CWBorderPixel | CWBackPixel | CWColormap, &attr);
+    }
+    else frame = XCreateSimpleWindow(gdi_display, root_window, 30, 30, 500, 350, 0, 0, 0);
     if (!strncmp(mode, "damage-", 7)) XCompositeRedirectWindow(gdi_display, frame, CompositeRedirectManual);
     XSetWindowAttributes attributes = {.override_redirect = True};
     XChangeWindowAttributes(gdi_display, frame, CWOverrideRedirect, &attributes);
     XCompositeRedirectSubwindows(gdi_display, frame, CompositeRedirectManual);
-    victim = XCreateSimpleWindow(gdi_display, frame, 0, 0, 480, 330, 0, 0, 0x00ff00);
+    victim = XCreateSimpleWindow(gdi_display, frame, 0, 0, 480, 330, 0, 0,
+                                 !strcmp(mode, "host-growth") ? 0xff000000 : 0x00ff00);
     XMapWindow(gdi_display, victim);
     XMapWindow(gdi_display, frame);
     XSync(gdi_display, False);
@@ -267,6 +311,9 @@ int main(int argc, char **argv)
     XSync(gdi_display, False);
     int passed = 1;
     if (!strcmp(mode, "presentation")) passed = presentation(frame, &state);
+#ifdef HAVE_FRAME_PRESENT
+    else if (!strcmp(mode, "host-growth")) passed = host_growth(frame, &state);
+#endif
     else if (!strncmp(mode, "damage-", 7)) passed = damage_order(frame, &state, !strcmp(mode, "damage-same"));
     else
     {
@@ -299,6 +346,7 @@ int main(int argc, char **argv)
     }
     X11DRV_DestroyFrameCompositor(&state);
     XDestroyWindow(gdi_display, frame);
+    if (colormap) XFreeColormap(gdi_display, colormap);
     XSync(gdi_display, False);
     XCloseDisplay(other_display);
     XCloseDisplay(gdi_display);

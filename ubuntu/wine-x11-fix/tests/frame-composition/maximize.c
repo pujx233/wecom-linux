@@ -7,6 +7,7 @@
 static HWND window, shadow;
 static HMONITOR selected_monitor;
 static MONITORINFO selected_info = {.cbSize = sizeof(MONITORINFO)};
+static RECT other_monitor;
 static BOOL default_limits, select_primary, custom_offset;
 static unsigned int max_proposals;
 static BOOL proposal_wrong_monitor;
@@ -45,6 +46,7 @@ static BOOL CALLBACK select_monitor(HMONITOR monitor, HDC dc, RECT *rect, LPARAM
         selected_monitor = monitor;
         selected_info = info;
     }
+    else other_monitor = info.rcMonitor;
     (void)dc;
     (void)rect;
     (void)context;
@@ -138,13 +140,14 @@ static LRESULT CALLBACK procedure(HWND hwnd, UINT message, WPARAM wparam, LPARAM
             ShowWindow(hwnd, SW_MINIMIZE);
             ShowWindow(hwnd, SW_RESTORE);
         }
-        else if (wparam == 'f' || wparam == 'z' || wparam == 'd')
+        else if (wparam == 'f' || wparam == 'z' || wparam == 'd' || wparam == 'o' || wparam == 'b')
         {
-            if (wparam == 'f') GetWindowRect(hwnd, &normal_rect);
+            RECT target = selected_info.rcMonitor;
+            if (wparam == 'f' || wparam == 'o') GetWindowRect(hwnd, &normal_rect);
             if (wparam == 'd') ShowWindow(hwnd, SW_MAXIMIZE);
-            SetWindowPos(hwnd, NULL, selected_info.rcMonitor.left, selected_info.rcMonitor.top,
-                         selected_info.rcMonitor.right - selected_info.rcMonitor.left,
-                         selected_info.rcMonitor.bottom - selected_info.rcMonitor.top,
+            if (wparam == 'o') target = other_monitor;
+            if (wparam == 'b') UnionRect(&target, &selected_info.rcMonitor, &other_monitor);
+            SetWindowPos(hwnd, NULL, target.left, target.top, target.right - target.left, target.bottom - target.top,
                          SWP_NOACTIVATE | SWP_NOZORDER);
         }
         else if (wparam == 'w')
@@ -166,6 +169,13 @@ static LRESULT CALLBACK procedure(HWND hwnd, UINT message, WPARAM wparam, LPARAM
             UpdateWindow(hwnd);
         }
         else if (wparam == 'e') fullscreen_on_size = TRUE;
+        else if (wparam == 'g')
+        {
+            RECT rect;
+            GetWindowRect(hwnd, &rect);
+            SetWindowPos(hwnd, NULL, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
+                         SWP_NOACTIVATE | SWP_NOZORDER);
+        }
         else if (wparam == 'n')
             SetWindowPos(hwnd, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOZORDER);
         else if (wparam == 's') state();
@@ -216,11 +226,12 @@ int main(int argc, char **argv)
     }
     ShowWindow(window, SW_SHOW);
     printf("{\"event\":\"ready\",\"monitor\":[%ld,%ld,%ld,%ld],\"work\":[%ld,%ld,%ld,%ld],"
-           "\"virtual_origin\":[%d,%d]}\n",
+           "\"other\":[%ld,%ld,%ld,%ld],\"virtual_origin\":[%d,%d]}\n",
            selected_info.rcMonitor.left, selected_info.rcMonitor.top,
            selected_info.rcMonitor.right, selected_info.rcMonitor.bottom,
            selected_info.rcWork.left, selected_info.rcWork.top,
            selected_info.rcWork.right, selected_info.rcWork.bottom,
+           other_monitor.left, other_monitor.top, other_monitor.right, other_monitor.bottom,
            GetSystemMetrics(SM_XVIRTUALSCREEN), GetSystemMetrics(SM_YVIRTUALSCREEN));
     fflush(stdout);
     CloseHandle(CreateThread(NULL, 0, commands, NULL, 0, NULL));

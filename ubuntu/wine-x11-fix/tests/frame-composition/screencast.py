@@ -9,7 +9,7 @@ from gi.repository import Gio, GLib
 
 
 @contextmanager
-def recording(qa, env, run_name, interactive=False):
+def recording(qa, env, run_name, interactive=False, monitor=''):
     connection = Gio.DBusConnection.new_for_address_sync(
         (qa / 'bus-address').read_text().strip(),
         Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT | Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION,
@@ -42,7 +42,7 @@ def recording(qa, env, run_name, interactive=False):
     output = (qa / (run_name + '-recording.log')).open('w')
     try:
         stream = call(session, 'org.gnome.Mutter.ScreenCast.Session', 'RecordMonitor',
-                      GLib.Variant('(sa{sv})', ('', {'cursor-mode': GLib.Variant('u', 0)}))).unpack()[0]
+                      GLib.Variant('(sa{sv})', (monitor, {'cursor-mode': GLib.Variant('u', 0)}))).unpack()[0]
         nodes = []
         connection.signal_subscribe('org.gnome.Mutter.ScreenCast', 'org.gnome.Mutter.ScreenCast.Stream',
                                     'PipeWireStreamAdded', stream, None, Gio.DBusSignalFlags.NONE,

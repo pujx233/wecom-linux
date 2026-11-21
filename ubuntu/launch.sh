@@ -11,6 +11,7 @@ export WECOM_CEF_IME_FIX="${WECOM_CEF_IME_FIX:-1}"
 export WECOM_SHARED_CEF_IMAGE="${WECOM_SHARED_CEF_IMAGE:-1}"
 export WECOM_SHARED_PE_IMAGE="${WECOM_SHARED_PE_IMAGE:-1}"
 export WECOM_EMBEDDED_UI_DPI_FIX="${WECOM_EMBEDDED_UI_DPI_FIX:-1}"
+export WECOM_WINE_INITIAL_THREAD_DPI=1
 export WECOM_TRAY_ICON_FIX=0
 export WECOM_GNOME_MENU_FIX=0
 export WECOM_GNOME_POPUP_FIX=0
@@ -22,6 +23,11 @@ export WINE_WECOM_FIRST_PRESENT_ARGB=1
 export WINE_X11_FIXED_TRANSIENT_ARGB=1
 export WINE_X11_FIXED_TRANSIENT_UTILITY=1
 export XMODIFIERS="${XMODIFIERS:-@im=ibus}"
+unset WECOM_IBUS_XIM_HELPER
+if [[ ${XDG_SESSION_TYPE:-} == wayland && :${XDG_CURRENT_DESKTOP:-}: == *:GNOME:* &&
+      -n ${DISPLAY:-} && -n ${XDG_RUNTIME_DIR:-} && $XMODIFIERS == '@im=ibus' && -x /usr/libexec/ibus-x11 ]]; then
+  export WECOM_IBUS_XIM_HELPER="$root/template/wecom-compat/scripts/ibus-xim.py"
+fi
 log_dir="${WECOM_LOG_DIR:-$root/logs}"
 mkdir -p -- "$log_dir"
 exec bash "$root/template/wecom-compat/scripts/launch-wecom.sh" >>"$log_dir/launch.log" 2>&1

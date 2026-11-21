@@ -14,7 +14,12 @@ static DWORD calling_thread;
 static BOOL callbacks_valid = TRUE, close_requested, custom;
 static BOOL quit_requested, fallback_requested;
 static BOOL view_requested, view_late, view_close, view_reuse, view_acquired, require_initial_folder;
+static BOOL view_on_ok, save_navigation, folder_veto, folder_redirect;
+static unsigned int navigation_step, folder_attempts;
+static WCHAR navigation_directory[32768];
+static HRESULT close_result = E_ABORT;
 static WCHAR view_directory[32768];
+static void query_view(IFileDialog *dlg);
 
 static void text_json(const WCHAR *text)
 {
@@ -57,13 +62,35 @@ static HRESULT WINAPI events_ok(IFileDialogEvents *iface, IFileDialog *dlg)
     IShellItem *item = NULL;
     accepted++;
     check_callback(dlg);
-    callbacks_valid = callbacks_valid && SUCCEEDED(IFileDialog_GetCurrentSelection(dlg, &item));
+    if (save_navigation)
+    {
+        WCHAR *name = NULL, *dir = NULL;
+        if (SUCCEEDED(IFileDialog_GetFolder(dlg, &item)))
+            IShellItem_GetDisplayName(item, SIGDN_DESKTOPABSOLUTEPARSING, &dir);
+        IFileDialog_GetFileName(dlg, &name);
+        callbacks_valid = callbacks_valid && dir && !lstrcmpiW(dir, navigation_directory) &&
+                          name && !lstrcmpW(name, L"中文报告.txt");
+        CoTaskMemFree(dir);
+        CoTaskMemFree(name);
+    }
+    else callbacks_valid = callbacks_valid && SUCCEEDED(IFileDialog_GetCurrentSelection(dlg, &item));
     if (item) IShellItem_Release(item);
+    if (view_on_ok) query_view(dlg);
     return veto && accepted == 1 ? S_FALSE : S_OK;
 }
 static HRESULT WINAPI events_changing(IFileDialogEvents *iface, IFileDialog *dlg, IShellItem *folder)
 {
     check_callback(dlg);
+    if (folder_veto && !folder_attempts++) return S_FALSE;
+    if (folder_redirect && !folder_attempts++)
+    {
+        IShellItem *target;
+        HRESULT hr = SHCreateItemFromParsingName(navigation_directory, NULL, &IID_IShellItem, (void **)&target);
+        if (FAILED(hr)) return hr;
+        hr = IFileDialog_SetFolder(dlg, target);
+        IShellItem_Release(target);
+        return hr;
+    }
     return S_OK;
 }
 
@@ -97,8 +124,8 @@ static HRESULT WINAPI events_folder(IFileDialogEvents *iface, IFileDialog *dlg)
 {
     folder_changed++;
     check_callback(dlg);
-    if (view_requested && (!view_late || selection_changed)) query_view(dlg);
-    if (view_close) IFileDialog_Close(dlg, E_ABORT);
+    if (view_requested && (!view_late || selection_changed) && (!view_on_ok || accepted)) query_view(dlg);
+    if (view_close) IFileDialog_Close(dlg, close_result);
     return S_OK;
 }
 static HRESULT WINAPI events_selection(IFileDialogEvents *iface, IFileDialog *dlg)
@@ -132,11 +159,63 @@ static IFileDialogEventsVtbl events_vtbl = {
     events_share, events_type, events_overwrite
 };
 
+static void select_save_directory(void)
+{
+    IServiceProvider *service;
+    IShellBrowser *browser;
+    IShellView *view;
+    PIDLIST_ABSOLUTE pidl;
+    IOleWindow *window;
+    IShellItem *folder;
+    WCHAR *path;
+    HWND hwnd;
+    BOOL submit = FALSE;
+
+    if (!navigation_step && SUCCEEDED(IFileDialog_QueryInterface(dialog, &IID_IServiceProvider, (void **)&service)))
+    {
+        if (SUCCEEDED(IServiceProvider_QueryService(service, &SID_STopLevelBrowser,
+                                                    &IID_IShellBrowser, (void **)&browser)))
+        {
+            if (SUCCEEDED(IShellBrowser_QueryActiveShellView(browser, &view)))
+            {
+                if ((pidl = ILCreateFromPathW(navigation_directory)))
+                {
+                    submit = SUCCEEDED(IShellView_SelectItem(view, ILFindLastID(pidl), SVSI_SELECT | SVSI_FOCUSED));
+                    ILFree(pidl);
+                }
+                IShellView_Release(view);
+            }
+            IShellBrowser_Release(browser);
+        }
+        IServiceProvider_Release(service);
+    }
+    else if (navigation_step == 1 && SUCCEEDED(IFileDialog_GetFolder(dialog, &folder)))
+    {
+        if (SUCCEEDED(IShellItem_GetDisplayName(folder, SIGDN_FILESYSPATH, &path)))
+        {
+            submit = !lstrcmpiW(path, navigation_directory);
+            CoTaskMemFree(path);
+        }
+        IShellItem_Release(folder);
+    }
+    if (submit && SUCCEEDED(IFileDialog_QueryInterface(dialog, &IID_IOleWindow, (void **)&window)))
+    {
+        if (SUCCEEDED(IOleWindow_GetWindow(window, &hwnd)) && GetDlgItem(hwnd, IDOK))
+        {
+            navigation_step++;
+            PostMessageW(hwnd, WM_COMMAND, MAKEWPARAM(IDOK, BN_CLICKED), (LPARAM)GetDlgItem(hwnd, IDOK));
+        }
+        IOleWindow_Release(window);
+    }
+}
+
 static LRESULT CALLBACK proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 {
     if (msg == WM_TIMER)
     {
         ticks++;
+        if (save_navigation && ticks >= 5 && navigation_step < 2) select_save_directory();
+        if (save_navigation && ticks == 120) IFileDialog_Close(dialog, E_ABORT);
         if ((close_requested || custom) && ticks == 10) IFileDialog_Close(dialog, E_ABORT);
         if (fallback_requested && ticks == 10) IFileDialog_Close(dialog, E_ABORT);
         if (quit_requested && ticks == 10) PostQuitMessage(37);
@@ -203,17 +282,22 @@ int main(int argc, char **argv)
     HRESULT hr;
     DWORD cookie, count = 0, i;
     BOOL readonly = argc > 1 && !strcmp(argv[1], "save-readonly");
+    save_navigation = argc > 1 && !strcmp(argv[1], "save-shell-navigation");
     BOOL unsupported_save = argc > 1 && !strcmp(argv[1], "save-unsupported");
     BOOL save_veto = argc > 1 && !strcmp(argv[1], "save-veto");
     BOOL filter_save = argc > 1 && !strncmp(argv[1], "save-filter", 11);
-    BOOL save = argc > 1 && (!strcmp(argv[1], "save") || readonly || unsupported_save || save_veto || filter_save);
+    BOOL save = argc > 1 && (!strcmp(argv[1], "save") || readonly || unsupported_save ||
+                            save_navigation || save_veto || filter_save);
     BOOL reuse_custom = argc > 1 && !strcmp(argv[1], "reuse-custom");
-    BOOL reuse = argc > 1 && (!strcmp(argv[1], "reuse") || reuse_custom);
+    BOOL reuse_setfolder = argc > 1 && !strcmp(argv[1], "reuse-setfolder");
+    BOOL reuse = argc > 1 && (!strcmp(argv[1], "reuse") || reuse_custom || reuse_setfolder);
     BOOL stale_result = FALSE;
     unsigned int quit_code = 0;
     MSG message;
 
     veto = save_veto || (argc > 1 && !strcmp(argv[1], "veto"));
+    folder_veto = argc > 1 && !strcmp(argv[1], "folder-veto");
+    folder_redirect = argc > 1 && !strcmp(argv[1], "folder-redirect");
     close_requested = argc > 1 && (!strcmp(argv[1], "close") || !strcmp(argv[1], "slow-close"));
     custom = argc > 1 && !strcmp(argv[1], "custom");
     quit_requested = argc > 1 && !strcmp(argv[1], "quit");
@@ -221,7 +305,10 @@ int main(int argc, char **argv)
     require_initial_folder = argc > 1 && !strcmp(argv[1], "initial-folder");
     view_requested = argc > 1 && !strncmp(argv[1], "view-", 5);
     view_late = argc > 1 && !strcmp(argv[1], "view-late");
-    view_close = argc > 1 && !strcmp(argv[1], "view-close");
+    view_on_ok = argc > 1 && (!strcmp(argv[1], "view-ok") || !strcmp(argv[1], "view-ok-veto"));
+    if (view_on_ok) veto = !strcmp(argv[1], "view-ok-veto");
+    if (argc > 1 && !strcmp(argv[1], "view-close-notimpl")) close_result = E_NOTIMPL;
+    view_close = argc > 1 && (!strcmp(argv[1], "view-close") || close_result == E_NOTIMPL);
     view_reuse = argc > 1 && !strcmp(argv[1], "view-reuse");
     if (view_requested && !view_close) fallback_requested = TRUE;
     calling_thread = GetCurrentThreadId();
@@ -263,6 +350,13 @@ int main(int argc, char **argv)
     if (GetEnvironmentVariableW(L"WECOM_QA_FILES", directory, ARRAYSIZE(directory)) &&
         SUCCEEDED(SHCreateItemFromParsingName(directory, NULL, &IID_IShellItem, (void **)&folder)))
     {
+        if (save_navigation || reuse_setfolder || folder_redirect)
+            swprintf(navigation_directory, ARRAYSIZE(navigation_directory), L"%ls\\子目录", directory);
+        if (save_navigation)
+        {
+            /* Same order as a caller adding folder options after supplying a suggested filename. */
+            IFileDialog_SetOptions(dialog, options | FOS_FORCEFILESYSTEM | FOS_PICKFOLDERS);
+        }
         IFileDialog_SetFolder(dialog, folder);
         IShellItem_Release(folder);
     }
@@ -290,6 +384,14 @@ int main(int argc, char **argv)
     if (reuse)
     {
         if (FAILED(hr)) return 4;
+        if (reuse_setfolder)
+        {
+            if (FAILED(SHCreateItemFromParsingName(navigation_directory, NULL, &IID_IShellItem, (void **)&folder)))
+                return 6;
+            hr = IFileDialog_SetFolder(dialog, folder);
+            IShellItem_Release(folder);
+            if (FAILED(hr)) return 7;
+        }
         if (reuse_custom)
         {
             IFileDialogCustomize *controls;

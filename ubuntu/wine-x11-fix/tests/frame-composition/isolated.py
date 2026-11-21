@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -9,6 +10,13 @@ import sys
 import time
 
 from gi.repository import Gio, GLib
+
+
+def link_runtime_libraries(runtime, overlay):
+    # A copied driver resolves its app-private ELF dependencies relative to its new location.
+    for library in (runtime / 'lib').iterdir():
+        if library.is_file():
+            (overlay / 'lib' / library.name).symlink_to(library.resolve())
 
 
 def processes(qa):
@@ -25,8 +33,38 @@ def processes(qa):
     return result
 
 
+def record_compositor(qa, xwayland_pid):
+    status = Path(f'/proc/{xwayland_pid}/status').read_text().splitlines()
+    pid = int(next(line.split()[1] for line in status if line.startswith('PPid:')))
+    maps = Path(f'/proc/{pid}/maps').read_text().splitlines()
+    mapped = {(fields[5], fields[3], int(fields[4])) for line in maps if len(fields := line.split(None, 5)) == 6
+              and Path(fields[5]).match('libmutter-[0-9]*.so.*')}
+    assert len(mapped) == 1, f'Expected one Mutter library in the private compositor, found {mapped}'
+    path, device, inode = mapped.pop()
+    library = Path(path)
+    loaded = Path(f'/proc/{pid}/root') / library.relative_to('/')
+    info = loaded.stat()
+    major, minor = (int(value, 16) for value in device.split(':'))
+    assert (info.st_dev, info.st_ino) == (os.makedev(major, minor), inode), f'Mapped Mutter file was replaced: {path}'
+    data = loaded.read_bytes()
+    evidence = dict(executable=os.readlink(f'/proc/{pid}/exe'), library=str(library),
+                    sha256=hashlib.sha256(data).hexdigest(), package_verified=False)
+    if Path('/var/lib/dpkg/status').is_file():
+        owner = subprocess.run(['dpkg-query', '-S', str(library)], capture_output=True, text=True)
+        assert owner.returncode == 0, f'Private compositor loaded a non-package library: {library}'
+        package = owner.stdout.split(': ', 1)[0]
+        manifest = subprocess.check_output(['dpkg-query', '--control-show', package, 'md5sums'], text=True)
+        expected = next(digest for digest, path in map(str.split, manifest.splitlines()) if '/' + path == str(library))
+        evidence['package'] = subprocess.check_output(
+            ['dpkg-query', '-W', '-f=${binary:Package} ${Version}', package], text=True)
+        assert hashlib.md5(data).hexdigest() == expected, f'{library} differs from installed package {package}'
+        evidence['package_verified'] = True
+    (qa / 'compositor.json').write_text(json.dumps(evidence, indent=2) + '\n')
+
+
 @contextmanager
-def desktop(qa, size='1600x1000', bare=False, second_monitor=None, software=True, allow_eval=False):
+def desktop(qa, size='1600x1000', bare=False, second_monitor=None, software=True, allow_eval=False,
+            boot_wine=True):
     qa = qa.resolve()
     if os.environ.get('WECOM_QA_SCALE') == '2':
         size = '3200x2000'
@@ -40,8 +78,8 @@ def desktop(qa, size='1600x1000', bare=False, second_monitor=None, software=True
         (qa / directory).mkdir(exist_ok=True)
     (qa / 'runtime').chmod(0o700)
     assert not processes(qa), 'another private test is running'
-    assert size in ('1600x1000', '3200x2000')
-    assert second_monitor in (None, '3840x2160')
+    assert size in ('1600x1000', '1920x1080', '3200x2000')
+    assert second_monitor in (None, '2560x1440', '3840x2160')
     env = os.environ.copy()
     for name in ('DISPLAY', 'XAUTHORITY', 'WAYLAND_DISPLAY', 'DBUS_SESSION_BUS_ADDRESS', 'LD_PRELOAD',
                  'LD_LIBRARY_PATH', 'WINEDLLPATH', 'WINELOADER', 'WINELOADERNOEXEC', 'WINEARCH',
@@ -77,6 +115,7 @@ def desktop(qa, size='1600x1000', bare=False, second_monitor=None, software=True
                 authority = Path(argv[argv.index('-auth') + 1])
                 assert authority.is_relative_to(qa / 'runtime')
                 if authority.exists():
+                    record_compositor(qa, pid)
                     env.update(DISPLAY=display, XAUTHORITY=str(authority), WAYLAND_DISPLAY='wecom-qa',
                                DBUS_SESSION_BUS_ADDRESS=(qa / 'bus-address').read_text().strip())
                     break
@@ -104,7 +143,7 @@ def desktop(qa, size='1600x1000', bare=False, second_monitor=None, software=True
                         runtime=env['XDG_RUNTIME_DIR'], bus=env['DBUS_SESSION_BUS_ADDRESS'])
         (qa / 'desktop.json').write_text(json.dumps(metadata, indent=2) + '\n')
         prefix = qa / 'prefix'
-        if not (prefix / 'system.reg').exists():
+        if boot_wine and not (prefix / 'system.reg').exists():
             boot_env = env | {'WINEPREFIX': str(prefix), 'WINESERVER': str(qa / 'wine/bin/wineserver'),
                               'DBUS_SYSTEM_BUS_ADDRESS': 'unix:path=' + str(qa / 'no-system-bus'),
                               'WINEDEBUG': '-all', 'WINEDLLOVERRIDES': 'mscoree,mshtml,winemenubuilder='}
@@ -199,7 +238,7 @@ if __name__ == '__main__':
     (qa / 'bus-address').write_text(os.environ['DBUS_SESSION_BUS_ADDRESS'] + '\n')
     monitors = ['--virtual-monitor=' + size for size in sys.argv[3:] if size != '--unsafe-mode']
     if sys.argv[2] == '--shell':
-        os.execlp('gnome-shell', 'gnome-shell', '--headless', '--wayland', *monitors,
+        os.execl('/usr/bin/gnome-shell', 'gnome-shell', '--headless', '--wayland', *monitors,
                   *(['--unsafe-mode'] if '--unsafe-mode' in sys.argv else []),
                   '--wayland-display=wecom-qa')
     import gi

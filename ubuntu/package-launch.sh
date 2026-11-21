@@ -2,7 +2,7 @@
 set -euo pipefail
 export WECOM_SHARED_CEF_IMAGE="${WECOM_SHARED_CEF_IMAGE:-1}"
 export WECOM_SHARED_PE_IMAGE="${WECOM_SHARED_PE_IMAGE:-1}"
-unset WINEARCH WINESERVER WINELOADER WINELOADERNOEXEC WINEDLLPATH WINESERVERSOCKET
+unset WINEARCH WINESERVER WINELOADER WINELOADERNOEXEC WINEDLLPATH WINESERVERSOCKET WECOM_REUSE_DESKTOP
 # Wine regenerates locale-dependent font links when its ANSI codepage changes.
 # Configure and upgrade the prefix in the same locale as launch-wecom.sh.
 unset LC_ALL
@@ -15,12 +15,26 @@ mkdir -p -m 700 -- "$state"
 exec 9>"$state/setup.lock"
 flock 9
 if [[ ! -f "$state/prefix/system.reg" ]]; then
-  temporary="$(mktemp -d "$state/setup.XXXXXXXX")"
+  restore=()
+  staging_parent="$state"
+  if [[ -e "$state/prefix" || -L "$state/prefix" ]]; then
+    target="$(realpath -e -- "$state/prefix")"
+    if [[ ! -d "$target" ]]; then
+      printf '企业微信用户目录无法恢复：%s 不是目录。\n' "$target" >&2
+      exit 1
+    fi
+    python3 "$root/prefix-state.py" "$target" "$root/wine/bin/wineserver"
+    restore=(--restore-to "$target")
+    staging_parent="$target"
+  fi
+  temporary="$(mktemp -d "$staging_parent/setup.XXXXXXXX")"
   trap 'rm -rf -- "$temporary"' EXIT
   cp -a --reflink=auto --no-preserve=links -- "$root/template/." "$temporary/prefix"
-  python3 "$root/relocate-prefix.py" "$temporary/prefix" "$(id -un)"
-  mv -- "$temporary/prefix" "$state/prefix"
-  rmdir -- "$temporary"
+  python3 "$root/relocate-prefix.py" "$temporary/prefix" "$(id -un)" "${restore[@]}"
+  if (( ! ${#restore[@]} )); then
+    mv -T -- "$temporary/prefix" "$state/prefix"
+  fi
+  rm -rf -- "$temporary"
   trap - EXIT
 fi
 read -r version revision < "$root/application-version"
@@ -50,6 +64,11 @@ else
     exit "$status"
   fi
   export WECOM_EMBEDDED_UI_DPI_FIX=0
+  if python3 "$root/prefix-state.py" --wecom-running "$state/prefix"; then
+    # The running client already has an Explorer desktop. Wait for WeCom's own
+    # second instance to finish forwarding this activation before returning.
+    export WECOM_REUSE_DESKTOP=1
+  fi
   if [[ "$(cat "$state/prefix/.wecom-application" 2>/dev/null || true)" != "$revision" ]]; then
     printf '%s\n' '企业微信正在运行；本次继续使用当前应用文件，完全退出后下次启动完成更新。' >&2
   fi

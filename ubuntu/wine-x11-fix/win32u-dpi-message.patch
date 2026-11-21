@@ -1,0 +1,48 @@
+Subject: [PATCH] win32u: Marshal the suggested rectangle for WM_DPICHANGED.
+
+Copy the input RECT for the window procedure and disallow asynchronous
+delivery of the pointer, like other system messages that carry data.
+
+diff --git a/dlls/win32u/message.c b/dlls/win32u/message.c
+--- a/dlls/win32u/message.c
++++ b/dlls/win32u/message.c
+@@ -402,7 +402,7 @@
+     /* 0x2c0 - 0x2df */
+     0,
+     /* 0x2e0 - 0x2ff */
+-    0,
++    SET(WM_DPICHANGED),
+     /* 0x300 - 0x31f */
+     SET(WM_ASKCBFORMATNAME)
+ };
+@@ -796,6 +796,10 @@
+     case CB_GETDROPPEDCONTROLRECT:
+         if (!get_buffer_space( buffer, sizeof(RECT), buffer_size )) return FALSE;
+         break;
++    case WM_DPICHANGED:
++        if (!*lparam) return !size;
++        minsize = sizeof(RECT);
++        break;
+     case EM_SETRECT:
+     case EM_SETRECTNP:
+         minsize = sizeof(RECT);
+@@ -1222,6 +1226,9 @@
+     case LB_GETITEMRECT:
+     case CB_GETDROPPEDCONTROLRECT:
+         return sizeof(RECT);
++    case WM_DPICHANGED:
++        if (lparam) push_data( data, (const RECT *)lparam, sizeof(RECT) );
++        return 0;
+     case EM_SETRECT:
+     case EM_SETRECTNP:
+         push_data( data, (RECT *)lparam, sizeof(RECT) );
+@@ -1709,6 +1716,9 @@
+ 
+     switch (message)
+     {
++    case WM_DPICHANGED:
++        *reply_size = 0;
++        return lparam ? sizeof(RECT) : 0;
+     case WM_NCCREATE:
+     case WM_CREATE:
+     {

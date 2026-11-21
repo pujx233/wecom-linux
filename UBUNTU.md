@@ -1,6 +1,6 @@
 # 使用与构建
 
-当前测试版为企业微信 5.0.13.6005-6，内置私有 Wine 11.20。
+当前测试版为企业微信 5.0.13.6005-7，内置私有 Wine 11.20。
 安装方式见 [README](README.md)，组件指纹与测试结果分别保存在
 [release.json](ubuntu/release.json) 和 [validation.json](ubuntu/validation.json)。
 
@@ -9,6 +9,7 @@
 程序和未登录模板安装在 `/opt/apps/com.qq.wecom.spark/files`。
 首次启动为当前 Linux 用户创建 `${XDG_DATA_HOME:-$HOME/.local/share}/wecom/prefix`，日志保存在相邻的 `logs` 目录。
 升级保留这个目录中的账号和聊天数据，空闲时更新应用、字体及配套组件。
+用户目录缺少 `system.reg` 时，空闲启动会从模板补齐缺失文件，保存已有用户注册表和账号文件。
 -5 支持在运行期间再次启动唤回现有客户端，并区分应用客户端与 Wine 后台服务：
 应用退出后，下次启动会先结束这个 prefix 的残留后台，再完成更新。
 升级切换的实现与测试见[review 记录](ubuntu/wine-x11-fix/CODE-REVIEW.md#升级切换)。
@@ -28,6 +29,7 @@ WECOM_DPI=auto /opt/apps/com.qq.wecom.spark/files/start.sh
 普通文件选择使用桌面的 FileChooser Portal，打开目录和定位文件使用 Linux 默认文件管理器。
 支持中文路径、多选、保存、取消及 COM 确认回调。
 依赖 Windows 文件视图、带 Win32 自定义控件的窗口，以及旧式文件对话框接口，使用 Wine 界面。
+聊天附件的“另存为”会同时设置保存文件和选择目录的选项。保存窗口保留附件名，进入目录后按目标文件判断是否覆盖。
 企微图片选择依赖文件视图；图片菜单的“另存为”使用旧式接口，均保留兼容窗口。
 
 桌面需提供 Portal 文件选择后端和目录默认应用。要使用 Wine 界面，可分别设置
@@ -61,16 +63,16 @@ Wine 原始归档 SHA256 为
 
 ```sh
 docker build -t wecom-wine-sdk ubuntu/wine-x11-fix
-docker run --rm --network none --user "$(id -u):$(id -g)" \
+docker run --rm --user "$(id -u):$(id -g)" \
   -v "$PWD:/adapter:ro" -v /absolute/build-area:/work \
   wecom-wine-sdk sh /adapter/ubuntu/wine-x11-fix/build.sh \
   /work/wine-11.20.tar.gz /work/new-output
 bash ubuntu/build-helpers.sh /absolute/helper-output
 ```
 
+Xlib 构建脚本会下载并校验固定版本的 Ubuntu 源码，再应用发行版和本项目补丁。
 当前源码保留 GDI ABI 112，核心、X11、Wayland 和打印驱动按组件清单配套构建。
-[完整清单](ubuntu/release.json)记录 29 个候选组件，包含修复后的 `winebth.so` 和双架构 `slwga.dll`。
-本轮 -6 DEB 装配该清单中的修订，使用 ABI 112。
+[完整清单](ubuntu/release.json)记录 37 个运行库组件，包含双架构 `msftedit.dll` 和私有 `libX11.so.6`。
 主程序使用 X11/XWayland。CEF 修订针对固定版本的厂商 x86 DLL，回补 V8 保护模式和光标坐标处理，
 邮件进程通过该 prefix 的 IFEO DPI 设置与主界面配合。
 
@@ -79,11 +81,12 @@ Ubuntu 启动器默认令 CEF 107 选择 IMM32，并停用旧的字符提交桥�
 `WECOM_CEF_IME_FIX=0` 可关闭 CEF 的接口选择，重新启动企微后生效。
 显式对照旧字符桥时，使用 `WECOM_CEF_IME_FIX=0 WECOM_IME_FIX=1`；新路径启用时排除旧桥。
 这项修订需要清单中的 core、X11 驱动和双架构 IMM32 成套装配，不能只替换启动脚本。
-本机 IBus 取消竞态和 XIM 前端生命周期修复另见 [宿主说明](ubuntu/host-ibus/README.md)，需在宿主单独部署。
+GNOME Wayland 下，桌面的一次性 XIM 前端会随 IBus 退出。选择 IBus 时，启动器使用发行版自带的 ibus-x11 为企微建立独立连接，并在守护进程回来时恢复它。该功能随 DEB 提供。
 
 装配运行库时，将 `build-explorer/dlls/slwga/` 下两种 Windows 架构的 `slwga.dll`
 分别放入运行库的 `lib/wine/i386-windows/` 和 `lib/wine/x86_64-windows/`。
 会议模块需要这个静态导入依赖；打包会检查组件清单和文件指纹。
+同样装配两种架构的 `msftedit.dll`；将 `xlib/libX11.so.6` 放入运行库的 `lib/` 目录。
 
 ## 构建 DEB
 
@@ -93,13 +96,14 @@ Wine PE 调试信息会被剥离，同时检查运行时 section 保持一致；
 
 ```sh
 python3 ubuntu/package.py \
-  --base-package /absolute/com.qq.wecom.spark_5.0.13.6005-5_amd64.deb \
+  --base-package /absolute/com.qq.wecom.spark_5.0.13.6005-6_amd64.deb \
   --runtime /absolute/verified-wine-runtime \
   --helpers /absolute/verified-helpers \
   --wine-source /absolute/wine-11.20.tar.gz \
+  --xlib-source /absolute/libX11-wecom-20261122-source.tar.zst \
   --installer /absolute/WeCom_5.0.13.6005.exe \
   --stage /absolute/new-stage \
-  --output /absolute/com.qq.wecom.spark_5.0.13.6005-6_amd64.deb
+  --output /absolute/com.qq.wecom.spark_5.0.13.6005-7_amd64.deb
 ```
 
 自行构建后，更新 `release.json` 的组件指纹再打包。原始安装器、运行库及字体来源在 `materials/` 中记录。

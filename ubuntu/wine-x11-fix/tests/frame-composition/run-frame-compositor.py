@@ -55,7 +55,8 @@ for path in (source / 'xrender.c', source / 'x11drv_main.c', fixture, Path(__fil
     report['sha256'][path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
 with desktop(qa) as env:
     try:
-        for case in ('presentation', 'destroy-before-name', 'unmap-before-name',
+        for case in ('presentation', *(['host-growth'] if has_present else []),
+                     'destroy-before-name', 'unmap-before-name',
                      'destroy-after-name', 'input-only', 'unexpected-error'):
             run = subprocess.run([str(qa / 'frame-compositor'), case], env=env,
                                  capture_output=True, text=True, timeout=15)

@@ -18,7 +18,7 @@ from gi.repository import Gio, GLib
 HERE = Path(__file__).resolve().parent
 TOOLS = HERE.parent / 'frame-composition'
 sys.path.insert(0, str(TOOLS))
-from isolated import desktop
+from isolated import desktop, link_runtime_libraries
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--runtime', type=Path, required=True)
@@ -57,6 +57,7 @@ assert (runtime / 'bin/wine').is_file()
 # Read-only symlinks for immutable PE libraries; independent loader and test modules.
 overlay = qa / 'wine'
 (overlay / 'lib/wine/x86_64-unix').mkdir(parents=True)
+link_runtime_libraries(runtime, overlay)
 shutil.copytree(runtime / 'bin', overlay / 'bin', symlinks=True)
 for name in ('share', 'include'):
     if (runtime / name).exists(): (overlay / name).symlink_to(runtime / name, target_is_directory=True)

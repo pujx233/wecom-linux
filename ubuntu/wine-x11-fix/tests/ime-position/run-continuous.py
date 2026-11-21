@@ -7,19 +7,17 @@ import json
 import os
 from pathlib import Path
 import queue
+import select
+import signal
 import shutil
 import subprocess
 import sys
 import threading
 import time
-import gi
-
-gi.require_version('IBus', '1.0')
-from gi.repository import GLib, IBus
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / 'frame-composition'))
-from isolated import desktop
+from isolated import desktop, link_runtime_libraries, processes
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--runtime', type=Path, required=True)
@@ -27,6 +25,8 @@ parser.add_argument('--driver', type=Path)
 parser.add_argument('--output', type=Path, required=True)
 parser.add_argument('--bits', choices=('32', '64'), default='64')
 parser.add_argument('--expect-failure', action='store_true')
+parser.add_argument('--gnome-restarts', action='store_true', help='Use the stock one-shot GNOME XIM frontend')
+parser.add_argument('--xim-helper', type=Path, help='Candidate helper for --gnome-restarts; defaults to the package')
 parser.add_argument('--trace', action='store_true')
 args = parser.parse_args()
 qa = args.output.resolve()
@@ -37,6 +37,7 @@ runtime = args.runtime.resolve()
 driver = (args.driver or runtime / 'lib/wine/x86_64-unix/winex11.so').resolve()
 overlay = qa / 'wine'
 (overlay / 'lib/wine/x86_64-unix').mkdir(parents=True)
+link_runtime_libraries(runtime, overlay)
 shutil.copytree(runtime / 'bin', overlay / 'bin', symlinks=True)
 for name in ('share', 'include'):
     if (runtime / name).exists(): (overlay / name).symlink_to(runtime / name, target_is_directory=True)
@@ -55,36 +56,7 @@ subprocess.run([compiler, '-O2', '-Wall', '-Wextra', str(HERE / 'ime-process.c')
 report = {'bits': args.bits, 'events': [], 'account_data_used': False, 'host_desktop_used': False,
           'driver_sha256': hashlib.sha256(driver.read_bytes()).hexdigest()}
 lines = queue.Queue()
-app = ibus = None
-loop = None
-
-
-class WordEngine(IBus.Engine):
-    """Deterministic words; the real daemon and XIM frontend deliver the callbacks."""
-    __gtype_name__ = 'WeComContinuousEngine'
-
-    def __init__(self, *arguments, **keywords):
-        super().__init__(*arguments, **keywords)
-        self.word = ''
-
-    def do_process_key_event(self, keyval, keycode, state):
-        if state & IBus.ModifierType.RELEASE_MASK: return False
-        if keyval == ord(' ') and self.word:
-            self.commit_text(IBus.Text.new_from_string(
-                {'ceshi': '测试', 'wenjian': '文件', 'zhongwen': '中文'}.get(self.word, self.word)))
-            self.word = ''
-            self.hide_preedit_text()
-            return True
-        if ord('a') <= keyval <= ord('z'):
-            self.word += chr(keyval)
-            self.update_preedit_text(IBus.Text.new_from_string(self.word), len(self.word), True)
-            return True
-        return False
-
-    def do_reset(self):
-        self.word = ''
-        self.hide_preedit_text()
-
+app = ibus = frontend = engine = None
 
 def wait_for(predicate, timeout=10):
     deadline = time.monotonic() + timeout
@@ -103,6 +75,10 @@ try:
                    XMODIFIERS='@im=ibus', LANG='zh_CN.UTF-8', LC_CTYPE='zh_CN.UTF-8', WECOM_IME_FIXTURE='1',
                    WINEDLLOVERRIDES='winewayland.drv=d;mscoree,mshtml,winemenubuilder=',
                    IBUS_ADDRESS='unix:abstract=wecom-continuous-' + str(os.getpid()))
+        if args.gnome_restarts:
+            # Stock GNOME lets ibus-daemon publish a new address each time.
+            env.pop('IBUS_ADDRESS')
+            env.pop('IBUS_ADDRESS_FILE', None)
         if args.trace: env['WINEDEBUG'] = '-all,+xim,+imm,+timestamp,+pid'
         x = C.CDLL('libX11.so.6')
         xt = C.CDLL('libXtst.so.6')
@@ -119,17 +95,37 @@ try:
         else: os.environ['XAUTHORITY'] = old_auth
         assert display and env['DISPLAY'] != ':0'
         with (qa / 'ibus.log').open('w') as bus_log, (qa / 'wine.log').open('w') as wine_log:
-            ibus = subprocess.Popen(['ibus-daemon', '--xim', '--single', '--emoji-extension=disable',
-                                     '--cache=none', '--address=' + env['IBUS_ADDRESS']],
-                                    env=env, stdout=bus_log, stderr=bus_log)
-            selection = x.XInternAtom(display, b'@server=ibus', False)
-            deadline = time.monotonic() + 12
-            while not x.XGetSelectionOwner(display, selection):
-                assert ibus.poll() is None and time.monotonic() < deadline, 'Private IBus did not start'
-                time.sleep(.03)
-            app = subprocess.Popen([str(overlay / 'bin/wine'), str(exe), str(exe)], env=env,
-                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=wine_log,
-                                   text=True, bufsize=1)
+            def start_daemon():
+                command = ['ibus-daemon', '--single', '--emoji-extension=disable', '--cache=none']
+                if not args.gnome_restarts:
+                    command.extend(['--xim', '--address=' + env['IBUS_ADDRESS']])
+                return subprocess.Popen(command, env=env, stdout=bus_log, stderr=bus_log)
+
+            def wait_owner(atom, present=True):
+                deadline = time.monotonic() + 10
+                while bool(owner := x.XGetSelectionOwner(display, atom)) != present:
+                    assert time.monotonic() < deadline, f'XIM selection {atom}, expected present={present}'
+                    time.sleep(.025)
+                return owner
+
+            default = x.XInternAtom(display, b'@server=ibus', False)
+            private = x.XInternAtom(display, b'@server=wecom-ibus-0', False)
+            ibus = start_daemon()
+            command = [str(overlay / 'bin/wine'), str(exe), str(exe)]
+            if args.gnome_restarts:
+                subprocess.run(['gdbus', 'wait', '--session', '--timeout=8', 'org.freedesktop.IBus'],
+                               env=env, check=True)
+                frontend = subprocess.Popen(['/usr/libexec/ibus-x11'], env=env | {'GDK_BACKEND': 'x11'},
+                                            stdout=bus_log, stderr=bus_log)
+                if not args.expect_failure:
+                    helper = args.xim_helper or runtime.parent / 'template/wecom-compat/scripts/ibus-xim.py'
+                    command = ['/usr/bin/python3', str(helper), *command]
+            default_owner = wait_owner(default)
+            app = subprocess.Popen(command, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                   stderr=wine_log, text=True, bufsize=1)
+            if args.gnome_restarts and not args.expect_failure:
+                assert wait_owner(private) != default_owner
+                assert x.XGetSelectionOwner(display, default) == default_owner
 
             def read_lines():
                 for line in app.stdout:
@@ -138,46 +134,73 @@ try:
 
             threading.Thread(target=read_lines, daemon=True).start()
             report['ready'] = wait_for(lambda v: v['event'] == 'ready')
-            os.environ['IBUS_ADDRESS'] = env['IBUS_ADDRESS']
-            IBus.init()
-            bus = IBus.Bus.new()
-            assert bus.is_connected(), 'Private fixture engine could not connect'
-            factory = IBus.Factory.new(bus.get_connection())
-            factory.add_engine('wecom-continuous', WordEngine)
-            component = IBus.Component.new('org.freedesktop.IBus.WeComContinuous', 'Continuous input fixture',
-                                           '1', 'MIT', 'WeCom QA', '', '', '')
-            component.add_engine(IBus.EngineDesc.new('wecom-continuous', 'WeCom QA', 'Fixture',
-                                                    'zh_CN', 'MIT', 'WeCom QA', '', 'us'))
-            assert bus.register_component(component)
-            loop = GLib.MainLoop()
-            threading.Thread(target=loop.run, daemon=True).start()
-            assert bus.set_global_engine('wecom-continuous')
-            time.sleep(.3)
-            text = 'ceshi wenjian zhongwen ' * 4
-            for character in text:
-                key = x.XKeysymToKeycode(display, ord(character))
-                assert key and xt.XTestFakeKeyEvent(display, key, True, 0)
-                assert xt.XTestFakeKeyEvent(display, key, False, 0)
-                x.XFlush(display)
-                time.sleep(.008)
-            time.sleep(.8)
-            app.stdin.write('state\n'); app.stdin.flush()
-            report['state'] = wait_for(lambda v: v['event'] == 'posted')
+            def type_words(repetitions):
+                for character in 'ceshi wenjian zhongwen ' * repetitions:
+                    key = x.XKeysymToKeycode(display, ord(character))
+                    assert key and xt.XTestFakeKeyEvent(display, key, True, 0)
+                    assert xt.XTestFakeKeyEvent(display, key, False, 0)
+                    x.XFlush(display)
+                    time.sleep(.008)
+                time.sleep(.8)
+                app.stdin.write('state\n')
+                app.stdin.flush()
+                report['state'] = wait_for(lambda event: event['event'] == 'posted')
+                return [n for event in report['events'] for n in event.get('result', [])]
+
+            passes = []
+            word = list(map(ord, '测试文件中文'))
+            for generation in range(3 if args.gnome_restarts else 1):
+                if generation:
+                    ibus.terminate()
+                    ibus.wait(timeout=8)
+                    wait_owner(default, False)
+                    if not args.expect_failure:
+                        wait_owner(private, False)
+                    ibus = start_daemon()
+                    subprocess.run(['gdbus', 'wait', '--session', '--timeout=8', 'org.freedesktop.IBus'],
+                                   env=env, check=True)
+                    if not args.expect_failure:
+                        wait_owner(private)
+                    assert not x.XGetSelectionOwner(display, default)
+                engine = subprocess.Popen([sys.executable, '-u', str(HERE / 'word-engine.py')], env=env,
+                                          stdout=subprocess.PIPE, stderr=bus_log, text=True)
+                assert select.select([engine.stdout], [], [], 10)[0] and engine.stdout.readline().strip() == 'ready'
+                time.sleep(.3)
+                passes.append(type_words(1 if args.gnome_restarts else 4))
+                if args.gnome_restarts and not args.expect_failure and generation == 0:
+                    children = [pid for pid, argv in processes(qa) if argv == [
+                        b'/usr/libexec/ibus-x11', b'--server-name', b'wecom-ibus-0']]
+                    assert len(children) == 1
+                    os.kill(children[0], signal.SIGKILL)
+                    wait_owner(private, False)
+                    wait_owner(private)
+                    assert x.XGetSelectionOwner(display, default) == default_owner
+                    passes.append(type_words(1))
+                engine.terminate()
+                engine.wait(timeout=6)
             report['native_owner_state'] = next(v for v in reversed(report['events']) if v['event'] == 'root-state')
-            actual = [n for event in report['events'] for n in event.get('result', [])]
-            expected = list(map(ord, '测试文件中文' * 4))
-            report.update(actual=actual, expected=expected, input_interval_ms=8)
-            functional = actual == expected and report['native_owner_state']['open'] == 1
-            report['negative_control_reproduced'] = not functional if args.expect_failure else False
-            report['passed'] = not functional if args.expect_failure else functional
-            app.stdin.write('quit\n'); app.stdin.flush(); app.wait(timeout=10)
+            if args.gnome_restarts:
+                expected = [word, word, word] if args.expect_failure else [word * n for n in (1, 2, 3, 4)]
+                success = passes == expected
+                report.update(real_daemon_restarts=2, phases=passes, checked_app_frontend_exit=not args.expect_failure)
+            else:
+                expected = [word * 4]
+                success = passes == expected and report['native_owner_state']['open'] == 1
+                if args.expect_failure:
+                    success = not success
+            report.update(actual=passes[-1], expected=expected[-1], input_interval_ms=8,
+                          negative_control_reproduced=success and args.expect_failure, passed=success)
+            app.stdin.write('quit\n')
+            app.stdin.flush()
+            app.wait(timeout=10)
             assert app.returncode == 0
+            if args.gnome_restarts and not args.expect_failure:
+                wait_owner(private, False)
         x.XCloseDisplay(display)
 except Exception as error:
     report.update(error=str(error), passed=False)
 finally:
-    if loop is not None: loop.quit()
-    for process in (app, ibus):
+    for process in (engine, app, frontend, ibus):
         if process is not None and process.poll() is None:
             process.terminate(); process.wait(timeout=8)
     (qa / 'result.json').write_text(json.dumps(report, indent=2) + '\n')

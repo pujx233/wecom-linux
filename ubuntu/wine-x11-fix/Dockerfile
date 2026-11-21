@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libdbus-1-dev libfontconfig1-dev libfreetype-dev libx11-dev libx11-xcb-dev libxext-dev \
     libxi-dev libxrandr-dev libxrender-dev libxcursor-dev libxcomposite-dev libxdamage-dev \
     libxinerama-dev libxfixes-dev libxkbcommon-dev libxkbregistry-dev libwayland-dev \
-    libgl-dev libegl-dev libvulkan1 \
+    libgl-dev libegl-dev libvulkan1 libv4l-dev \
     && rm -rf /var/lib/apt/lists/*
 RUN apt-get update && apt-get install -y --no-install-recommends libudev-dev libvulkan-dev \
     && rm -rf /var/lib/apt/lists/*

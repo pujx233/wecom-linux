@@ -95,24 +95,46 @@ with desktop(qa, '3200x2000') as desktop_env:
             process = subprocess.Popen([str(files / 'start.sh')], env=env, stdout=log, stderr=log)
         try:
             deadline = time.monotonic() + 60
+            driver = (files / 'wine/lib/wine/x86_64-unix/winex11.so').resolve(strict=True)
             while True:
                 tree = subprocess.check_output(['xwininfo', '-root', '-tree'], env=env, text=True)
-                apps = applications(prefix)
-                if apps and '企业微信' in tree:
+                mappings = None
+                if '企业微信' in tree:
+                    for app_proc in applications(prefix):
+                        try:
+                            loaded = (app_proc / 'maps').read_text()
+                        except (FileNotFoundError, ProcessLookupError):
+                            continue
+                        if str(prefix / app) in loaded and str(driver) in loaded and '/user32.dll\n' in loaded:
+                            mappings = loaded
+                            break
+                if mappings:
                     break
                 assert process.poll() in (None, 0), (phase, process.returncode)
                 assert time.monotonic() < deadline, (phase, tree)
                 time.sleep(0.2)
             assert digest(prefix / app) == expected
             assert (prefix / '.wecom-application').read_text().strip() == revision
-            mappings = (apps[0] / 'maps').read_text()
-            assert str(prefix / app) in mappings
-            driver = (files / 'wine/lib/wine/x86_64-unix/winex11.so').resolve(strict=True)
-            assert str(driver) in mappings
+            runtime_modules = {}
+            for architecture, directory in (('i386-windows', 'syswow64'), ('x86_64-windows', 'system32')):
+                installed = prefix / 'drive_c/windows' / directory / 'user32.dll'
+                runtime_modules[architecture] = digest(installed)
+                assert runtime_modules[architecture] == digest(files / 'wine/lib/wine' / architecture / 'user32.dll')
+                installed_ime = prefix / 'drive_c/windows' / directory / 'msftedit.dll'
+                assert digest(installed_ime) == digest(files / 'wine/lib/wine' / architecture / 'msftedit.dll')
+            assert str(files / 'wine/lib/libX11.so.6') in mappings, 'The client did not load packaged Xlib'
+            loaded_user32 = {line.split(None, 5)[5] for line in mappings.splitlines()
+                             if line.endswith('/user32.dll')}
+            assert loaded_user32, 'The running client has no user32.dll mapping'
+            assert all(digest(Path(path)) == runtime_modules['i386-windows'] for path in loaded_user32)
             query = subprocess.check_output([str(files / 'wine/bin/wine'), 'reg', 'query',
                                              r'HKCU\Software\Tencent\WXWork', '/v', 'Version', '/reg:32'],
                                             env=env, text=True, timeout=15)
             assert version in query
+            query = subprocess.check_output([str(files / 'wine/bin/wine'), 'reg', 'query',
+                                             r'HKCU\Software\Wine\AppDefaults\WXWork.exe\RichEdit',
+                                             '/v', 'DuiLibIMEContext'], env=env, text=True, timeout=15)
+            assert '0x1' in query, query
             licensing = {}
             for bits, probe in licensing_probes.items():
                 result = subprocess.run([str(files / 'wine/bin/wine'), str(probe)], env=env,
@@ -125,6 +147,8 @@ with desktop(qa, '3200x2000') as desktop_env:
                 capture(qa / (phase + '.png'))
             report['phases'].append({'phase': phase, 'new_executable_loaded': True,
                                      'registry_version': version, 'licensing': licensing,
+                                     'user32_sha256': runtime_modules,
+                                     'loaded_user32': sorted(loaded_user32),
                                      'screenshot': str(qa / (phase + '.png'))})
         finally:
             stop(data)
@@ -195,12 +219,27 @@ with desktop(qa, '3200x2000') as desktop_env:
     os.utime(prefix / app, ns=(1600000000000000000, 1600000000000000000))
     for directory in ('system32', 'syswow64'):
         (prefix / 'drive_c/windows' / directory / 'slwga.dll').unlink()
+        (prefix / 'drive_c/windows' / directory / 'user32.dll').unlink()
+        (prefix / 'drive_c/windows' / directory / 'msftedit.dll').unlink()
     launch('same-version', upgraded)
     assert (prefix / app).stat().st_mtime_ns == 1600000000000000000
     assert digest(private) == private_digest
     report['private_data_preserved'] = True
     report['same_version_not_recopied'] = True
     report['same_version_missing_licensing_repaired'] = True
+    report['same_version_missing_user32_repaired'] = True
+    report['same_version_missing_msftedit_repaired'] = True
+    personal_registry = prefix / 'user.reg'
+    extra_registry = '\n[Software\\\\WeComUpgradeProbe]\n"Sentinel"="preserve"\n'
+    with personal_registry.open('a') as registry:
+        registry.write(extra_registry)
+    (prefix / 'system.reg').unlink()
+    launch('recovered', upgraded)
+    assert (prefix / 'system.reg').is_file() and not (prefix / 'prefix').exists()
+    assert '"Sentinel"="preserve"' in personal_registry.read_text()
+    assert digest(private) == private_digest
+    assert (prefix / app).stat().st_mtime_ns == 1600000000000000000
+    report['system_registry_recovered'] = True
     report['first_start_without_7z_7zz_7za'] = True
 
 assert all(digest(files / 'template' / name) == value for name, value in original.items())

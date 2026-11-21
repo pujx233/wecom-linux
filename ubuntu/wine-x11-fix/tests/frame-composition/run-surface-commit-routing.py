@@ -38,12 +38,13 @@ if text[after:].lstrip().startswith('{'):
 else:
     commit = text[after:text.index(';', after) + 1]
 start = text.index('case WM_X11DRV_SYNC_OWNED_FRAME:')
-end = text.index('if ((data = get_win_data( hwnd )))', start)
-owner = text[start + len('case WM_X11DRV_SYNC_OWNED_FRAME:'):end]
+owner_start = text.index('if (wp)', start)
+owner = 'if (wp)\n{\n' + block(text, owner_start) + '\n}\n'
 header = ('#define WM_X11DRV_SYNC_OWNED_FRAME 0x80001006u\n'
           'static void route_commit(HWND hwnd)\n{\n' + commit + '\n}\n'
           'static LRESULT route_owner_notification(HWND hwnd, WPARAM wp)\n{\n'
-          '    (void)hwnd; (void)wp;\n' + owner + '\n    return -1;\n}\n')
+          '    struct x11drv_win_data *data = NULL;\n'
+          '    (void)hwnd; (void)wp; (void)data;\n' + owner + '\n    return -1;\n}\n')
 (qa / 'surface-commit-source.h').write_text(header)
 fixture = Path(__file__).with_name('surface-commit-routing.c')
 for bits, compiler in [('32', 'i686-w64-mingw32-gcc'), ('64', 'x86_64-w64-mingw32-gcc')]:
@@ -67,7 +68,7 @@ with desktop(qa) as session:
                 run = subprocess.run([str(qa / 'wine/bin/wine'), str(qa / ('commit-' + bits + '.exe')), framed],
                                      env=env, capture_output=True, text=True, timeout=30)
                 rows = [json.loads(line) for line in run.stdout.splitlines() if line.startswith('{')]
-                expected = 9 if framed == '1' else 7
+                expected = 12 if framed == '1' else 7
                 passed = run.returncode == 0 and len(rows) == expected and all(r['passed'] for r in rows)
                 report['cases'].append({'bits': bits, 'frame': framed, 'returncode': run.returncode,
                                         'checks': rows, 'stderr': run.stderr, 'passed': passed})

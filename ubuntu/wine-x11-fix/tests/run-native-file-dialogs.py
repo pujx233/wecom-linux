@@ -11,11 +11,23 @@ import time
 
 from gi.repository import Gio, GLib
 
+MODES = (
+    "open", "initial-folder", "view-required", "view-late", "view-ok", "view-ok-veto",
+    "view-close", "view-close-notimpl", "view-reuse", "cancel", "folder", "veto",
+    "folder-veto", "folder-redirect", "save", "save-filter", "save-filter-no-default",
+    "save-veto", "save-readonly", "save-unsupported", "save-shell-navigation", "close",
+    "slow-close", "custom", "reuse", "reuse-custom", "reuse-setfolder", "early-response",
+    "provider-exit-before-reply", "quit", "invalid-uri", "invalid-response", "invalid-filter",
+    "missing-file", "provider-exit", "spoof", "unavailable", "manager-dir", "manager-one",
+    "manager-two", "manager-explorer", "manager-fallback",
+)
+
 parser = argparse.ArgumentParser(description="Exercise the native bridge using a private mock D-Bus service.")
 parser.add_argument("--runtime", required=True, type=Path)
 parser.add_argument("--prefix", type=Path, help="Reuse an owned fixture prefix and its private display")
 parser.add_argument("--output", required=True, type=Path)
 parser.add_argument("--fixtures", type=Path, help="Precompiled probe32.exe and probe64.exe")
+parser.add_argument("--case", action="append", choices=MODES, help="Run only the named cases for both architectures")
 args = parser.parse_args()
 if args.prefix is None:
     root = args.output.resolve()
@@ -33,6 +45,8 @@ if args.prefix is None:
                    '--prefix', str(root / 'prefix'), '--output', str(root / 'results')]
         if args.fixtures:
             command += ['--fixtures', str(args.fixtures.resolve())]
+        for case in args.case or ():
+            command += ['--case', case]
         result = subprocess.run(command, env=env)
     raise SystemExit(result.returncode)
 if not os.environ.get("WECOM_QA_PRIVATE_BUS"):
@@ -170,14 +184,15 @@ def method(conn, sender, path, iface, method, args, invocation):
     if mode == "provider-exit":
         GLib.timeout_add(180, release_portal)
         return
-    if mode == "cancel" or (mode == "reuse" and state["requests"] == 2):
+    if mode == "cancel" or (mode in ("reuse", "reuse-setfolder") and state["requests"] == 2):
         code = 1
         result = {}
     else:
         code = 0
         selected = (
             [late_file]
-            if mode == "view-late"
+            if (mode == "view-late" or mode == "folder-veto" and state["requests"] == 1
+                or mode == "folder-redirect" and state["requests"] == 2)
             else [files]
             if mode == "folder"
             else [files / "readonly.txt"]
@@ -185,7 +200,7 @@ def method(conn, sender, path, iface, method, args, invocation):
             else [files / "新报告"]
             if mode in ("save", "save-filter", "save-filter-no-default", "save-veto")
             else [a]
-            if mode in ("veto", "reuse", "reuse-custom")
+            if mode in ("veto", "reuse", "reuse-custom", "reuse-setfolder", "folder-veto", "folder-redirect")
             else [a, b]
         )
         uris = [p.as_uri() for p in selected]
@@ -248,46 +263,8 @@ env = os.environ | {
     "WECOM_QA_FILES": "Z:" + str(files).replace("/", "\\"),
 }
 results = []
+modes = args.case or MODES
 for bits in (32, 64):
-    modes = (
-        "open",
-        "initial-folder",
-        "view-required",
-        "view-late",
-        "view-close",
-        "view-reuse",
-        "cancel",
-        "folder",
-        "veto",
-        "save",
-        "save-filter",
-        "save-filter-no-default",
-        "save-veto",
-        "save-readonly",
-        "save-unsupported",
-        "close",
-        "slow-close",
-        "custom",
-        "reuse",
-        "reuse-custom",
-        "early-response",
-        "provider-exit-before-reply",
-        "quit",
-        "invalid-uri",
-        "invalid-response",
-        "invalid-filter",
-        "missing-file",
-        "provider-exit",
-        "spoof",
-        "unavailable",
-        "manager-dir",
-        "manager-one",
-        "manager-two",
-        "manager-explorer",
-        "manager-fallback",
-    )
-    if os.environ.get("WECOM_QA_CASES"):
-        modes = tuple(os.environ["WECOM_QA_CASES"].split(","))
     for mode in modes:
         name_call("RequestName", portal)
         state.update(bits=bits, case=mode, requests=0)
@@ -328,22 +305,36 @@ for bits in (32, 64):
                 assert len(calls) - before == (1 if mode == "view-late" else 0), calls[before:]
                 if mode == "view-late":
                     assert result["view_directory"].endswith("\\子目录"), result
-            elif mode == "view-close":
-                assert result["hr"] == 0x80004004 and result["ticks"] == 0, result
+            elif mode in ("view-ok", "view-ok-veto"):
+                assert result["hr"] == 0x80004004 and result["view_acquired"], result
+                assert result["accepted"] == 1 and len(calls) - before == 1, result
+            elif mode in ("view-close", "view-close-notimpl"):
+                expected = 0x80004001 if mode == "view-close-notimpl" else 0x80004004
+                assert result["hr"] == expected and result["ticks"] == 0, result
+                assert result["folder_changed"] == 1, result
                 assert not result["view_acquired"] and len(calls) == before, result
             elif mode == "view-reuse":
                 assert result["hr"] == 0 and result["paths"] and result["view_acquired"], result
                 assert result["accepted"] == 1 and len(calls) - before == 1, result
             elif mode in ("close", "slow-close", "custom", "reuse-custom", "unavailable", "save-unsupported"):
                 assert result["hr"] == 0x80004004 and result["ticks"] >= 10, result
-            elif mode in ("cancel", "reuse", "quit"):
+            elif mode in ("cancel", "reuse", "reuse-setfolder", "quit"):
                 assert result["hr"] == 0x800704C7 and not result["paths"], result
-                if mode == "reuse":
+                if mode in ("reuse", "reuse-setfolder"):
                     assert result["accepted"] == 1 and len(calls) - before == 2, result
                 if mode == "quit":
                     assert result["quit_code"] == 37, result
+            elif mode == "save-shell-navigation":
+                destination = "Z:" + str(late_files / "中文报告.txt").replace("/", "\\")
+                assert result["hr"] == 0 and result["accepted"] == 1 and result["paths"] == [destination], result
+                assert result["callbacks_valid"] and len(calls) == before, result
             elif mode == "save-readonly":
                 assert result["hr"] == 0x80070005 and not result["paths"], result
+            elif mode in ("folder-veto", "folder-redirect"):
+                selected = a if mode == "folder-veto" else late_file
+                assert result["hr"] == 0 and result["paths"] == ["Z:" + str(selected).replace("/", "\\")], result
+                assert result["accepted"] == 1 and result["folder_changed"] == 2, result
+                assert len(calls) - before == 2, result
             elif mode in (
                 "invalid-uri",
                 "invalid-response",
@@ -366,12 +357,17 @@ for bits in (32, 64):
                 assert len(calls) == before
             if mode in ("slow-close", "provider-exit-before-reply"):
                 assert not calls[-1]["replied"], calls[-1]
+            if mode in ("folder-veto", "folder-redirect", "reuse-setfolder"):
+                next_folder = files if mode == "folder-veto" else late_files
+                assert bytes(calls[-1]["options"]["current_folder"]) == os.fsencode(next_folder) + b"\0", calls[-1]
         results.append({"bits": bits, "mode": mode, **result, "portal_calls": len(calls) - before})
         print(bits, mode, "passed", flush=True)
 (root / "review-result.json").write_text(
     json.dumps(
         {
-            "passed": True,
+            "passed": len(results) == 2 * len(modes),
+            "filtered": bool(args.case),
+            "expected_cases": 2 * len(modes),
             "cases": results,
             "calls": calls,
             "close_calls": close_calls,

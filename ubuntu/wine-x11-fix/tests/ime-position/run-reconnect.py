@@ -15,7 +15,7 @@ import time
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / 'frame-composition'))
-from isolated import desktop
+from isolated import desktop, link_runtime_libraries
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--runtime', type=Path, required=True)
@@ -25,6 +25,8 @@ parser.add_argument('--bits', choices=('32', '64'), default='64')
 parser.add_argument('--rounds', type=int, default=6)
 parser.add_argument('--expect-cross-thread', action='store_true')
 parser.add_argument('--disable-xim', action='store_true')
+parser.add_argument('--one-shot-frontend', action='store_true',
+                    help='Model GNOME Wayland starting ibus-x11 separately, once per Xwayland session')
 args = parser.parse_args()
 assert 1 <= args.rounds <= 100
 qa = args.output.resolve()
@@ -35,6 +37,7 @@ runtime = args.runtime.resolve()
 driver = (args.driver or runtime / 'lib/wine/x86_64-unix/winex11.so').resolve()
 overlay = qa / 'wine'
 (overlay / 'lib/wine/x86_64-unix').mkdir(parents=True)
+link_runtime_libraries(runtime, overlay)
 shutil.copytree(runtime / 'bin', overlay / 'bin', symlinks=True)
 for name in ('share', 'include'):
     if (runtime / name).exists(): (overlay / name).symlink_to(runtime / name, target_is_directory=True)
@@ -54,8 +57,9 @@ subprocess.run(['gcc', '-shared', '-fPIC', '-O2', '-Wall', '-Wextra', str(HERE /
                 '-o', str(probe), '-ldl', '-lX11'], check=True)
 report = {'bits': args.bits, 'rounds': [], 'account_data_used': False, 'host_desktop_used': False,
           'driver_sha256': hashlib.sha256(driver.read_bytes()).hexdigest(),
-          'expect_cross_thread': args.expect_cross_thread, 'disable_xim': args.disable_xim}
-app = ibus = None
+          'expect_cross_thread': args.expect_cross_thread, 'disable_xim': args.disable_xim,
+          'frontend': 'one-shot Xwayland session hook' if args.one_shot_frontend else 'ibus-daemon --xim'}
+app = ibus = frontend = None
 lines = queue.Queue()
 try:
     with desktop(qa, size='1600x1000', bare=True) as env:
@@ -85,9 +89,21 @@ try:
 
         with (qa / 'ibus.log').open('w') as bus_log, (qa / 'wine.log').open('w') as wine_log:
             def start_bus():
-                process = subprocess.Popen(['ibus-daemon', '--xim', '--single', '--emoji-extension=disable',
+                process = subprocess.Popen(['ibus-daemon', *([] if args.one_shot_frontend else ['--xim']),
+                                            '--single', '--emoji-extension=disable',
                                             '--cache=none', '--address=' + env['IBUS_ADDRESS']],
                                            env=env, stdout=bus_log, stderr=bus_log)
+                if args.one_shot_frontend:
+                    subprocess.run(['gdbus', 'wait', '--session', '--timeout=10', 'org.freedesktop.IBus'],
+                                   env=env, stdout=bus_log, stderr=bus_log, check=True, timeout=12)
+                else:
+                    wait_owner(True)
+                return process
+
+            def start_frontend():
+                path = shutil.which('ibus-x11') or '/usr/libexec/ibus-x11'
+                process = subprocess.Popen([path], env=env | {'GDK_BACKEND': 'x11'},
+                                           stdout=bus_log, stderr=bus_log)
                 wait_owner(True)
                 return process
 
@@ -105,6 +121,8 @@ try:
                                 'HKCU\\Software\\Wine\\X11 Driver', '/v', 'UseXIM', '/d', 'N', '/f'],
                                env=env, stdout=wine_log, stderr=wine_log, check=True, timeout=15)
             ibus = start_bus()
+            if args.one_shot_frontend:
+                frontend = start_frontend()
             app = subprocess.Popen([str(overlay / 'bin/wine'), str(exe)],
                                    env=env | {'LD_PRELOAD': str(probe),
                                               'WECOM_XIM_OWNER_LOG': str(qa / 'owners.jsonl')},
@@ -122,10 +140,20 @@ try:
                 wait_owner(False)
                 dropped = command('drop')
                 spawned = command('spawn')
+                if args.one_shot_frontend:
+                    frontend.wait(timeout=8)
                 ibus = start_bus()
+                state = {}
+                if args.one_shot_frontend:
+                    # The restarted daemon is reachable. Check ownership before the positive
+                    # control supplies the frontend that a one-shot session hook cannot restart.
+                    state['automatic_xim_owner'] = x.XGetSelectionOwner(display, selection)
+                    assert not state['automatic_xim_owner'] and ibus.poll() is None, state
+                    frontend = start_frontend()
+                    state['supplied_xim_owner'] = x.XGetSelectionOwner(display, selection)
                 time.sleep(.5)
                 alive = command('ping')
-                report['rounds'].append({'cycle': cycle, 'drop': dropped, 'spawn': spawned, 'alive': alive})
+                report['rounds'].append({'cycle': cycle, 'drop': dropped, 'spawn': spawned, 'alive': alive, **state})
             app.stdin.write('quit\n'); app.stdin.flush(); app.wait(timeout=15)
             report['application_exit'] = app.returncode
         x.XCloseDisplay(display)
@@ -134,7 +162,7 @@ except Exception as error:
 finally:
     report['application_exit_before_cleanup'] = app.poll() if app is not None else None
     report['cleanup_terminated_application'] = app is not None and app.poll() is None
-    for process in (app, ibus):
+    for process in (app, frontend, ibus):
         if process is not None and process.poll() is None:
             process.terminate(); process.wait(timeout=8)
     owners, violations, opens = {}, [], 0

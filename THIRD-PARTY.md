@@ -8,6 +8,11 @@ Wine 11.20 由 Wine 项目维护，按 LGPL-2.1-or-later 使用；本次 Wine �
 完整 Wine 原始源码、对应净补丁、构建脚本和 COPYING.LIB 随 DEB 提供。
 不通过替换系统库来运行本软件。
 
+包内私有 libX11 基于 Ubuntu `2:1.8.13-1ubuntu0.1`，保留发行版的九项补丁，
+另修复 XIM 同步请求中的回调滞留。只供该 Wine 运行库加载，不替换系统 libX11。
+许可见 `licenses/libX11-COPYING`，精确源码随 DEB 提供。
+构建及源码校验见 `ubuntu/xlib-im-fix`。
+
 安装、启动、输入法、字体和窗口助手以 tbsangel/archlinux-wine-wecom-setup 的
 f0ad4711049476bb2d87b40acaff53ca5ee58124 为基础，保留来源；没有为未明确授权的上游文件追加新许可。
 

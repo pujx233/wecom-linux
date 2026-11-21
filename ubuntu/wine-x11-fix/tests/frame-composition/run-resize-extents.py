@@ -23,6 +23,10 @@ report = {'driver_sha256': hashlib.sha256(driver.read_bytes()).hexdigest(),
           'wm_delayed': os.environ.get('WECOM_QA_DELAY_WM', '1') == '1',
           'extended_sync': os.environ.get('WECOM_QA_NO_EXTENDED_SYNC') != '1'}
 report['stationary'] = not report['extended_sync'] or os.environ.get('WECOM_QA_STATIONARY') == '1'
+report['native_gdi'] = os.environ.get('WECOM_QA_DIRECT_GDI') == '1'
+report['direct_dc'] = os.environ.get('WECOM_QA_DIRECT_DC') == '1'
+report['child_dc'] = os.environ.get('WECOM_QA_CHILD_DC') == '1'
+report['foreign_dc'] = os.environ.get('WECOM_QA_FOREIGN_DC') == '1'
 x = C.CDLL('libX11.so.6')
 composite = C.CDLL('libXcomposite.so.1')
 ext = C.CDLL('libXext.so.6')
@@ -62,6 +66,9 @@ with desktop(qa) as env:
                WINE_WECOM_FIRST_PRESENT_ARGB='1', WINE_X11_FIXED_TRANSIENT_ARGB='1',
                WINE_X11_FIXED_TRANSIENT_UTILITY='1',
                WINEDLLOVERRIDES='winewayland.drv=d;mscoree,mshtml,winemenubuilder=')
+    if os.environ.get('WECOM_QA_DIRECT_GDI') == '1':
+        subprocess.run([qa / 'wine/bin/wine', 'reg', 'add', r'HKCU\Software\Wine\X11 Driver',
+                        '/v', 'ClientSideGraphics', '/t', 'REG_SZ', '/d', 'N', '/f'], env=env, check=True)
     os.environ['XAUTHORITY'] = env['XAUTHORITY']
     display = x.XOpenDisplay(env['DISPLAY'].encode())
     assert display
@@ -112,6 +119,12 @@ with desktop(qa) as env:
         command = [str(qa / 'wine/bin/wine'), str(qa / 'resize-extents.exe')]
         if report['stationary']:
             command.append('--stationary')
+        if os.environ.get('WECOM_QA_DIRECT_DC') == '1':
+            command.append('--dc')
+        if os.environ.get('WECOM_QA_CHILD_DC') == '1':
+            command.append('--child-dc')
+        if os.environ.get('WECOM_QA_FOREIGN_DC') == '1':
+            command.append('--foreign-dc')
         app = subprocess.Popen(command, env=env,
                                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=log, text=True)
         replies = queue.Queue()

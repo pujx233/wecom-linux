@@ -21,6 +21,7 @@ parser.add_argument('--baseline-manifest', type=Path)
 parser.add_argument('--runtime', required=True, type=Path)
 parser.add_argument('--helpers', required=True, type=Path)
 parser.add_argument('--wine-source', required=True, type=Path)
+parser.add_argument('--xlib-source', required=True, type=Path, help='Exact private libX11 source bundle')
 parser.add_argument('--installer', required=True, type=Path)
 parser.add_argument('--stage', required=True, type=Path)
 parser.add_argument('--output', required=True, type=Path)
@@ -48,22 +49,23 @@ def overlay(source, target):
 assert not args.stage.exists(), 'Use a new staging directory'
 assert digest(repo / 'ubuntu/wine-x11-fix/wine-11.20-x11-popups.patch') == spec['wine_patch_sha256'], \
     'Wine patch does not match the runtime release manifest'
-required_components = ['wine/bin/wineserver', 'wine/lib/wine/x86_64-unix/ntdll.so',
+required_components = ['wine/bin/wineserver', 'wine/lib/libX11.so.6', 'wine/lib/wine/x86_64-unix/ntdll.so',
                        'wine/lib/wine/x86_64-unix/win32u.so', 'wine/lib/wine/x86_64-unix/winex11.so',
                        'wine/lib/wine/x86_64-unix/wineps.so', 'wine/lib/wine/x86_64-unix/winewayland.so',
-                       'wine/lib/wine/x86_64-unix/winebth.so',
+                       'wine/lib/wine/x86_64-unix/winebth.so', 'wine/lib/wine/x86_64-unix/qcap.so',
                        'wine/lib/wine/x86_64-unix/mountmgr.so',
                        'wine/lib/wine/x86_64-unix/comdlg32.so',
                        'wine/lib/wine/x86_64-windows/wineboot.exe']
 for architecture in ('i386-windows', 'x86_64-windows'):
     for name in ('imm32.dll', 'cfgmgr32.dll', 'setupapi.dll', 'ntoskrnl.exe', 'comdlg32.dll', 'shell32.dll',
-                 'slwga.dll'):
+                 'slwga.dll', 'user32.dll', 'ole32.dll', 'msftedit.dll'):
         required_components.append(f'wine/lib/wine/{architecture}/{name}')
 required_components.append('wine/lib/wine/i386-windows/explorer.exe')
 for relative in required_components:
     assert relative in spec['wine_components'].values(), 'Incomplete Wine component manifest: ' + relative
 args.stage.parent.mkdir(parents=True, exist_ok=True)
 assert digest(args.wine_source) == spec['wine_source_sha256']
+assert digest(args.xlib_source) == spec['xlib_source_bundle']['sha256']
 assert digest(args.installer) == spec['installer_sha256'], 'Unsupported application installer'
 base_files = None
 if args.base_package:
@@ -170,7 +172,8 @@ for relative in ('drive_c/windows/explorer.exe', 'drive_c/windows/system32/explo
 overlay(files / 'wine/lib/wine/x86_64-windows/wineboot.exe', template / 'drive_c/windows/system32/wineboot.exe')
 overlay(files / 'wine/lib/wine/i386-windows/explorer.exe', template / 'drive_c/windows/syswow64/explorer.exe')
 for architecture, directory in (('x86_64-windows', 'system32'), ('i386-windows', 'syswow64')):
-    for name in ('imm32.dll', 'cfgmgr32.dll', 'setupapi.dll', 'ntoskrnl.exe', 'comdlg32.dll', 'shell32.dll'):
+    for name in ('imm32.dll', 'cfgmgr32.dll', 'setupapi.dll', 'ntoskrnl.exe', 'comdlg32.dll', 'shell32.dll',
+                 'user32.dll', 'msftedit.dll'):
         overlay(files / 'wine/lib/wine' / architecture / name, template / 'drive_c/windows' / directory / name)
 
 # Strip only Wine's PE debug data. Keep every application and vendor DLL byte-for-byte.
@@ -238,6 +241,7 @@ for name, target in (('launch.sh', 'launch.sh'), ('package-launch.sh', 'start.sh
 doc = args.stage / 'usr/share/doc/com.qq.wecom.spark'
 doc.mkdir(parents=True)
 overlay(args.wine_source, doc / 'wine-11.20.tar.gz')
+overlay(args.xlib_source, doc / 'libX11-wecom-source.tar.zst')
 for name in ('README.md', 'CODE-REVIEW.md', 'build.sh', 'Dockerfile', 'wine-11.20-x11-popups.patch'):
     overlay(repo / 'ubuntu/wine-x11-fix' / name, doc / name)
 assert digest(doc / 'wine-11.20-x11-popups.patch') == spec['wine_patch_sha256'], 'Wine patch changed during packaging'
@@ -251,6 +255,7 @@ overlay(repo / 'ubuntu/wine-x11-fix/tests/gdiplus-render-check.cpp', doc / 'test
 }, indent=2) + '\n')
 overlay(repo / 'THIRD-PARTY.md', doc / 'copyright')
 overlay(repo / 'licenses/Wine-COPYING.LIB', doc / 'Wine-COPYING.LIB')
+overlay(repo / 'licenses/libX11-COPYING', doc / 'libX11-COPYING')
 overlay(repo / 'README.md', doc / 'README.zh-CN.md')
 adapter = doc / 'adapter'
 for directory in ('ubuntu', 'scripts', 'configs', 'licenses'):

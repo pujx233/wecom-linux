@@ -15,21 +15,26 @@ tar -xzf "$archive" --strip-components=1 -C "$output/source"
 patch -d "$output/source" -p1 < "$root/wine-11.20-x11-popups.patch"
 cd "$output/build"
 ../source/configure --enable-win64 --without-mingw --with-wayland
-for feature in SONAME_LIBDBUS_1 SONAME_LIBXCOMPOSITE SONAME_LIBXDAMAGE SONAME_LIBXRENDER HAVE_LIBXSHAPE; do
+for feature in SONAME_LIBDBUS_1 SONAME_LIBXCOMPOSITE SONAME_LIBXDAMAGE SONAME_LIBXRENDER HAVE_LIBXSHAPE \
+               SONAME_LIBXRANDR SONAME_LIBXINERAMA HAVE_LINUX_VIDEODEV2_H SONAME_LIBV4L2; do
   grep -q "^#define $feature " include/config.h
 done
 make -j "${WECOM_BUILD_JOBS:-4}" server/wineserver dlls/ntdll/ntdll.so \
   dlls/winex11.drv/winex11.so dlls/win32u/win32u.so dlls/wineps.drv/wineps.so \
-  dlls/winewayland.drv/winewayland.so dlls/mountmgr.sys/mountmgr.so dlls/comdlg32/comdlg32.so dlls/winebth.sys/winebth.so
+  dlls/winewayland.drv/winewayland.so dlls/mountmgr.sys/mountmgr.so dlls/comdlg32/comdlg32.so \
+  dlls/winebth.sys/winebth.so dlls/qcap/qcap.so
 sha256sum server/wineserver dlls/ntdll/ntdll.so dlls/winex11.drv/winex11.so \
   dlls/win32u/win32u.so dlls/wineps.drv/wineps.so dlls/winewayland.drv/winewayland.so \
-  dlls/mountmgr.sys/mountmgr.so dlls/comdlg32/comdlg32.so dlls/winebth.sys/winebth.so
+  dlls/mountmgr.sys/mountmgr.so dlls/comdlg32/comdlg32.so dlls/winebth.sys/winebth.so dlls/qcap/qcap.so
 mkdir "$output/build-explorer"
 cd "$output/build-explorer"
 ../source/configure --enable-archs=i386,x86_64 --without-x --without-wayland
 make -j "${WECOM_BUILD_JOBS:-4}" programs/explorer/i386-windows/explorer.exe \
   programs/explorer/x86_64-windows/explorer.exe \
+  dlls/user32/i386-windows/user32.dll dlls/user32/x86_64-windows/user32.dll \
   dlls/comdlg32/i386-windows/comdlg32.dll dlls/comdlg32/x86_64-windows/comdlg32.dll \
+  dlls/ole32/i386-windows/ole32.dll dlls/ole32/x86_64-windows/ole32.dll \
+  dlls/msftedit/i386-windows/msftedit.dll dlls/msftedit/x86_64-windows/msftedit.dll \
   dlls/shell32/i386-windows/shell32.dll dlls/shell32/x86_64-windows/shell32.dll \
   dlls/gdiplus/i386-windows/gdiplus.dll dlls/gdiplus/x86_64-windows/gdiplus.dll \
   dlls/imm32/i386-windows/imm32.dll dlls/imm32/x86_64-windows/imm32.dll \
@@ -39,7 +44,10 @@ make -j "${WECOM_BUILD_JOBS:-4}" programs/explorer/i386-windows/explorer.exe \
   programs/wineboot/x86_64-windows/wineboot.exe \
   dlls/slwga/i386-windows/slwga.dll dlls/slwga/x86_64-windows/slwga.dll
 sha256sum programs/explorer/i386-windows/explorer.exe programs/explorer/x86_64-windows/explorer.exe \
+  dlls/user32/i386-windows/user32.dll dlls/user32/x86_64-windows/user32.dll \
   dlls/comdlg32/i386-windows/comdlg32.dll dlls/comdlg32/x86_64-windows/comdlg32.dll \
+  dlls/ole32/i386-windows/ole32.dll dlls/ole32/x86_64-windows/ole32.dll \
+  dlls/msftedit/i386-windows/msftedit.dll dlls/msftedit/x86_64-windows/msftedit.dll \
   dlls/shell32/i386-windows/shell32.dll dlls/shell32/x86_64-windows/shell32.dll \
   dlls/gdiplus/i386-windows/gdiplus.dll dlls/gdiplus/x86_64-windows/gdiplus.dll \
   dlls/imm32/i386-windows/imm32.dll dlls/imm32/x86_64-windows/imm32.dll \
@@ -48,3 +56,4 @@ sha256sum programs/explorer/i386-windows/explorer.exe programs/explorer/x86_64-w
   dlls/ntoskrnl.exe/i386-windows/ntoskrnl.exe dlls/ntoskrnl.exe/x86_64-windows/ntoskrnl.exe \
   programs/wineboot/x86_64-windows/wineboot.exe \
   dlls/slwga/i386-windows/slwga.dll dlls/slwga/x86_64-windows/slwga.dll
+python3 "$root/../xlib-im-fix/build.py" --output "$output/xlib"

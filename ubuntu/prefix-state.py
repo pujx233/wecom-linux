@@ -10,7 +10,7 @@ SERVICES = {'explorer.exe', 'services.exe', 'winedevice.exe', 'plugplay.exe',
             'svchost.exe', 'rpcss.exe', 'lsass.exe', 'conhost.exe', 'titlebar-managed.exe'}
 
 
-def application_running(prefix, proc=Path('/proc')):
+def application_running(prefix, proc=Path('/proc'), image_name=None):
     for process in proc.iterdir():
         if not process.name.isdigit():
             continue
@@ -31,7 +31,7 @@ def application_running(prefix, proc=Path('/proc')):
             continue
         command = argv[2] if len(argv) > 2 and argv[:2] == ['start.exe', '/exec'] else argv[0]
         image = command.replace('\\', '/').rsplit('/', 1)[-1].strip('"').lower()
-        if image in SERVICES:
+        if image in SERVICES or (image_name and image != image_name):
             continue
         return True
     return False
@@ -51,4 +51,7 @@ def wait_idle(prefix, server):
 
 
 if __name__ == '__main__':
+    if sys.argv[1] == '--wecom-running':
+        prefix = Path(sys.argv[2]).resolve(strict=True)
+        raise SystemExit(0 if application_running(prefix, image_name='wxwork.exe') else 1)
     raise SystemExit(wait_idle(Path(sys.argv[1]).resolve(strict=True), Path(sys.argv[2]).resolve(strict=True)))

@@ -110,6 +110,14 @@ def desktop_dpi():
             state = bus.call_sync('org.gnome.Mutter.DisplayConfig', '/org/gnome/Mutter/DisplayConfig',
                                   'org.gnome.Mutter.DisplayConfig', 'GetCurrentState', None, None,
                                   Gio.DBusCallFlags.NONE, 3000, None).unpack()
+            if os.environ.get('XDG_SESSION_TYPE') == 'wayland':
+                try:
+                    from display_geometry import gnome_outputs, x11_monitors, xwayland_dpi
+                    dpi = xwayland_dpi(x11_monitors(), gnome_outputs(state))
+                except (AttributeError, ImportError, KeyError, OSError, TypeError, ValueError):
+                    dpi = None
+                if dpi:
+                    return dpi
             logical = next(monitor for monitor in state[2] if monitor[4])
             return round(96 * logical[2])
         except GLib.Error:
@@ -117,13 +125,13 @@ def desktop_dpi():
     return 96
 
 
-def registry_dpi(prefix, key):
+def registry_dword(prefix, key, name):
     text = (prefix / 'user.reg').read_text()
     section = '[' + key.replace('\\', '\\\\') + ']'
     if section not in text:
         return None
     values = text.split(section, 1)[1].split('\n[', 1)[0]
-    match = re.search(r'^"LogPixels"=dword:([0-9a-fA-F]+)$', values, re.MULTILINE)
+    match = re.search(r'^"' + re.escape(name) + r'"=dword:([0-9a-fA-F]+)$', values, re.MULTILINE)
     return int(match[1], 16) if match else None
 
 
@@ -137,7 +145,7 @@ def configure(root, prefix):
     idle.check_returncode()
     stamp = prefix / '.wecom-display-fonts.json'
     previous = json.loads(stamp.read_text()) if stamp.exists() else {}
-    current = registry_dpi(prefix, r'Control Panel\Desktop') or None
+    current = registry_dword(prefix, r'Control Panel\Desktop', 'LogPixels') or None
     override = os.environ.get('WECOM_DPI')
     manual = current is not None and not override and (previous.get('manual', False) or
                                                      current != previous.get('dpi', 192))
@@ -150,7 +158,7 @@ def configure(root, prefix):
                                   b''.join(path.read_bytes() for path in font_configs)).hexdigest()
     fonts = root / 'template/drive_c/windows/Fonts'
     runtime_revision = (root / 'application-version').read_text().strip()
-    modules = ['comdlg32.dll', 'shell32.dll', 'slwga.dll']
+    modules = ['comdlg32.dll', 'shell32.dll', 'slwga.dll', 'user32.dll', 'msftedit.dll']
     update_runtime = previous.get('runtime') != runtime_revision or any(
         not (prefix / 'drive_c/windows' / directory / name).is_file()
         for directory in ('system32', 'syswow64') for name in modules)
@@ -172,8 +180,10 @@ def configure(root, prefix):
     update_fonts = previous.get('fonts') != font_revision or any(not (destination / path.name).is_file()
                                                                for path in fonts.iterdir() if path.is_file())
     keys = (r'Control Panel\Desktop', r'Software\Wine\Fonts')
-    update_dpi = any(registry_dpi(prefix, key) != dpi for key in keys)
-    if update_fonts or update_dpi:
+    update_dpi = any(registry_dword(prefix, key, 'LogPixels') != dpi for key in keys)
+    ime_key = r'Software\Wine\AppDefaults\WXWork.exe\RichEdit'
+    update_ime = registry_dword(prefix, ime_key, 'DuiLibIMEContext') != 1
+    if update_fonts or update_dpi or update_ime:
         subprocess.run(['python3', str(root / 'template/wecom-compat/scripts/prepare-startup.py'),
                         '--prefix', str(prefix)], check=True)
         try:
@@ -190,6 +200,9 @@ def configure(root, prefix):
                 for key in keys:
                     subprocess.run([str(wine), 'reg', 'add', 'HKCU\\' + key, '/v', 'LogPixels',
                                     '/t', 'REG_DWORD', '/d', str(dpi), '/f'], env=env, check=True)
+            if update_ime:
+                subprocess.run([str(wine), 'reg', 'add', 'HKCU\\' + ime_key, '/v', 'DuiLibIMEContext',
+                                '/t', 'REG_DWORD', '/d', '1', '/f'], env=env, check=True)
         finally:
             result = subprocess.run([str(server), '-k'], env=env)
             if result.returncode not in (0, 1):
@@ -204,4 +217,6 @@ def configure(root, prefix):
 
 
 if __name__ == '__main__':
-    configure(Path(sys.argv[1]).resolve(strict=True), Path(sys.argv[2]).resolve(strict=True))
+    root = Path(sys.argv[1]).resolve(strict=True)
+    sys.path.insert(0, str(root / 'template/wecom-compat/scripts'))
+    configure(root, Path(sys.argv[2]).resolve(strict=True))

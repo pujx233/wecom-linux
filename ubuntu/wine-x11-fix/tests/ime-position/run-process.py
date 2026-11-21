@@ -16,7 +16,7 @@ import time
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'frame-composition'))
-from isolated import desktop
+from isolated import desktop, link_runtime_libraries
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--runtime', type=Path, required=True)
@@ -50,6 +50,7 @@ assert 'NtUserImeDriverCall       = 0x0305' in header
 assert 'WINE_IME_TO_ASCII_EX,\n    WINE_IME_POST_UPDATE' in header
 overlay = qa / 'wine'
 (overlay / 'lib/wine/x86_64-unix').mkdir(parents=True)
+link_runtime_libraries(runtime, overlay)
 shutil.copytree(runtime / 'bin', overlay / 'bin', symlinks=True)
 for name in ('share', 'include'):
     if (runtime / name).exists(): (overlay / name).symlink_to(runtime / name, target_is_directory=True)

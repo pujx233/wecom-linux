@@ -46,13 +46,23 @@ fi
 if [[ "${WECOM_EMBEDDED_UI_DPI_FIX:-0}" == 1 ]]; then
   # Wine does not implement Windows' cross-process SetParent DPI reset. Start the
   # embedded mail/Flutter UIs SYSTEM_AWARE like their WeCom host, after idle-prefix recovery.
-  # WeMeet caches its startup DPI after changing process awareness, then creates
-  # its UI from an older, unaware message window. Keep its startup context consistent.
-  for setting in WeMail.exe=1 FlutterPlugins.exe=1 wwmapp.exe=0; do
-    "${wine_env[@]}" "$wine_bin" reg add \
-      "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\${setting%=*}" \
-      /v dpiAwareness /t REG_DWORD /d "${setting#*=}" /f /reg:32
+  image_options='HKLM\Software\Microsoft\Windows NT\CurrentVersion\Image File Execution Options'
+  for image in WeMail.exe FlutterPlugins.exe; do
+    "${wine_env[@]}" "$wine_bin" reg add "$image_options\\$image" /v dpiAwareness /t REG_DWORD /d 1 /f /reg:32
   done
+  meeting_options="$image_options\\wwmapp.exe"
+  if [[ "${WECOM_WINE_INITIAL_THREAD_DPI:-0}" == 1 ]]; then
+    # WeMeet creates its message windows before it sets the process DPI mode.
+    "${wine_env[@]}" "$wine_bin" reg add "$meeting_options" \
+      /v wineInitialThreadDpiAwareness /t REG_DWORD /d 3 /f /reg:32
+    if old_dpi=$("${wine_env[@]}" "$wine_bin" reg query "$meeting_options" /v dpiAwareness /reg:32 2>/dev/null) &&
+        [[ "$old_dpi" =~ REG_DWORD[[:blank:]]+0x0[[:space:]]*$ ]]; then
+      "${wine_env[@]}" "$wine_bin" reg delete "$meeting_options" /v dpiAwareness /f /reg:32 ||
+        ! "${wine_env[@]}" "$wine_bin" reg query "$meeting_options" /v dpiAwareness /reg:32 >/dev/null 2>&1
+    fi
+  else
+    "${wine_env[@]}" "$wine_bin" reg add "$meeting_options" /v dpiAwareness /t REG_DWORD /d 0 /f /reg:32
+  fi
 fi
 if [[ "${WECOM_TRAY_ICON_FIX:-1}" != 0 ]] && command -v python3 >/dev/null && [[ -f "$script_dir/tray-icon.py" ]]; then
   python3 "$script_dir/tray-icon.py" --prefix "$WECOM_PREFIX" \
@@ -89,7 +99,10 @@ if [[ "${WECOM_IME_FIX:-1}" != 0 && "${WECOM_CEF_IME_FIX:-0}" != 1 ]]; then
     fi
   fi
 fi
-if [[ "${WINE_X11_OWNED_FRAME:-0}" == 1 ]]; then
+if [[ -n "${WECOM_IBUS_XIM_HELPER:-}" ]]; then
+  wine_env=(/usr/bin/python3 "$WECOM_IBUS_XIM_HELPER" "${wine_env[@]}")
+fi
+if [[ "${WINE_X11_OWNED_FRAME:-0}" == 1 && "${WECOM_REUSE_DESKTOP:-0}" != 1 ]]; then
   exec "${wine_env[@]}" "$wine_bin" explorer.exe /desktop 'C:\Program Files (x86)\WXWork\WXWork.exe' "${app_args[@]}"
 fi
 exec "${wine_env[@]}" "$wine_bin" "$app" "${app_args[@]}"

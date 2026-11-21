@@ -1,0 +1,216 @@
+diff --git a/modules/im/ximcp/imCallbk.c b/modules/im/ximcp/imCallbk.c
+--- a/modules/im/ximcp/imCallbk.c
++++ b/modules/im/ximcp/imCallbk.c
+@@ -137,23 +137,40 @@
+ static Bool
+ _XimIsReadyForProcess(Xic ic)
+ {
+-    return(!ic->private.proto.waitCallback); /* check HM */
+-}
+-
+-static void
++    return !ic->private.proto.waitCallback && !ic->private.proto.processing_callbacks;
++}
++
++/* Keep the lifetime marker outside the IC, since a client callback can destroy it. */
++static Bool
++_XimInvokeCallback(Xim im, Xic ic, int opcode, char *proto, int proto_len)
++{
++    Bool alive = True;
++
++    ic->private.proto.processing_callbacks = True;
++    ic->private.proto.callback_alive = &alive;
++    (void)(*callback_table[opcode])(im, ic, proto, proto_len);
++    if (alive) {
++        ic->private.proto.callback_alive = NULL;
++        ic->private.proto.processing_callbacks = False;
++    }
++    return alive;
++}
++
++void
+ _XimProcessPendingCallbacks(Xic ic)
+ {
+     XimPendingCallback pcbq;
+-
+-    while (((pcbq = ic->private.proto.pend_cb_que) != (XimPendingCallback)NULL)
+-	   && _XimIsReadyForProcess(ic)) {
+-	(void) (*callback_table[pcbq->major_opcode])(pcbq->im,
+-						     pcbq->ic,
+-						     pcbq->proto,
+-						     pcbq->proto_len);
+-	ic->private.proto.pend_cb_que = pcbq->next;
+-	Xfree(pcbq->proto);	/* free memory of XimPendingCallback */
+-	Xfree(pcbq);
++    Bool alive;
++
++    while (_XimIsReadyForProcess(ic) && (pcbq = ic->private.proto.pend_cb_que)) {
++        /* Detach before calling the client, which may reenter Xlib or destroy the IC. */
++        ic->private.proto.pend_cb_que = pcbq->next;
++        alive = _XimInvokeCallback(pcbq->im, pcbq->ic, pcbq->major_opcode,
++                                   pcbq->proto, pcbq->proto_len);
++        Xfree(pcbq->proto);
++        Xfree(pcbq);
++        if (!alive)
++            return;
+     }
+ }
+ 
+@@ -200,10 +217,6 @@
+ 	return False; /* status = XimCbBadContextID; */
+     }
+ 
+-    /* process pending callbacks
+-     */
+-    _XimProcessPendingCallbacks(ic);
+-
+     /* check if the protocol should be processed here
+      */
+     if (major_opcode > 82) {
+@@ -218,42 +231,37 @@
+     proto = (char*)data + sz_ximPacketHeader;
+     proto_len = (int)len - sz_ximPacketHeader;
+ 
+-    /* check if it can be processed right away
+-     * and if no, queue the protocol, otherwise invoke a callback
+-     */
+-    if (!_XimIsReadyForProcess(ic)) {
+-
+-	/* queue the protocol
+-	 */
+-	XimPendingCallback pcb;
+-	char *proto_buf = (proto_len > 0) ? Xmalloc(proto_len) : NULL;
+-
+-	pcb = Xmalloc(sizeof(XimPendingCallbackRec));
+-	if (pcb && (proto_len <= 0 || proto_buf)) {
+-	    if (proto_len > 0)
+-		memcpy(proto_buf, proto, proto_len);
+-
+-	    pcb->major_opcode = major_opcode;
+-	    pcb->im = im;
+-	    pcb->ic = ic;
+-	    pcb->proto = proto_buf;
+-	    pcb->proto_len = proto_len;
+-	    pcb->next = (XimPendingCallback)NULL; /* queue is FIFO */
+-	    _XimPutCbIntoQueue(ic, pcb);
+-	    /* status = XimCbQueued; */
+-	} else {
+-	    /* status = XimCbError; */
+-	    Xfree(pcb);
+-	    Xfree(proto_buf);
+-	}
+-    }
+-    else {
+-	/* invoke each callback according to the major opcode.
+-	 * `proto' points to the next address of IM-ID and IC-ID.
+-	 * `proto_len' specifies the packet length.
+-	 */
+-	(void) (*callback_table[major_opcode])(im, ic, proto, proto_len);
+-    }
++    /* Preserve the allocation-free immediate path. A nested dispatch is queued
++     * until the current client callback returns, maintaining FIFO order. */
++    if (_XimIsReadyForProcess(ic) && !ic->private.proto.pend_cb_que) {
++        if (_XimInvokeCallback(im, ic, major_opcode, proto, proto_len))
++            _XimProcessPendingCallbacks(ic);
++        return True;
++    }
++
++    /* Append before draining older packets, which may destroy the IC. */
++    {
++        XimPendingCallback pcb;
++        char *proto_buf = proto_len > 0 ? Xmalloc(proto_len) : NULL;
++
++        pcb = Xmalloc(sizeof(XimPendingCallbackRec));
++        if (pcb && (proto_len <= 0 || proto_buf)) {
++            if (proto_len > 0)
++                memcpy(proto_buf, proto, proto_len);
++            pcb->major_opcode = major_opcode;
++            pcb->im = im;
++            pcb->ic = ic;
++            pcb->proto = proto_buf;
++            pcb->proto_len = proto_len;
++            pcb->next = NULL;
++            _XimPutCbIntoQueue(ic, pcb);
++        } else {
++            Xfree(pcb);
++            Xfree(proto_buf);
++        }
++    }
++    _XimProcessPendingCallbacks(ic);
++
+     return True;
+ }
+ 
+diff --git a/modules/im/ximcp/imDefIc.c b/modules/im/ximcp/imDefIc.c
+--- a/modules/im/ximcp/imDefIc.c
++++ b/modules/im/ximcp/imDefIc.c
+@@ -416,6 +416,7 @@
+     if (reply != preply)
+ 	Xfree(preply);
+ 
++    _XimProcessPendingCallbacks(ic);
+     if (decode_name)
+ 	return decode_name;
+     else
+@@ -805,6 +806,7 @@
+     if (reply != preply)
+ 	Xfree(preply);
+ 
++    _XimProcessPendingCallbacks(ic);
+     return name;
+ }
+ 
+@@ -842,10 +844,20 @@
+ _XimProtoICFree(
+     Xic		 ic)
+ {
++    XimPendingCallback pending;
+ #ifdef XIM_CONNECTABLE
+-    Xim		 im = (Xim)ic->core.im;
++    Xim im = (Xim)ic->core.im;
+ #endif
+ 
++    if (ic->private.proto.callback_alive)
++        *ic->private.proto.callback_alive = False;
++    ic->private.proto.callback_alive = NULL;
++    ic->private.proto.processing_callbacks = False;
++    while ((pending = ic->private.proto.pend_cb_que)) {
++        ic->private.proto.pend_cb_que = pending->next;
++        Xfree(pending->proto);
++        Xfree(pending);
++    }
+ 
+     Xfree(ic->private.proto.preedit_font);
+     ic->private.proto.preedit_font = NULL;
+@@ -1142,6 +1154,7 @@
+ 
+     if (reply != preply)
+     	Xfree(preply);
++    _XimProcessPendingCallbacks(ic);
+     return commit;
+ }
+ 
+diff --git a/src/xlibi18n/Ximint.h b/src/xlibi18n/Ximint.h
+--- a/src/xlibi18n/Ximint.h
++++ b/src/xlibi18n/Ximint.h
+@@ -856,6 +856,8 @@
+ );
+ #endif
+ 
++extern void _XimProcessPendingCallbacks(Xic ic);
++
+ extern Bool _XimCbDispatch(
+     Xim im,
+     INT16 len,
+diff --git a/src/xlibi18n/XimintP.h b/src/xlibi18n/XimintP.h
+--- a/src/xlibi18n/XimintP.h
++++ b/src/xlibi18n/XimintP.h
+@@ -273,6 +273,8 @@
+     int			 num_saved_icvalues;
+     XimPendingCallback	 pend_cb_que;
+     Bool		 waitCallback;
++    Bool                 processing_callbacks;
++    Bool                *callback_alive;
+ } XicProtoPrivateRec ;
+ 
+ /*

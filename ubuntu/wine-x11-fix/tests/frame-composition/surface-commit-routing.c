@@ -10,12 +10,34 @@ typedef ULONG_PTR Window;
 void *gdi_display;
 static struct
 {
-    unsigned local, posted, synced, sequence, sync_order, post_order;
+    unsigned local, posted, synced, sequence, sync_order, post_order, completed;
     HWND local_target, post_target;
     WPARAM post_wp;
     BOOL post_result;
 } calls;
 static unsigned failures;
+static struct x11drv_win_data
+{
+    BOOL frame_resize_pending, has_surface;
+    unsigned first_present_depth;
+} owner_data;
+
+static struct x11drv_win_data *get_win_data(HWND hwnd)
+{
+    (void)hwnd;
+    return &owner_data;
+}
+
+static void release_win_data(struct x11drv_win_data *data)
+{
+    (void)data;
+}
+
+static void set_frame_sync(struct x11drv_win_data *data, BOOL pending)
+{
+    (void)data;
+    if (!pending) calls.completed++;
+}
 
 Window X11DRV_get_whole_window(HWND hwnd)
 {
@@ -68,6 +90,7 @@ static void check(const char *name, BOOL passed)
     fflush(stdout);
     failures += !passed;
     memset(&calls, 0, sizeof(calls));
+    memset(&owner_data, 0, sizeof(owner_data));
 }
 
 static BOOL has_frame(HWND hwnd)
@@ -166,6 +189,16 @@ int main(int argc, char **argv)
     {
         LRESULT result = route_owner_notification(root, 1);
         check("owner-dirty-notification", !result && calls.local == 1 && calls.local_target == root);
+        owner_data.frame_resize_pending = TRUE;
+        result = route_owner_notification(root, 1);
+        check("owner-native-completed", !result && calls.local == 1 && calls.completed == 1);
+        owner_data.frame_resize_pending = TRUE;
+        owner_data.first_present_depth = 1;
+        result = route_owner_notification(root, 1);
+        check("owner-paint-in-progress", !result && calls.local == 1 && !calls.completed);
+        owner_data.frame_resize_pending = owner_data.has_surface = TRUE;
+        result = route_owner_notification(root, 1);
+        check("owner-memory-surface", !result && calls.local == 1 && !calls.completed);
         result = route_owner_notification(root, 0);
         check("internal-dispatch-preserved", result == -1 && !calls.local && !calls.posted);
     }

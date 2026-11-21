@@ -1,47 +1,45 @@
 # 企业微信
 
-企业微信 5.0.13.6005 的 Linux 社区适配版，内置 Wine 11.20。
-当前测试版为 **5.0.13.6005-6**。
-本轮修复邮件组合输入、输入法重连、图片选择、会议组件加载和窗口绘制，并减少多进程重复映像的内存开销。
-实现与验证见 [review 记录](ubuntu/wine-x11-fix/CODE-REVIEW.md)。
+## 版本
+
+企业微信 **5.0.13.6005**，内置 **Wine 11.20**，Linux 社区适配测试版。
+DEB 修订 **5.0.13.6005-7**，面向 amd64，glibc 最低要求为 2.38。
+已在 Ubuntu 26.04 amd64 平台验证。
+
+## 修复问题
+
+- 修复聊天框与搜索框之间的拼音串词、快速输入后提交旧词，以及邮件正文的组合输入、候选定位和输入法重连。
+- 修复聊天附件另存为时的重名提示和保存目录错误，补齐文件选择的目录切换、确认回调与文件视图兼容。
+- 修复聊天图片复制失败，以及 32/64 位程序之间的图片剪贴板兼容，支持文件粘贴到 Linux 文件夹。
+- 修复托盘恢复后输入焦点落到隐藏窗口，以及锁屏恢复后最大化窗口滞留全屏。
+- 修复视频设置崩溃、文档绘制方式切换后侧栏丢失，以及 GNOME 46 X11 截图错屏。
+- 改善窗口拖动、缩放、菜单和阴影的绘制同步，修复高 DPI 会议画面被二次缩放的问题。
+- 修复启动、升级和重复唤回，保留账号与聊天记录；减少设备通知、注册表膨胀和重复映像的内存占用。
+
+本轮运行库的 101 组自动回归通过，实机验证了聊天、搜索、邮件、图片、附件保存、托盘恢复和快速会议。
+实现与结果见 [review 记录](ubuntu/wine-x11-fix/CODE-REVIEW.md)和[测试记录](ubuntu/validation.json)。
+
+## 遗留问题
+
+- Wayland 屏幕共享和部分 XWayland 截图仍为黑屏。
+- 会议从副屏发起仍可能打开在主屏；分数缩放取整和会中改变桌面缩放后的大小异常仍待修复。
+- 快速最大化、还原或拖动时仍可能短暂显示旧画面，#5 报告者环境的整圈黑边仍待复测。
+- 双屏 200% 下，显式跨屏或横跨双屏全屏仍有选屏问题。
+- 托盘“更多操作”菜单可能居中；会议菜单打开时最大化，菜单可能停留在原位置。
+- #4 的 GPU 故障触发点尚未定位，#12 的拖动抖动尚未稳定复现。
 
 ## 安装
 
-从 [Releases](https://github.com/pujx233/wecom-linux/releases/tag/v5.0.13.6005-6) 下载 DEB 和校验文件：
+从 [Releases](https://github.com/pujx233/wecom-linux/releases/tag/v5.0.13.6005-7) 下载 DEB 和 `SHA256SUMS`：
 
 ```sh
 sha256sum -c SHA256SUMS
-sudo apt install ./com.qq.wecom.spark_5.0.13.6005-6_amd64.deb
+sudo apt install ./com.qq.wecom.spark_5.0.13.6005-7_amd64.deb
 ```
 
-在应用菜单启动“企业微信”。升级沿用账号和聊天记录，用户数据位于 `~/.local/share/wecom/prefix`。
-
-## 适配内容
-
-- 跟随桌面 DPI，保留手工设置，修复中文字体与文件名显示。
-- 支持 Linux 原生文件选择窗口；依赖 Windows 文件视图的上传入口使用 Wine 兼容窗口。
-- 接入默认文件管理器的目录打开和文件定位。
-- 修复拖动、缩放、最大化、还原及拔屏后的窗口错位，改善菜单、已读名单和预览弹窗的绘制与层级。
-- 修复 niri 的累积黑斑，补齐 KWin 的首帧同步与菜单焦点声明。
-- 修复跨进程邮件正文的中文预编辑、候选定位、切换控件串词、连续组词丢字及输入法重连。
-- 补齐会议组件的静态导入依赖，修复预览阴影抢占鼠标，减少重复设备枚举和映像内存开销。
-
-文件粘贴、运行中唤回、正常退出后的升级切换、成员卡焦点及蓝牙名称缓存修复均沿用。
-回归范围和结果见[测试记录](ubuntu/validation.json)。
-
-## Linux 环境
-
-安装包面向 amd64，核心 glibc 要求为 2.38，无需安装系统 Wine。
-验证环境包括 Ubuntu 26.04 GNOME/Mutter，以及 Fedora 44 嵌套 niri 和 KWin 6.6.6；各版本的测试范围见[验证记录](ubuntu/validation.json)。
-
-共享输出、XWayland 截图黑屏及会议菜单打开后最大化的定位仍有问题。
-#4 的 GPU 故障触发请求、#5 报告者环境的缩放黑区仍未定位完成。
-本机快速最大化、还原时也仍可见短暂旧尺寸画面，稳定后的尺寸已验证。
-双屏 200% 原生全屏选屏及 GNOME 的 IBus 生命周期修复属于宿主组件，未由 DEB 自动安装；
-本机部署与测试范围见 [review 记录](ubuntu/wine-x11-fix/CODE-REVIEW.md)。
+在应用菜单启动“企业微信”。升级沿用原账号和聊天数据，用户目录位于 `~/.local/share/wecom/prefix`。
 
 [使用与构建](UBUNTU.md) · [Wine 源码](ubuntu/wine-x11-fix/README.md) · [回归清单](ubuntu/wine-x11-fix/tests/README.md) · [第三方许可](THIRD-PARTY.md)
 
 企业微信和图标属于腾讯，基础适配来自 [tbsangel/archlinux-wine-wecom-setup](https://github.com/tbsangel/archlinux-wine-wecom-setup)。
-Linux 发行版和桌面环境较多，欢迎通过 [GitHub Issues](https://github.com/pujx233/wecom-linux/issues) 反馈兼容问题。
-仓库：[pujx233/wecom-linux](https://github.com/pujx233/wecom-linux)。
+兼容问题请通过 [GitHub Issues](https://github.com/pujx233/wecom-linux/issues) 反馈。

@@ -21,6 +21,8 @@ parser.add_argument('--scale', type=int, choices=(1, 2), default=2, help='Deskto
 parser.add_argument('--workarea-cycle', action='store_true',
                     help='Hide and restore panels as during screen locking')
 parser.add_argument('--fullscreen', action='store_true', help='Also enter and leave genuine fullscreen')
+parser.add_argument('--explicit-outputs', action='store_true',
+                    help='Also exercise explicit cross-output and spanning requests at double scale')
 parser.add_argument('--reentrant-fullscreen', action='store_true',
                     help='Enter fullscreen from an application WM_SIZE callback during a host resize')
 parser.add_argument('--pending-native-minimize', action='store_true',
@@ -31,6 +33,11 @@ name = 'maximize-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
 subprocess.run(['x86_64-w64-mingw32-gcc', '-O2', '-Wall', '-Wextra',
                 str(Path(__file__).with_name('maximize.c')), '-o', str(qa / 'maximize.exe'),
                 '-lgdi32', '-luser32'], check=True)
+check_foreign_dpi = args.workarea_cycle and not args.fullscreen and not args.case
+if check_foreign_dpi:
+    subprocess.run(['x86_64-w64-mingw32-gcc', '-O2', '-Wall', '-Wextra', '-Werror', '-municode',
+                    str(Path(__file__).with_name('foreign-window-dpi.c')), '-o', qa / 'foreign-window-dpi.exe',
+                    '-lshcore', '-luser32'], check=True)
 report = {'driver_sha256': hashlib.sha256((qa / 'wine/lib/wine/x86_64-unix/winex11.so').read_bytes()).hexdigest(),
           'win32u_sha256': hashlib.sha256((qa / 'wine/lib/wine/x86_64-unix/win32u.so').read_bytes()).hexdigest(),
           'account_data_used': False, 'main_desktop_used': False, 'scale': args.scale,
@@ -163,6 +170,13 @@ with desktop(qa, '3200x2000', second_monitor='3840x2160') as env:
                     x.XMapWindow(display, dock)
                 x.XFlush(display)
             time.sleep(.5)
+            if check_foreign_dpi:
+                stop()
+                with (qa / f'foreign-window-dpi-primary-right-{primary_right}.log').open('w') as log:
+                    for owner in ('per-monitor', 'unaware'):
+                        print(f'window owner DPI awareness: {owner}', file=log, flush=True)
+                        subprocess.run([wine, str(qa / 'foreign-window-dpi.exe'), owner], env=env,
+                                       stdout=log, stderr=subprocess.STDOUT, check=True, timeout=25)
             cases = [('secondary-shadow', 0, 1, 0, '1', 0, 0), ('primary-shadow', 1, 1, 0, '1', 0, 0)]
             if primary_right:
                 cases += [('secondary-boundary', 0, 1, 0, '1', 1, 0), ('disabled', 0, 1, 0, '0', 0, 0),
@@ -209,7 +223,7 @@ with desktop(qa, '3200x2000', second_monitor='3840x2160') as env:
                         app.stdin.write(value + '\n')
                         app.stdin.flush()
 
-                    def sample(phase, maximized, expected=None, minimized=False, fullscreen=False):
+                    def sample(phase, maximized, expected=None, minimized=False, fullscreen=False, target=None):
                         deadline = time.monotonic() + 3
                         stable = None
                         configures = []
@@ -260,9 +274,10 @@ with desktop(qa, '3200x2000', second_monitor='3840x2160') as env:
                             if not maximized and not minimized and frame_min_size is not None:
                                 bounds_ok &= all(size[0] >= frame_min_size[0] and size[1] >= frame_min_size[1]
                                                  for size in visible_configures)
-                            monitor = ready['monitor']
+                            monitor = target or ready['monitor']
                             center = [(frame_rect[i] + frame_rect[i + 2]) / 2 for i in (0, 1)]
-                            passed = (value['selected_monitor'] and not value['minimized'] and host_state == 1 and
+                            passed = ((target is not None or value['selected_monitor']) and
+                                      not value['minimized'] and host_state == 1 and
                                       bool(value['maximized']) == maximized and frame_matches and
                                       not value['proposal_wrong_monitor'] and bounds_ok and
                                       body == value['rect'] and
@@ -343,6 +358,8 @@ with desktop(qa, '3200x2000', second_monitor='3840x2160') as env:
                                 assert case['samples'][-1]['expected_rect'][3] > ready['work'][3]
                                 command('noop')
                                 sample('panels-hidden-noop-' + str(cycle), True)
+                                command('geometry-again')
+                                sample('panels-hidden-same-rect-' + str(cycle), True)
                                 for dock in docks: x.XMapWindow(display, dock)
                                 x.XFlush(display)
                                 sample('panels-restored-' + str(cycle), True, ready['work'])
@@ -363,6 +380,16 @@ with desktop(qa, '3200x2000', second_monitor='3840x2160') as env:
                                 sample('zoomed-fullscreen', True, ready['monitor'], fullscreen=True)
                                 command('restore')
                                 sample('restore-after-fullscreen', False, initial['rect'])
+                                if (args.scale == 1 or args.explicit_outputs) and case_name == 'primary-disabled':
+                                    own, other = ready['monitor'], ready['other']
+                                    span = [min(own[0], other[0]), min(own[1], other[1]),
+                                            max(own[2], other[2]), max(own[3], other[3])]
+                                    for action, target in [('other-output', other), ('both-outputs', span),
+                                                           ('zoomed-fullscreen', own)]:
+                                        command(action)
+                                        sample('explicit-' + action, False, target, fullscreen=True, target=target)
+                                    command('windowed')
+                                    sample('restore-explicit', False, initial['rect'])
                             frame_limit = work_limit
                             command('maximize')
                             sample('maximized-after-cycle', True, ready['work'])
