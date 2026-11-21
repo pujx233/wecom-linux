@@ -43,3 +43,16 @@ sudo apt install ./com.qq.wecom.spark_5.0.13.6005-7_amd64.deb
 
 企业微信和图标属于腾讯，基础适配来自 [tbsangel/archlinux-wine-wecom-setup](https://github.com/tbsangel/archlinux-wine-wecom-setup)。
 兼容问题请通过 [GitHub Issues](https://github.com/pujx233/wecom-linux/issues) 反馈。
+
+## 支持项目
+
+如果这个项目对你有帮助，欢迎请我喝杯咖啡。
+
+<details>
+<summary>☕ 请我喝杯咖啡（微信支付）</summary>
+
+<p align="center">
+  <img src="docs/wechat-pay.jpg" alt="微信支付赞赏码" width="280">
+</p>
+
+</details>
