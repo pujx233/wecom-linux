@@ -26,16 +26,25 @@ python3 run-isolated.py --runtime /absolute/wine --output /absolute/new-qa \
 
 ## 请求语义
 
-默认 25 项覆盖 caret 移动、换行、24/48 单位高度、composition point、FORCE_POSITION、
+默认 31 项覆盖 caret 移动、换行、24/48 单位高度、composition point、FORCE_POSITION、
 CFS_RECT、移动、最大化、还原、切换焦点和销毁 caret。
 两个 CFS_RECT 用例使 ptCurrentPos 与 rcArea 左上角不同，按微软接口约定检查 rcArea 定位，
 避免把不参与该模式的点坐标误作期望。
 CreateCaret、SetCaretPos、ShowCaret 必须成功，显式请求经公开 IMM32 API 进入 win32u。
 
-callbacks 模式下，只有输入线程、焦点 HWND、caret HWND 和插入点均匹配时，
-POINT/FORCE 请求使用真实 caret 底边，防止候选框遮住文字。
+callbacks 模式下，同一输入线程、焦点 HWND 和 caret HWND 的真实高度用于 POINT/FORCE 请求。
+应用可以先更新组合位置、再更新 caret 位置；高度独立于旧位置，新锚点始终保留调用方的点坐标。
+连续输入用例分别覆盖两种更新顺序、换行和 24/48 单位高度，并核对每次 IBus 通知，
+防止只比较最终位置而漏掉中间的上下跳动。
 无关或失效 caret 保留调用方原位置；position preedit 保留文字插入点顶边语义。
 显式 candidate point 不因同位置 caret 而改变，EXCLUDE 使用排除区底边。
+
+已指定的 candidate 位置属于输入上下文，后续 composition 和 caret 通知不能覆盖它。
+`--candidate` 还覆盖不同插入点、临时 1 像素 caret、销毁 caret、第四候选列表、
+新建及恢复 HIMC、未关联的 IMC 请求和通知重入；每次 IBus 通知均与公开 IMM32 接口保存的位置比较。
+新建 HIMC 没有 candidate 请求时仍使用 caret，恢复旧 HIMC 后重新使用其原有 candidate 请求。
+旧 IMC 的请求应保存供恢复时读取，但不能改变当前输入框的原生位置。
+窗口移动允许旧、新原生原点的通知；同一原点下的输入更新不能在不同高度间切换。
 
 坐标判定使用 ClientToScreen、LogicalToPhysicalPointForPerMonitorDPI 和 XTranslateCoordinates，
 并单独核对 XGetGeometry 尺寸。DPI 取应用上下文的 GetDpiForWindow 与显示器的 raw DPI；
@@ -45,7 +54,7 @@ POINT/FORCE 请求使用真实 caret 底边，防止候选框遮住文字。
 ## 覆盖边界
 
 CFS_RECT 使用 rcArea；POINT/FORCE_POSITION 使用 ptCurrentPos，分别按调用模式验证。
-跨进程输入宿主、自动更新与显式请求的持久策略，以及屏幕边缘输入法面板翻转另需实测。
+跨进程输入宿主另有 process 用例；屏幕边缘输入法面板翻转仍需真实客户端验证。
 失败以非零退出码或 `passed: false` 表示，采集完成本身不计通过。
 
 参数约定见 [COMPOSITIONFORM](https://learn.microsoft.com/windows/win32/api/imm/ns-imm-compositionform)。

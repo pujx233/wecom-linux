@@ -177,8 +177,9 @@ def configure(root, prefix):
             shutil.copy2(root / 'wine/lib/wine' / architecture / 'explorer.exe', temporary)
             os.replace(temporary, destination)
     destination = prefix / 'drive_c/windows/Fonts'
-    update_fonts = previous.get('fonts') != font_revision or any(not (destination / path.name).is_file()
-                                                               for path in fonts.iterdir() if path.is_file())
+    locale_name = env.get('LC_ALL') or env.get('LC_CTYPE') or env.get('LANG') or 'C'
+    update_fonts = previous.get('locale') != locale_name or previous.get('fonts') != font_revision or any(
+        not (destination / path.name).is_file() for path in fonts.iterdir() if path.is_file())
     keys = (r'Control Panel\Desktop', r'Software\Wine\Fonts')
     update_dpi = any(registry_dword(prefix, key, 'LogPixels') != dpi for key in keys)
     ime_key = r'Software\Wine\AppDefaults\WXWork.exe\RichEdit'
@@ -209,7 +210,7 @@ def configure(root, prefix):
                 result.check_returncode()
             subprocess.run([str(server), '-w'], env=env, check=True)
     temporary = stamp.with_suffix('.new')
-    temporary.write_text(json.dumps({'dpi': dpi, 'manual': manual, 'fonts': font_revision,
+    temporary.write_text(json.dumps({'dpi': dpi, 'manual': manual, 'fonts': font_revision, 'locale': locale_name,
                                     'runtime': runtime_revision}) + '\n')
     os.replace(temporary, stamp)
     print(f'WeCom prefix: {dpi} DPI ({"manual" if manual or override and override != "auto" else "desktop"}), '

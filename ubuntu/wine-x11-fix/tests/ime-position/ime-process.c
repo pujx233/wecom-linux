@@ -162,7 +162,7 @@ int main(int argc, char **argv)
     MSG msg;
     char guard[8], display[32];
     if (!GetEnvironmentVariableA("WECOM_IME_FIXTURE", guard, sizeof(guard)) || strcmp(guard, "1")) return 2;
-    if (!GetEnvironmentVariableA("DISPLAY", display, sizeof(display)) || !strcmp(display, ":0")) return 3;
+    if (!GetEnvironmentVariableA("DISPLAY", display, sizeof(display))) return 3;
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     is_child = argc > 2 && !strcmp(argv[1], "child");
     cls.hInstance = GetModuleHandleW(NULL);

@@ -42,7 +42,7 @@ Bool XFilterEvent(XEvent *event, Window window)
     static Bool (*original)(XEvent *, Window);
     const char *guard = getenv("WECOM_IME_FIXTURE"), *display = getenv("DISPLAY");
     if (!original) original = dlsym(RTLD_NEXT, "XFilterEvent");
-    if (guard && !strcmp(guard, "1") && display && strcmp(display, ":0") && event->type == KeyPress &&
+    if (guard && !strcmp(guard, "1") && display && *display && event->type == KeyPress &&
         event->xkey.send_event && event->xkey.keycode == 255)
     {
         typedef intptr_t (*message_call)(void *, unsigned, uintptr_t, intptr_t, void *, unsigned, int);

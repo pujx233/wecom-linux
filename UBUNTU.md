@@ -1,6 +1,6 @@
 # 使用与构建
 
-当前测试版为企业微信 5.0.13.6005-7，内置私有 Wine 11.20。
+当前测试版为企业微信 5.0.13.6005-8~rc3，内置私有 Wine 11.20。
 安装方式见 [README](README.md)，组件指纹与测试结果分别保存在
 [release.json](ubuntu/release.json) 和 [validation.json](ubuntu/validation.json)。
 
@@ -22,7 +22,8 @@ WECOM_DPI=120 /opt/apps/com.qq.wecom.spark/files/start.sh
 WECOM_DPI=auto /opt/apps/com.qq.wecom.spark/files/start.sh
 ```
 
-初始化、升级和启动统一使用中文 locale，避免 Wine 重建代码页时覆盖字体回退表。
+初始化、升级和启动统一使用可用的 UTF-8 locale：优先 `zh_CN.UTF-8`，未生成时使用 `C.UTF-8`。
+locale 改变时重新导入包内字体配置，避免 Wine 切换代码页后覆盖中文字体回退表。此过程不生成或修改系统 locale。
 
 ## 文件窗口
 
@@ -103,7 +104,7 @@ python3 ubuntu/package.py \
   --xlib-source /absolute/libX11-wecom-20261122-source.tar.zst \
   --installer /absolute/WeCom_5.0.13.6005.exe \
   --stage /absolute/new-stage \
-  --output /absolute/com.qq.wecom.spark_5.0.13.6005-7_amd64.deb
+  --output /absolute/com.qq.wecom.spark_5.0.13.6005-8~rc3_amd64.deb
 ```
 
 自行构建后，更新 `release.json` 的组件指纹再打包。原始安装器、运行库及字体来源在 `materials/` 中记录。

@@ -77,7 +77,7 @@ try:
         display = x.XOpenDisplay(env['DISPLAY'].encode())
         if old_auth is None: os.environ.pop('XAUTHORITY')
         else: os.environ['XAUTHORITY'] = old_auth
-        assert display and env['DISPLAY'] != ':0'
+        assert display
         selection = x.XInternAtom(display, b'@server=ibus', False)
 
         def wait_owner(present):

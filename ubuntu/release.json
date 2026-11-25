@@ -1,7 +1,7 @@
 {
   "name": "企业微信",
   "package": "com.qq.wecom.spark",
-  "package_version": "5.0.13.6005-7",
+  "package_version": "5.0.13.6005-8~rc3",
   "status": "prerelease",
   "wecom_version": "5.0.13.6005",
   "installer_url": "https://dldir1v6.qq.com/wework/work_weixin/WeCom_5.0.13.6005.exe",
@@ -11,7 +11,7 @@
   "upstream_adapter": "tbsangel/archlinux-wine-wecom-setup@f0ad4711049476bb2d87b40acaff53ca5ee58124",
   "wine_source_sha256": "98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793",
   "prelogin_archive_sha256": "94eb246b3562e8e2e1d672a2f9c1edc91a15034a37106b6a6d7faae8dddcae62",
-  "wine_patch_sha256": "5a6bd27a85f946e3794adedeed18d7ef8a2cb69c3430c07c9e07d54197605f59",
+  "wine_patch_sha256": "4da6a19120721400bf071504f89b20aaaa549a9a75b64bc73b1432882ac073c9",
   "wine_components": {
     "wineserver": "wine/bin/wineserver",
     "ntdll.so": "wine/lib/wine/x86_64-unix/ntdll.so",
@@ -55,11 +55,11 @@
     "libcef.dll": "02b6cd5185af5fa390c41116f9c4a07912dc2175c8f8a75d0ec3f41256220265",
     "wineserver": "321a1be16686f73c002c54cb3050d0fbc6c86f6dd568741ffee5169b9dc14522",
     "ntdll.so": "2a41b6f4533170777a66bd53bd91010600e0f4c1a467dd308d41fabfe51e2705",
-    "win32u.so": "dd632e1e77541e23da510a4149a6440a645ad991448bc1c5b483376bdde2c86e",
+    "win32u.so": "eded330d6197c5ceed58bd3214c98713afa29bd67d487f7953d25667f693ef2e",
     "winex11.so": "f2c7b582641d7e690ddfabb25593550d721247241478da04b12a0d38891843b0",
     "wineps.so": "30b9b3db1eda53cc307828e05fc51952edcf6771174d196d49c291a78174dc8a",
-    "imm32-i386.dll": "36a05a3a0d144a20ee7dbb47e108c64c1972e3830d1357d27909efa19fc640fc",
-    "imm32-x86_64.dll": "8550278a740c1441fc9f2c802087a19590064cb4687abc5ea56a232729e7059e",
+    "imm32-i386.dll": "29286eba4843eee203474beae30a8f5ec505a85ddca7e61aa79fbabf8cae6863",
+    "imm32-x86_64.dll": "01ae693caa5b1eb265a89751568489e91e38a64224bdc6b84fdb6b10481eeb1a",
     "explorer.exe": "0e98db85cf10575807cf0e5677be600413739a72b1cfd6a3c0ea21a3b5452ec1",
     "wine": "fa443c7a1f7d289faeffab7cf79ae2f13398bd715ab25267e725e67d6bf765a1",
     "gdiplus-i386.dll": "0623c1e20536c9c734b0d8bef938b54ea6364fed009d98ed3b6f07ce310137ab",
@@ -108,9 +108,9 @@
     "current_runtime_packaged": true,
     "post_build_test_and_document_changes_in_deb": true,
     "documentation_snapshot": "Release source and tested runtime. The release assets contain final package checksums and validation results.",
-    "previous_local_deb_sha256": "acc43dbe33fb0d4fc5366ab74396a958c3c0eb49e308b16617cf3d197f6655b6"
+    "previous_local_deb_sha256": "91cc2d99e0b348efbb834dbaa7de63a51c3f9367d4a2da67ae028f7f38d2265a"
   },
-  "updated": "2026-11-22",
+  "updated": "2026-11-25",
   "base_package_sha256": [
     "2bdd9ac63a0a5e1f84da752b7c90f75bab5ebb2dcf84bb92ca99bed5e63afb65",
     "02a959cb4de850df6c584e798cb73506601de019a112dea3a3b85680eb11b324",
@@ -142,19 +142,23 @@
     "Meeting component integer rounding at explicitly configured 120/144 DPI"
   ],
   "focused_scenarios_passed": true,
-  "focused_scenarios_note": "RC17 runtime: 101 automatic groups and real-client input, clipboard, attachment, mail, tray, document and quick-meeting scenarios passed. The -7 package carries the identical runtime.",
-  "manifest_scope": "Public -7 prerelease. The 37 runtime components and vendor files are identical to validated RC17.",
+  "focused_scenarios_note": "Focused IME positioning review passed. Final-DEB test results are stored alongside the DEB; historical RC17 results apply to that dated runtime.",
+  "manifest_scope": "Validated 8~rc3 candidate; only win32u and both IMM32 DLLs differ from 8~rc2. No host patches.",
   "source_bundle": {
-    "filename": "wine-11.20-wecom-20261122-source.tar.zst",
-    "sha256": "ddb03638fe48b3b55213add08b8d1c25a4ac2ebf4a22bda0adfc9927611df2fc",
+    "filename": "wine-11.20.tar.gz",
+    "sha256": "98b21b4ebdf7d9e2baa4a3508514285cf449f455603f82d3364b014c0e79b793",
+    "patch_filename": "wine-11.20-x11-popups.patch",
+    "patch_sha256": "4da6a19120721400bf071504f89b20aaaa549a9a75b64bc73b1432882ac073c9",
+    "format": "upstream archive plus cumulative patch",
     "exact_build_source": true,
     "verified_files": 12476
   },
   "xlib_source_bundle": {
-    "filename": "libX11-wecom-20261122-source.tar.zst",
+    "filename": "libX11-wecom-source.tar.zst",
     "sha256": "06f884a618754b1aa8822834f1295c4719c409bd0064513ee23e8a6185365734",
     "exact_build_source": true,
     "ubuntu_version": "2:1.8.13-1ubuntu0.1",
     "patch_sha256": "9bc7549b6b84ac2bc753224b174e830cbe6ef2d99f0ec6eac56a41a4a2068655"
-  }
+  },
+  "artifacts_scope": "Build/input component fingerprints; shipped components are pinned in packaged-runtime.json."
 }

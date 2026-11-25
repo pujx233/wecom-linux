@@ -3,6 +3,9 @@ set -euo pipefail
 : "${WECOM_PREFIX:?Set WECOM_PREFIX to the intended WeCom prefix}"
 WECOM_PREFIX="$(cd -- "$WECOM_PREFIX" && pwd -P)"
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+wecom_locale=$(python3 "$script_dir/select-locale.py")
+unset LC_ALL
+export LANG="$wecom_locale" LC_CTYPE="$wecom_locale" LC_MESSAGES="$wecom_locale"
 app="$WECOM_PREFIX/drive_c/Program Files (x86)/WXWork/WXWork.exe"
 app_args=()
 if [[ "${WECOM_CEF_IME_FIX:-0}" == 1 ]]; then
@@ -15,7 +18,6 @@ overrides="$(cat "$script_dir/../configs/dll-overrides.txt")"
 cd -- "$(dirname -- "$app")"
 wine_env=(env -u LC_ALL -u WINEARCH -u WINESERVER -u WINELOADER -u WINELOADERNOEXEC -u WINEDLLPATH
   -u WINESERVERSOCKET
-  LANG=zh_CN.UTF-8 LC_CTYPE=zh_CN.UTF-8 LC_MESSAGES=zh_CN.UTF-8
   WINEPREFIX="$WECOM_PREFIX" WINEDLLOVERRIDES="$overrides" WINEDEBUG="${WINEDEBUG:--all}")
 wine_bin="${WECOM_WINE_BIN:-/usr/bin/wine}"
 test -x "$wine_bin"

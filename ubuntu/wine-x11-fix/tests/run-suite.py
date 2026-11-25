@@ -74,6 +74,8 @@ def main():
         add(name, 'pnp-relations/run-properties.py', ['--wine', wine, '--out', output / name, '--bits', bits])
     for name, script in [('popup', 'run-regression.py'), ('foreign-dc', 'dc-regression.py')]:
         add(name, script, ['--runtime', wine, '--output', output / name])
+    add('popup-owned-frame', 'run-regression.py',
+        ['--runtime', wine, '--output', output / 'popup-owned-frame', '--owned-frame'])
     for bits in ('32', '64'):
         name = 'cursor-' + bits
         add(name, 'cursor-regression.py', ['--wine', wine, '--manifest', args.runtime_manifest,
@@ -130,9 +132,13 @@ def main():
     for name, extra in [
         ('ime-96', ['--dpi', '96']), ('ime-192', ['--dpi', '192']),
         ('ime-unaware', ['--dpi', '192', '--awareness', 'unaware']),
-        ('ime-32', ['--dpi', '192', '--bits', '32']), ('ime-plain', ['--dpi', '192', '--frame', '0']),
+        ('ime-32', ['--dpi', '192', '--bits', '32']),
+        ('ime-plain', ['--dpi', '192', '--frame', '0', '--candidate']),
         ('ime-position', ['--dpi', '192', '--preedit', 'position']),
-        ('ime-mixed', ['--mixed-scale']), ('ime-candidate', ['--candidate'])]:
+        ('ime-mixed', ['--mixed-scale', '--candidate']), ('ime-candidate', ['--candidate']),
+        ('ime-candidate-32', ['--bits', '32', '--candidate']),
+        ('ime-candidate-96', ['--dpi', '96', '--candidate']),
+        ('ime-candidate-unaware', ['--awareness', 'unaware', '--candidate'])]:
         add(name, 'ime-position/run-isolated.py',
             ['--runtime', wine, '--output', output / name, '--name', 'run', *extra])
     for parent_bits, child_bits in [('32', '32'), ('32', '64'), ('64', '32'), ('64', '64')]:
@@ -166,10 +172,12 @@ def main():
     if args.previous_files:
         bitmap_args += ['--previous-runtime', args.previous_files / 'wine']
     add('clipboard-bitmap', 'run-clipboard-bitmap.py', bitmap_args)
-    add('prefix-settings', 'prefix-settings.py', ['--files', files, '--qa', output / 'prefix-settings'])
+    add('prefix-settings', 'prefix-settings.py',
+        ['--files', files, '--qa', output / 'prefix-settings', '--locale-switch'])
     add('upgrade', 'package-upgrade.py',
         ['--files', files, '--old-files', args.previous_files, '--qa', output / 'upgrade'])
-    add('native-dialogs', 'run-native-file-dialogs.py', ['--runtime', wine, '--output', output / 'native-dialogs'])
+    add('native-dialogs', 'run-native-file-dialogs.py',
+        ['--runtime', wine, '--files', files, '--output', output / 'native-dialogs'])
     if args.list_cases:
         print('\n'.join(cases))
         return 0

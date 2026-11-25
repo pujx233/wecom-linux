@@ -24,11 +24,17 @@ MODES = (
 
 parser = argparse.ArgumentParser(description="Exercise the native bridge using a private mock D-Bus service.")
 parser.add_argument("--runtime", required=True, type=Path)
+parser.add_argument("--files", type=Path, help="Use the locale selector shipped in this package")
 parser.add_argument("--prefix", type=Path, help="Reuse an owned fixture prefix and its private display")
 parser.add_argument("--output", required=True, type=Path)
 parser.add_argument("--fixtures", type=Path, help="Precompiled probe32.exe and probe64.exe")
 parser.add_argument("--case", action="append", choices=MODES, help="Run only the named cases for both architectures")
 args = parser.parse_args()
+selector = (args.files / 'template/wecom-compat/scripts' if args.files else
+            Path(__file__).resolve().parents[3] / 'scripts') / 'select-locale.py'
+selected_locale = subprocess.check_output([sys.executable, str(selector)], text=True).strip()
+os.environ.pop('LC_ALL', None)
+os.environ.update(LANG=selected_locale, LC_CTYPE=selected_locale, LC_MESSAGES=selected_locale)
 if args.prefix is None:
     root = args.output.resolve()
     root.mkdir(parents=True, exist_ok=False)
@@ -43,6 +49,8 @@ if args.prefix is None:
         env.pop('WECOM_QA_PRIVATE_BUS', None)
         command = [sys.executable, str(Path(__file__)), '--runtime', str(args.runtime.resolve()),
                    '--prefix', str(root / 'prefix'), '--output', str(root / 'results')]
+        if args.files:
+            command += ['--files', str(args.files.resolve())]
         if args.fixtures:
             command += ['--fixtures', str(args.fixtures.resolve())]
         for case in args.case or ():
@@ -250,9 +258,6 @@ open_log = root / "xdg-open-review.jsonl"
 open_log.write_text("")
 env = os.environ | {
     "DISPLAY": os.environ["DISPLAY"],
-    "LANG": "zh_CN.UTF-8",
-    "LC_CTYPE": "zh_CN.UTF-8",
-    "LC_MESSAGES": "zh_CN.UTF-8",
     "WINEPREFIX": str(prefix),
     "WINESERVER": str(runtime / "bin/wineserver"),
     "WINEDEBUG": "-all",

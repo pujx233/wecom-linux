@@ -64,7 +64,7 @@ def record_compositor(qa, xwayland_pid):
 
 @contextmanager
 def desktop(qa, size='1600x1000', bare=False, second_monitor=None, software=True, allow_eval=False,
-            boot_wine=True):
+            boot_wine=True, keyboard=False):
     qa = qa.resolve()
     if os.environ.get('WECOM_QA_SCALE') == '2':
         size = '3200x2000'
@@ -80,6 +80,7 @@ def desktop(qa, size='1600x1000', bare=False, second_monitor=None, software=True
     assert not processes(qa), 'another private test is running'
     assert size in ('1600x1000', '1920x1080', '3200x2000')
     assert second_monitor in (None, '2560x1440', '3840x2160')
+    assert bare or not keyboard
     env = os.environ.copy()
     for name in ('DISPLAY', 'XAUTHORITY', 'WAYLAND_DISPLAY', 'DBUS_SESSION_BUS_ADDRESS', 'LD_PRELOAD',
                  'LD_LIBRARY_PATH', 'WINEDLLPATH', 'WINELOADER', 'WINELOADERNOEXEC', 'WINEARCH',
@@ -96,7 +97,8 @@ def desktop(qa, size='1600x1000', bare=False, second_monitor=None, software=True
     pipewire_log = (qa / 'pipewire.log').open('a')
     shell = subprocess.Popen(['dbus-run-session', '--', sys.executable, str(Path(__file__).resolve()),
                               str(qa), '--bare' if bare else '--shell', size,
-                              *([second_monitor] if second_monitor else []), *(['--unsafe-mode'] if allow_eval else [])],
+                              *([second_monitor] if second_monitor else []), *(['--unsafe-mode'] if allow_eval else []),
+                              *(['--keyboard'] if keyboard else [])],
                              env=env, stdout=shell_log, stderr=subprocess.STDOUT,
                              start_new_session=True)
     try:
@@ -113,6 +115,7 @@ def desktop(qa, size='1600x1000', bare=False, second_monitor=None, software=True
                 argv = [os.fsdecode(arg) for arg in argv]
                 display = next(arg for arg in argv if arg.startswith(':'))
                 authority = Path(argv[argv.index('-auth') + 1])
+                # Display numbers are namespace-local; :0 can also be a private test server.
                 assert authority.is_relative_to(qa / 'runtime')
                 if authority.exists():
                     record_compositor(qa, pid)
@@ -236,7 +239,7 @@ if __name__ == '__main__':
     qa = Path(sys.argv[1])
     assert sys.argv[2] in ('--shell', '--bare')
     (qa / 'bus-address').write_text(os.environ['DBUS_SESSION_BUS_ADDRESS'] + '\n')
-    monitors = ['--virtual-monitor=' + size for size in sys.argv[3:] if size != '--unsafe-mode']
+    monitors = ['--virtual-monitor=' + size for size in sys.argv[3:] if size not in ('--unsafe-mode', '--keyboard')]
     if sys.argv[2] == '--shell':
         os.execl('/usr/bin/gnome-shell', 'gnome-shell', '--headless', '--wayland', *monitors,
                   *(['--unsafe-mode'] if '--unsafe-mode' in sys.argv else []),
@@ -271,5 +274,12 @@ if __name__ == '__main__':
     assert context.configure(['wecom-unit-tests', '--headless', '--wayland',
                               *monitors, '--wayland-display=wecom-qa'])[0]
     assert context.setup()
+    if '--keyboard' in sys.argv:
+        gi.require_version('Clutter', '18')
+        from gi.repository import Clutter
+        # Keep the keyboard alive so Xwayland has keyboard capabilities before the first test key.
+        virtual_keyboard = Clutter.get_default_backend().get_default_seat().create_virtual_device(
+            Clutter.InputDeviceType.KEYBOARD_DEVICE)
+        assert virtual_keyboard
     assert context.start()
     assert context.run_main_loop()

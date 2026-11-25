@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Type consecutive words through real private IBus and check the foreign editor's IMM results."""
 import argparse
+from contextlib import contextmanager
 import ctypes as C
 import hashlib
 import json
@@ -14,10 +15,41 @@ import subprocess
 import sys
 import threading
 import time
+from gi.repository import Gio, GLib
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / 'frame-composition'))
 from isolated import desktop, link_runtime_libraries, processes
+
+
+@contextmanager
+def keyboard_input(qa, env):
+    metadata = json.loads((qa / 'desktop.json').read_text())
+    assert env['DISPLAY'] == metadata['display'] and env['XDG_RUNTIME_DIR'] == metadata['runtime']
+    assert env['DBUS_SESSION_BUS_ADDRESS'] == metadata['bus']
+    assert Path(f"/proc/{metadata['xwayland_pid']}/stat").read_text().split()[21] == metadata['xwayland_start']
+    connection = Gio.DBusConnection.new_for_address_sync(
+        metadata['bus'], Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT |
+        Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION, None, None)
+    service = 'org.gnome.Mutter.RemoteDesktop'
+    try:
+        session = connection.call_sync(service, '/org/gnome/Mutter/RemoteDesktop', service, 'CreateSession',
+                                       None, None, Gio.DBusCallFlags.NONE, 5000, None).unpack()[0]
+
+        def call(method, parameters=None):
+            return connection.call_sync(service, session, service + '.Session', method, parameters,
+                                        None, Gio.DBusCallFlags.NONE, 5000, None)
+
+        call('Start')
+        try:
+            def send_key(value, pressed):
+                call('NotifyKeyboardKeysym', GLib.Variant('(ub)', (value, pressed)))
+
+            yield send_key
+        finally:
+            call('Stop')
+    finally:
+        connection.close_sync(None)
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--runtime', type=Path, required=True)
@@ -54,6 +86,8 @@ exe = qa / 'ime-process.exe'
 subprocess.run([compiler, '-O2', '-Wall', '-Wextra', str(HERE / 'ime-process.c'), '-o', str(exe),
                 '-limm32', '-luser32'], check=True)
 report = {'bits': args.bits, 'events': [], 'account_data_used': False, 'host_desktop_used': False,
+          'input_transport': 'org.gnome.Mutter.RemoteDesktop.Session.NotifyKeyboardKeysym',
+          'virtual_keyboard_created_before_application': True,
           'driver_sha256': hashlib.sha256(driver.read_bytes()).hexdigest()}
 lines = queue.Queue()
 app = ibus = frontend = engine = None
@@ -70,7 +104,7 @@ def wait_for(predicate, timeout=10):
 
 
 try:
-    with desktop(qa, size='1600x1000', bare=True) as env:
+    with desktop(qa, size='1600x1000', bare=True, keyboard=True) as env, keyboard_input(qa, env) as send_key:
         env.update(WINEPREFIX=str(qa / 'prefix'), WINESERVER=str(overlay / 'bin/wineserver'), WINEDEBUG='-all,+xim',
                    XMODIFIERS='@im=ibus', LANG='zh_CN.UTF-8', LC_CTYPE='zh_CN.UTF-8', WECOM_IME_FIXTURE='1',
                    WINEDLLOVERRIDES='winewayland.drv=d;mscoree,mshtml,winemenubuilder=',
@@ -81,19 +115,16 @@ try:
             env.pop('IBUS_ADDRESS_FILE', None)
         if args.trace: env['WINEDEBUG'] = '-all,+xim,+imm,+timestamp,+pid'
         x = C.CDLL('libX11.so.6')
-        xt = C.CDLL('libXtst.so.6')
         x.XOpenDisplay.argtypes = [C.c_char_p]; x.XOpenDisplay.restype = C.c_void_p
         x.XInternAtom.argtypes = [C.c_void_p, C.c_char_p, C.c_int]; x.XInternAtom.restype = C.c_ulong
         x.XGetSelectionOwner.argtypes = [C.c_void_p, C.c_ulong]; x.XGetSelectionOwner.restype = C.c_ulong
-        x.XKeysymToKeycode.argtypes = [C.c_void_p, C.c_ulong]; x.XKeysymToKeycode.restype = C.c_uint
-        x.XFlush.argtypes = [C.c_void_p]; x.XCloseDisplay.argtypes = [C.c_void_p]
-        xt.XTestFakeKeyEvent.argtypes = [C.c_void_p, C.c_uint, C.c_int, C.c_ulong]
+        x.XCloseDisplay.argtypes = [C.c_void_p]
         old_auth = os.environ.get('XAUTHORITY')
         os.environ['XAUTHORITY'] = env['XAUTHORITY']
         display = x.XOpenDisplay(env['DISPLAY'].encode())
         if old_auth is None: os.environ.pop('XAUTHORITY', None)
         else: os.environ['XAUTHORITY'] = old_auth
-        assert display and env['DISPLAY'] != ':0'
+        assert display
         with (qa / 'ibus.log').open('w') as bus_log, (qa / 'wine.log').open('w') as wine_log:
             def start_daemon():
                 command = ['ibus-daemon', '--single', '--emoji-extension=disable', '--cache=none']
@@ -136,10 +167,8 @@ try:
             report['ready'] = wait_for(lambda v: v['event'] == 'ready')
             def type_words(repetitions):
                 for character in 'ceshi wenjian zhongwen ' * repetitions:
-                    key = x.XKeysymToKeycode(display, ord(character))
-                    assert key and xt.XTestFakeKeyEvent(display, key, True, 0)
-                    assert xt.XTestFakeKeyEvent(display, key, False, 0)
-                    x.XFlush(display)
+                    send_key(ord(character), True)
+                    send_key(ord(character), False)
                     time.sleep(.008)
                 time.sleep(.8)
                 app.stdin.write('state\n')

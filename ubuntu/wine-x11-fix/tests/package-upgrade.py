@@ -99,7 +99,7 @@ with desktop(qa, '3200x2000') as desktop_env:
             while True:
                 tree = subprocess.check_output(['xwininfo', '-root', '-tree'], env=env, text=True)
                 mappings = None
-                if '企业微信' in tree:
+                if any(title in tree for title in ('企业微信', 'WeCom')):
                     for app_proc in applications(prefix):
                         try:
                             loaded = (app_proc / 'maps').read_text()

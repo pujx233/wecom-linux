@@ -14,6 +14,7 @@ import time
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--runtime', required=True, type=Path)
 parser.add_argument('--output', required=True, type=Path)
+parser.add_argument('--owned-frame', action='store_true', help='Use the DEB owned-window management policy')
 args = parser.parse_args()
 runtime, root = args.runtime.resolve(strict=True), args.output.resolve()
 root.mkdir(parents=True, exist_ok=False)
@@ -24,6 +25,8 @@ subprocess.run(['i686-w64-mingw32-gcc', '-O2', '-Wall', '-Wextra',
                 '-o', str(root / 'window-regression.exe'), '-lgdi32', '-luser32'], check=True)
 env = os.environ.copy()
 env.update(WINEPREFIX=str(prefix), WINEDEBUG='-all',
+           WINE_X11_OWNED_FRAME='1' if args.owned_frame else '0',
+           WINE_X11_FRAME_ATTACHED_CLASSES='', WINE_X11_FRAME_DECORATION_CLASSES='',
            WINEDLLOVERRIDES='mscoree,mshtml,winemenubuilder=',
            WINESERVER=str(runtime / 'bin/wineserver'), XDG_CONFIG_HOME=str(logs / 'config'),
            XDG_CACHE_HOME=str(logs / 'cache'), XMODIFIERS='@im=none',
@@ -34,6 +37,7 @@ processes = []
 files = []
 completed = False
 report = {'started_at': datetime.now(timezone.utc).isoformat(),
+          'owned_frame': args.owned_frame,
           'driver_sha256': hashlib.sha256(driver.read_bytes()).hexdigest(),
           'test_exe_sha256': hashlib.sha256((root / 'window-regression.exe').read_bytes()).hexdigest(),
           'test_script_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
@@ -162,7 +166,8 @@ try:
         assert x.XTranslateCoordinates(display, xid, attributes.root, 0, 0,
                                        C.byref(left), C.byref(top), C.byref(child))
         stage.update(width=attributes.width, height=attributes.height, mapped=attributes.map_state == 2,
-                     override_redirect=bool(attributes.override_redirect), left=left.value, top=top.value)
+                     override_redirect=bool(attributes.override_redirect), left=left.value, top=top.value,
+                     wm_override_redirect=bool(wm_attributes.override_redirect))
         bounding = mask(xid, 0, attributes.width, attributes.height)
         inputs = mask(xid, 2, attributes.width, attributes.height)
         stage.update(bounding_pixels=sum(bounding), input_pixels=sum(inputs),
@@ -180,23 +185,34 @@ try:
             check('nonempty 1x1 popup still maps', stage['mapped'] and
                   (attributes.width, attributes.height) == (1, 1))
         elif name in ('palette', 'appwindow', 'resizable', 'activated'):
-            check(name + ': normal WM management retained', not wm_attributes.override_redirect)
+            unmanaged = args.owned_frame and name == 'activated'
+            check(name + ': expected WM management retained', bool(wm_attributes.override_redirect) == unmanaged)
             if name == 'activated':
                 check('owned tool accepts explicit activation', stage['active'] == stage['hwnd'])
         elif name in ('edgemenu', 'bordered'):
             expected = (648, 900, 320, 100) if name == 'edgemenu' else (600, 852, 416, 196)
             if name == 'edgemenu':
                 check('fixed menu stays unmanaged', stage['override_redirect'])
-            check(name + ': requested position and size retained at screen bottom', stage['mapped'] and
-                  (left.value, top.value, attributes.width, attributes.height) == expected)
+            native_rect = (left.value, top.value, attributes.width, attributes.height)
+            if name == 'bordered' and not args.owned_frame:
+                # WS_SYSMENU makes this a managed legacy window. The WM may place it inside the screen.
+                check('bordered: legacy WM management retained', not wm_attributes.override_redirect)
+                check('bordered: requested size retained', stage['mapped'] and native_rect[2:] == expected[2:])
+                check('bordered: Win32 tracks the WM placement', native_rect == tuple(stage['win32_rect']))
+            else:
+                check(name + ': requested position and size retained at screen bottom', stage['mapped'] and
+                      native_rect == expected and native_rect == tuple(stage['win32_rect']))
+                if name == 'bordered':
+                    check('bordered: fixed owned shadow stays unmanaged', wm_attributes.override_redirect)
             check(name + ': foreground unchanged', stage['foreground'] == first_foreground)
             if name == 'bordered':
                 check('bordered shadow remains input transparent', not any(inputs))
         elif name in ('layered', 'plain', 'retagged', 'interactive', 'remapped', 'cycles', 'stress'):
-            grouped = stage.get('wm_xid') and stage['wm_xid'] != xid
-            check(name + ': ARGB visual region retained', bounding == ring if grouped else sum(bounding) == 128 * 128)
+            # This class is not attached. A separate WM frame does not imply an attached decoration.
+            check(name + ': ARGB visual region retained', sum(bounding) == 128 * 128)
             check(name + ': exact alpha input mask retained', inputs == ring)
-            check(name + ': tool owned by managed window stays managed', not wm_attributes.override_redirect)
+            unmanaged = args.owned_frame and name in ('layered', 'cycles', 'stress')
+            check(name + ': expected WM management retained', bool(wm_attributes.override_redirect) == unmanaged)
             check(name + ': nonactivating popup leaves foreground unchanged', stage['foreground'] == first_foreground)
             image = x.XGetImage(display, xid, 0, 0, 128, 128, C.c_ulong(-1).value, 2)
             assert image and image.contents.bits_per_pixel == 32 and image.contents.byte_order == 0

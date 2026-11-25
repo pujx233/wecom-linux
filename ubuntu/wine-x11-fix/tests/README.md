@@ -8,6 +8,8 @@
 需要完整的 Wine WoW64 运行库、对应补丁源码，以及 Python GI/Pillow、GNOME/Mutter、Xwayland、
 PipeWire、GStreamer、双架构 MinGW、Xvfb、Openbox 和 xcompmgr。
 输入法用例还需要 IBus，UDisks 用例需要 libdbus 开发文件。
+连续组词用例在私有 Mutter 中预先建立虚拟键盘，通过其 RemoteDesktop 接口注入按键，
+避免 Xwayland 的 XTEST 门户权限流程阻断输入。按键仍经过 Xwayland、IBus 和真实 Win32 正文进程。
 CEF 内存组需要 bwrap，读取打包模板中的 CEF 文件，不使用账号目录。
 
 ```sh
@@ -18,8 +20,15 @@ python3 ubuntu/wine-x11-fix/tests/run-suite.py \
   --output /absolute/new-qa
 ```
 
-输出目录应为新的测试目录。套件顺序运行各组，使用空白 prefix、私有显示器和私有 D-Bus，
-不使用真实账号。进度显示在终端，`result.json` 汇总每组退出码和日志路径。
+输出目录应为新的测试目录，放在空间充足的工作盘；CEF/PE 沙箱会隔离 `/tmp`，升级恢复也会同时创建模板副本。
+套件顺序运行各组，使用空白 prefix、私有显示器和私有 D-Bus，不使用真实账号。
+进度显示在终端，`result.json` 汇总每组退出码和日志路径。
+显示编号属于当前命名空间，容器中的 `:0` 也可以是私有显示器。隔离由独立运行目录、Xauthority、
+私有合成器的进程身份和软件包指纹确认，不依赖显示编号。
+完整测试环境需要生成 `zh_CN.UTF-8` 和 `en_US.UTF-8` locale，以便分别覆盖中文和英文输入环境。
+`launcher` 另用空 `LOCPATH` 检查系统未生成中文 locale 时的 `C.UTF-8` 选择。
+`prefix-settings --locale-switch` 检查同一 prefix 在两种 locale 间往返后仍能绘制中文，隐藏宿主字体以免掩盖问题。
+`native-dialogs` 使用包内 locale 选择器；可在空 `LOCPATH` 下重跑这组，验证缺少中文 locale 时的中文文件接口。
 可增加 `--list-cases` 查看同一套参数注册的全部组。统一入口按各组注册的参数运行，单组调试请用对应脚本的命令参数。
 任何一组失败，最终退出码为 1；已知问题也保留失败结果。
 成功组完成后会清理其临时 Wine prefix，保留日志、截图和夹具；失败组保留 prefix。
@@ -53,8 +62,8 @@ python3 ubuntu/wine-x11-fix/tests/run-suite.py \
 | `pe-image-cache` | 32/64 位 DLL 与 EXE、资源按需映射、只读页共享、重定位与 COW、卸载回收，以及创建文件、预留缓存头和预留节空间失败时的原加载器回退 |
 | `launcher`、`launcher-clean` | 启动顺序、继承的 Wine 环境、忙碌状态、服务失败、注册表失败、两种启动路径的 CEF 开关及新旧输入路径互斥 |
 | `upgrade` | 全新启动、无 7z 首次启动、旧进程继续运行、退出后更新、同版本不重复复制、双架构 SLWGA/user32 缺失恢复、实际加载的 user32 指纹、账号数据与模板独立 |
-| `prefix-settings` | 100%/200% 自动 DPI、手工 120 DPI、恢复自动设置、运行中跳过配置，以及中文缺字正反例 |
-| `popup` | 零尺寸与 1×1、普通与分层工具窗、边缘菜单、透明度、颜色键、形状、输入区域、重显和显式激活 |
+| `prefix-settings` | 100%/200% 自动 DPI、手工 120 DPI、恢复自动设置、忙碌配置跳过、中文缺字正反例和 locale 往返 |
+| `popup`、`popup-owned-frame` | 旧模式和 DEB 模式下的尺寸、WM 管理、边缘菜单、alpha、形状、输入区域、重显和显式激活 |
 | `anchor` | owner 提交前、提交后、宿主移动后更新附属层，以及独立弹窗的绝对定位 |
 | `first`、`cancel` | 阴影先于正文、首帧上传与 XSync 完成顺序、未绘制即关闭、重开再绘制 |
 | `first-odd-1/2`、`cancel-odd-2` | 奇数像素菜单在 100%/200% 下的首帧及取消重开；核对宿主取整后 Win32 矩形、可见像素和 XSync 完成 |
@@ -101,6 +110,11 @@ python3 ubuntu/wine-x11-fix/tests/run-suite.py \
 旧的 `run-frame-move-race.py` 针对按样式自动合并的旧实现，保留作历史定位材料。
 当前附属坐标协议由 `anchor` 验证；旧实验及本轮迁移草稿均未计入正式结果。
 来源、坐标语义和迁移问题见[旧测试复核](../CODE-REVIEW.md#旧测试复核)。
+
+两组 `popup` 显式固定 `WINE_X11_OWNED_FRAME=0/1`，不继承终端中的模式或附属窗口类名。
+旧模式中带 `WS_SYSMENU` 的阴影由 WM 管理，可被 WM 移回屏内，检查 Win32 与原生坐标同步及尺寸保持。
+DEB 模式下同一固定 owned 阴影不交给 WM 重新定位，仍严格检查请求的边缘坐标、尺寸和输入穿透。
+普通有标题窗口、应用窗口和可调整尺寸窗口在两种模式下都必须保留 WM 管理。
 
 `ime-process-*` 使用私有 Mutter/Xwayland、IBus 和两个真实 Win32 进程。
 测试驱动只在私有 DISPLAY 中注入与 XIM 相同的 Unix 驱动入口；不加载到真实企业微信。
@@ -282,3 +296,13 @@ RC16 的实机记录另有聊天到搜索的同窗口串词，见下一节的 RC
 输入法测试的驱动副本同时链接包内私有 ELF 依赖，避免漏测该库。
 实机还需快速输入 `nihao`，直接点击搜索输入 `wenjian` 并按空格：搜索为“文件”，聊天保留“你好”。
 重复测试时直接清空搜索再点聊天，不在空搜索按 Escape，以免触发企微的关闭到托盘行为。
+
+## 8~rc3 候选位置回归
+
+启用 `--camera` 的当前完整矩阵为 105 组。新增的 32 位、96 DPI 和 DPI unaware candidate 组，
+与原有 candidate、普通外框、混合缩放和 position preedit 对照一起运行。
+检查显式候选位置之后的每次通知，覆盖 composition/caret 顺序、临时 1 像素 caret、
+多候选列表、IMC 重建与恢复、未关联上下文及通知重入。
+
+最终完整 DEB 已通过 105/105 组，文件对话框完整执行 84 项。真实客户端的聊天和搜索输入由用户验证稳定，
+聊天位置采样在首次观察到显式候选请求后没有再出现高度交替。结果及 DEB SHA256 保存在包旁的 `validation.json`。

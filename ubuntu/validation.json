@@ -1,15 +1,15 @@
 {
-  "status": "5.0.13.6005-7 prerelease; identical RC17 runtime, 101 automatic groups and real-client scenarios passed.",
+  "status": "Local 8~rc3 candidate: final complete DEB passed 105/105 regression groups; real input and candidate stability verified.",
   "sanitized": true,
   "environment": "Each dated entry identifies its own DEB and compositor. The current candidate uses unmodified distro Mutter and KWin.",
   "runtime_sha256": {
     "wineserver": "321a1be16686f73c002c54cb3050d0fbc6c86f6dd568741ffee5169b9dc14522",
     "ntdll.so": "2a41b6f4533170777a66bd53bd91010600e0f4c1a467dd308d41fabfe51e2705",
-    "win32u.so": "dd632e1e77541e23da510a4149a6440a645ad991448bc1c5b483376bdde2c86e",
+    "win32u.so": "eded330d6197c5ceed58bd3214c98713afa29bd67d487f7953d25667f693ef2e",
     "winex11.so": "f2c7b582641d7e690ddfabb25593550d721247241478da04b12a0d38891843b0",
     "wineps.so": "30b9b3db1eda53cc307828e05fc51952edcf6771174d196d49c291a78174dc8a",
-    "imm32-i386.dll": "1cb011215a17a71eba145029866ee6511203b0bd52bfcc683122d3658f62e7e2",
-    "imm32-x86_64.dll": "566b0d7084e48a1688fe81d541544cb49edf76424ac8728161de40e4a0684c4f",
+    "imm32-i386.dll": "80aa616b963205f61601b1ca97291a5fc2dc1a7df319bf6377df227190fcfa98",
+    "imm32-x86_64.dll": "66654f2eb7f8d11fbd7ab247f0847f9868ec63abc9c4a90d75ffa3dbd9a5d3f3",
     "explorer.exe": "ddf50edbff02df3fd179478c94058b3932350e54703defabe979ca5fe4ffcdf6",
     "wine": "fa443c7a1f7d289faeffab7cf79ae2f13398bd715ab25267e725e67d6bf765a1",
     "gdiplus-i386.dll": "51e3452659cc799d7398cc25928bed15cfcfc87eecf3a01d27432d5c9210ffcf",
@@ -42,15 +42,13 @@
     "libX11.so.6": "4707fc0965ab25e91167d77707656a25ac6661127e9cf500a86dfb7545db7db1"
   },
   "source_patch_replay": {
-    "files": 87,
-    "diff_sections": 87,
-    "verified_source_files": 12476,
-    "patch_sha256": "5a6bd27a85f946e3794adedeed18d7ef8a2cb69c3430c07c9e07d54197605f59",
-    "zero_fuzz": true,
-    "all_files_match": true,
     "patched_files": 87,
-    "baseline_unchanged_files_verified": true,
-    "source_bundle_sha256": "ddb03638fe48b3b55213add08b8d1c25a4ac2ebf4a22bda0adfc9927611df2fc"
+    "diff_sections": 97,
+    "verified_source_files": 12476,
+    "patch_sha256": "4da6a19120721400bf071504f89b20aaaa549a9a75b64bc73b1432882ac073c9",
+    "zero_fuzz": true,
+    "zero_offsets": true,
+    "all_files_match": true
   },
   "isolated": {
     "attached_coordinates": {
@@ -5943,5 +5941,871 @@
     "upstream_exe_updated": false,
     "account_data_included": false,
     "host_changes_required": false
+  },
+  "typing_jitter_20261123": {
+    "date": "2026-11-23",
+    "candidate": "5.0.13.6005-8~rc2",
+    "baseline": "5.0.13.6005-8~rc1",
+    "source": "wine-x11-fix/CODE-REVIEW.md",
+    "old_runtime_control": {
+      "composition_first_order_cases": 4,
+      "intermediate_positions_incorrect": true,
+      "last_position_alone_would_pass": true,
+      "recording_displacement_pixels": 34
+    },
+    "coordinate_matrix": {
+      "groups": 8,
+      "cases": 261,
+      "passed": true,
+      "every_ordered_update_checked": true,
+      "coordinate_conversion_returns_checked": true,
+      "profiles": [
+        {
+          "name": "fixed32-final",
+          "cases": 31,
+          "passed": true
+        },
+        {
+          "name": "fixed64-final",
+          "cases": 31,
+          "passed": true
+        },
+        {
+          "name": "fixed96-final",
+          "cases": 31,
+          "passed": true
+        },
+        {
+          "name": "unaware-final",
+          "cases": 31,
+          "passed": true
+        },
+        {
+          "name": "plain-final",
+          "cases": 31,
+          "passed": true
+        },
+        {
+          "name": "position-final",
+          "cases": 31,
+          "passed": true
+        },
+        {
+          "name": "mixed-final",
+          "cases": 37,
+          "passed": true
+        },
+        {
+          "name": "candidate-final",
+          "cases": 38,
+          "passed": true
+        }
+      ]
+    },
+    "runtime_sha256": {
+      "win32u.so": "27d37161efba9bb8a6192479809b75e47d7ab5c37e5a14aa24996e25a3025a4e"
+    },
+    "glibc_minimum": "2.38",
+    "host_desktop_changes_required": false,
+    "account_data_used": false,
+    "real_client_after_fix_verified": false,
+    "full_regression": {
+      "unique_groups": 102,
+      "passed_groups": 102,
+      "passed": true,
+      "all_runtime_component_hashes_identical": true,
+      "initial_failed_groups": [
+        "cef-image-cache",
+        "frame-compositor",
+        "ime-continuous-32",
+        "ime-continuous-64",
+        "ime-gnome-restarts-32",
+        "ime-gnome-restarts-64",
+        "pe-image-cache",
+        "upgrade"
+      ],
+      "environment_resolution": {
+        "cef-image-cache": "Build-volume output, outside sandbox /tmp.",
+        "pe-image-cache": "Build-volume output, outside sandbox /tmp.",
+        "frame-compositor": "Private XDamage development files; host unchanged.",
+        "upgrade": "Complete recovery matrix passed on the build volume.",
+        "ime-gnome-restarts-32": "Native input with a pre-created private keyboard.",
+        "ime-continuous-32": "Native input with a pre-created private keyboard.",
+        "ime-gnome-restarts-64": "Native input with a pre-created private keyboard.",
+        "ime-continuous-64": "Native input with a pre-created private keyboard."
+      },
+      "groups": [
+        {
+          "name": "launcher",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 8.56
+        },
+        {
+          "name": "display-dpi",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 0.05
+        },
+        {
+          "name": "initial-thread-dpi",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 18.82
+        },
+        {
+          "name": "dpi-message",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 14.38
+        },
+        {
+          "name": "launcher-clean",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 7.98
+        },
+        {
+          "name": "cef-image-cache",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 52.42
+        },
+        {
+          "name": "pe-image-cache",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 26.74
+        },
+        {
+          "name": "native-size",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 0.09
+        },
+        {
+          "name": "frame-compositor",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 7.7
+        },
+        {
+          "name": "surface-commit",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 8.26
+        },
+        {
+          "name": "surface-transition",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 43.12
+        },
+        {
+          "name": "surface-lock",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 0.07
+        },
+        {
+          "name": "pnp-queue",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 0.13
+        },
+        {
+          "name": "bluetooth-names",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 0.19
+        },
+        {
+          "name": "software-licensing",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 6.81
+        },
+        {
+          "name": "preview-shadow",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 9.84
+        },
+        {
+          "name": "udisks",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 0.13
+        },
+        {
+          "name": "pnp-32",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 5.07
+        },
+        {
+          "name": "pnp-64",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 4.29
+        },
+        {
+          "name": "popup",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 8.95
+        },
+        {
+          "name": "foreign-dc",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 6.06
+        },
+        {
+          "name": "popup-owned-frame",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 9.2
+        },
+        {
+          "name": "cursor-32",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 6.17
+        },
+        {
+          "name": "cursor-64",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 6.98
+        },
+        {
+          "name": "mouse-queue",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 12.96
+        },
+        {
+          "name": "richedit-ime",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 16.44
+        },
+        {
+          "name": "xim-callbacks",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 12.29
+        },
+        {
+          "name": "clipboard-ole",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 17.86
+        },
+        {
+          "name": "gdiplus",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 16.78
+        },
+        {
+          "name": "camera",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 13.85
+        },
+        {
+          "name": "foreground-policy",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 0.17
+        },
+        {
+          "name": "popup-focus-32",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 9.84
+        },
+        {
+          "name": "restore-focus-32",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 11.16
+        },
+        {
+          "name": "restore-foreground-32",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 11.92
+        },
+        {
+          "name": "popup-focus-64",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 11.6
+        },
+        {
+          "name": "restore-focus-64",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 12.02
+        },
+        {
+          "name": "restore-foreground-64",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 13.07
+        },
+        {
+          "name": "first",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 7.71
+        },
+        {
+          "name": "cancel",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 7.96
+        },
+        {
+          "name": "first-odd-1",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 7.27
+        },
+        {
+          "name": "first-odd-2",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 7.68
+        },
+        {
+          "name": "cancel-odd-2",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 7.81
+        },
+        {
+          "name": "anchor",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 11.23
+        },
+        {
+          "name": "frame-sync",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 7.42
+        },
+        {
+          "name": "frame-reuse",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 7.93
+        },
+        {
+          "name": "shape",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 7.09
+        },
+        {
+          "name": "own-dc",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 47.39
+        },
+        {
+          "name": "resize",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 6.67
+        },
+        {
+          "name": "extents-move",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 7.24
+        },
+        {
+          "name": "extents-no-ack",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 7.08
+        },
+        {
+          "name": "extents-still",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 7.45
+        },
+        {
+          "name": "extents-direct",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 7.23
+        },
+        {
+          "name": "extents-native-gdi",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 7.13
+        },
+        {
+          "name": "extents-native-dc",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 7.36
+        },
+        {
+          "name": "extents-native-child-dc",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 7.34
+        },
+        {
+          "name": "extents-native-foreign-dc",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 7.35
+        },
+        {
+          "name": "foreign",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 7.74
+        },
+        {
+          "name": "roles",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 9.63
+        },
+        {
+          "name": "input",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 18.09
+        },
+        {
+          "name": "create",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 5.99
+        },
+        {
+          "name": "cards",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 26.3
+        },
+        {
+          "name": "display-removal",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 11.78
+        },
+        {
+          "name": "display-removal-resize",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 12.03
+        },
+        {
+          "name": "display-removal-move",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 12.44
+        },
+        {
+          "name": "display-removal-update",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 12.21
+        },
+        {
+          "name": "display-removal-minimized",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 12.65
+        },
+        {
+          "name": "maximize-1",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 57.61
+        },
+        {
+          "name": "workarea-1",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 74.85
+        },
+        {
+          "name": "fullscreen-1",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 107.38
+        },
+        {
+          "name": "maximize-2",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 58.19
+        },
+        {
+          "name": "workarea-2",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 72.04
+        },
+        {
+          "name": "fullscreen-2",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 106.85
+        },
+        {
+          "name": "ime-96",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 23.28
+        },
+        {
+          "name": "ime-192",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 23.65
+        },
+        {
+          "name": "ime-unaware",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 23.73
+        },
+        {
+          "name": "ime-32",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 26.19
+        },
+        {
+          "name": "ime-plain",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 23.91
+        },
+        {
+          "name": "ime-position",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 25.19
+        },
+        {
+          "name": "ime-mixed",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 26.61
+        },
+        {
+          "name": "ime-candidate",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 25.21
+        },
+        {
+          "name": "ime-process-32-32",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 17.17
+        },
+        {
+          "name": "ime-process-32-64",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 14.13
+        },
+        {
+          "name": "ime-process-64-32",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 14.37
+        },
+        {
+          "name": "ime-process-64-64",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 14.85
+        },
+        {
+          "name": "xim-lifecycle",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 0.18
+        },
+        {
+          "name": "xim-stock-hook-control",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 14.88
+        },
+        {
+          "name": "xim-reconnect-32",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 17.82
+        },
+        {
+          "name": "ime-gnome-restarts-32",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 29.85
+        },
+        {
+          "name": "ime-continuous-32",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 20.48
+        },
+        {
+          "name": "xim-reconnect-64",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 17.47
+        },
+        {
+          "name": "ime-gnome-restarts-64",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 22.21
+        },
+        {
+          "name": "ime-continuous-64",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 17.44
+        },
+        {
+          "name": "pending-native-minimize",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 14.45
+        },
+        {
+          "name": "reentrant-fullscreen",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 15.34
+        },
+        {
+          "name": "initial-fullscreen",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 17.57
+        },
+        {
+          "name": "fullscreen-host-reply",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 20.44
+        },
+        {
+          "name": "display-change-fullscreen",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 20.26
+        },
+        {
+          "name": "clipboard",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 9.11
+        },
+        {
+          "name": "clipboard-bitmap",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 28.11
+        },
+        {
+          "name": "prefix-settings",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 42.63
+        },
+        {
+          "name": "upgrade",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 96.86
+        },
+        {
+          "name": "native-dialogs",
+          "passed": true,
+          "exit_code": 0,
+          "seconds": 134.77
+        }
+      ]
+    },
+    "continuous_input_control": {
+      "baseline_current_32_passed": true,
+      "initial_x_test_received_no_native_keys": true,
+      "native_keyboard_created_before_app": true,
+      "all_expected_words_including_first_checked": true,
+      "candidate_32_64_and_daemon_restart_groups_passed": true
+    }
+  },
+  "typing_jitter_20261125": {
+    "candidate": "5.0.13.6005-8~rc3",
+    "baseline": "5.0.13.6005-8~rc2",
+    "root_cause": "Independent candidate, composition and caret positioning requests overwrote the same native XIM spot.",
+    "real_observation": {
+      "ibus_y": [
+        1600,
+        1601,
+        1635
+      ],
+      "caret_heights": [
+        1,
+        35
+      ],
+      "explicit_candidate_request_confirmed": true
+    },
+    "repair": "Read current IMC candidate data through the existing dispatch callback, retain its positioning priority, and reject stale or inactive-context native updates.",
+    "baseline_coordinate_cases": 54,
+    "baseline_failed_cases": 15,
+    "prereview_coordinate_profiles": [
+      {
+        "name": "final-review32",
+        "exit_code": 0,
+        "passed": true,
+        "cases": 54
+      },
+      {
+        "name": "final-unaware",
+        "exit_code": 0,
+        "passed": true,
+        "cases": 54
+      },
+      {
+        "name": "final-plain",
+        "exit_code": 0,
+        "passed": true,
+        "cases": 54
+      },
+      {
+        "name": "final-position",
+        "exit_code": 0,
+        "passed": true,
+        "cases": 33
+      }
+    ],
+    "prereview_case_count": 195,
+    "prereview_passed": true,
+    "final_deb_regression_result": "See validation.json distributed alongside the complete DEB.",
+    "source_replay": {
+      "passed": true,
+      "source_files": 12476,
+      "replay_files": 12476,
+      "different": [],
+      "patch_sha256": "4da6a19120721400bf071504f89b20aaaa549a9a75b64bc73b1432882ac073c9",
+      "zero_fuzz": true,
+      "zero_offsets": true,
+      "runtime_changed_source_files": [
+        "dlls/imm32/imm.c",
+        "dlls/win32u/imm.c",
+        "dlls/win32u/input.c",
+        "dlls/win32u/sysparams.c",
+        "dlls/win32u/win32u_private.h",
+        "include/ntuser.h"
+      ]
+    },
+    "abi": {
+      "same_exports": true,
+      "export_count": 506,
+      "needed": [
+        "ntdll.so",
+        "libm.so.6",
+        "libc.so.6"
+      ],
+      "glibc_floor": "2.38",
+      "gdi_driver_abi": 112,
+      "i386-windows": {
+        "same_exports": true,
+        "export_count": 136
+      },
+      "x86_64-windows": {
+        "same_exports": true,
+        "export_count": 136
+      }
+    },
+    "runtime_changed": [
+      "win32u.so",
+      "imm32-i386.dll",
+      "imm32-x86_64.dll"
+    ],
+    "host_patches_required": false,
+    "real_client_after_fix_verified": true,
+    "runtime_sha256": {
+      "win32u.so": "eded330d6197c5ceed58bd3214c98713afa29bd67d487f7953d25667f693ef2e",
+      "imm32-i386.dll": "80aa616b963205f61601b1ca97291a5fc2dc1a7df319bf6377df227190fcfa98",
+      "imm32-x86_64.dll": "66654f2eb7f8d11fbd7ab247f0847f9868ec63abc9c4a90d75ffa3dbd9a5d3f3"
+    },
+    "real_client_validation": {
+      "user_confirmed_input_normal_and_candidates_stable": true,
+      "registered_callback_observed": true,
+      "candidate_client_y": [
+        1300
+      ],
+      "post_request_ibus_updates": 661,
+      "post_request_ibus_y": {
+        "1600": 661
+      },
+      "pre_request_ibus_y": {
+        "1820": 4,
+        "1635": 26,
+        "1600": 2
+      },
+      "expected_native_y": 1600,
+      "unexpected_post_request_y": 0,
+      "first_explicit_candidate_observed_ms": 179523135,
+      "input_text_recorded": false,
+      "user_checked_paths": [
+        "chat",
+        "top_search"
+      ],
+      "automatic_coordinate_trace_scope": "Active chat context after first observed explicit candidate request"
+    },
+    "real_loaded_components": [
+      {
+        "pid": 2164530,
+        "modules": [
+          {
+            "path": "/home/sai/.local/share/wecom-local-deb/5.0.13.6005-8~rc3/package/opt/apps/com.qq.wecom.spark/files/wine/lib/wine/i386-windows/imm32.dll",
+            "sha256": "80aa616b963205f61601b1ca97291a5fc2dc1a7df319bf6377df227190fcfa98"
+          },
+          {
+            "path": "/home/sai/.local/share/wecom-local-deb/5.0.13.6005-8~rc3/package/opt/apps/com.qq.wecom.spark/files/wine/lib/wine/x86_64-unix/win32u.so",
+            "sha256": "eded330d6197c5ceed58bd3214c98713afa29bd67d487f7953d25667f693ef2e"
+          }
+        ]
+      }
+    ],
+    "final_deb": {
+      "version": "5.0.13.6005-8~rc3",
+      "filename": "com.qq.wecom.spark_5.0.13.6005-8~rc3_amd64.deb",
+      "sha256": "2eb07d23153a81ae31316c1e3c663219e85f57e75958d0da65a6963c5ee9cfe8",
+      "bytes": 962246568,
+      "locally_deployed": true,
+      "published": false,
+      "full_regression_groups_total": 105,
+      "full_regression_groups_passed": 105,
+      "native_file_dialog_cases": 84,
+      "complete": true,
+      "passed": true,
+      "validation_file": "dist/ime-jitter-8rc3/validation.json"
+    }
   }
 }

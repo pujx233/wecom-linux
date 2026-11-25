@@ -26,7 +26,7 @@ with tempfile.TemporaryDirectory(prefix='wecom-launcher-test-') as temporary:
     scripts.mkdir(parents=True)
     installed = args.files.resolve(strict=True) if args.files else None
     source_scripts = installed / 'template/wecom-compat/scripts' if installed else repo / 'scripts'
-    for name in ('launch-wecom.sh', 'prepare-startup.py'):
+    for name in ('launch-wecom.sh', 'prepare-startup.py', 'select-locale.py'):
         shutil.copy2(source_scripts / name, scripts / name)
     (scripts / 'ibus-xim.py').write_text("import os, sys\nos.environ['TEST_XIM_LAUNCH'] = '1'\n"
                                          "os.execvp(sys.argv[1], sys.argv[1:])\n")
@@ -74,6 +74,8 @@ with open(os.environ['TEST_CALLS'], 'a') as output:
                             'private_xim': os.environ.get('TEST_XIM_LAUNCH'),
                             'frame': os.environ.get('WINE_X11_OWNED_FRAME'),
                             'preload': os.environ.get('LD_PRELOAD'),
+                            'locale': {key: os.environ.get(key) for key in
+                                       ('LANG', 'LC_CTYPE', 'LC_MESSAGES', 'LC_ALL')},
                             'lock_exists': (prefix / 'drive_c/ProgramData/boost_interprocess/test/'
                                             'WXWORK-TBS-HELPER-LOCK').exists()}) + '\\n')
 if pathlib.Path(sys.argv[0]).name == 'wineserver' and os.environ.get('TEST_SERVER_ERROR'):
@@ -106,7 +108,7 @@ if sys.argv[1:3] == ['reg', 'query']:
     def run_case(name, mode, busy=False, failed_image=None, server_error=None, background=False,
                  linked_prefix=False, cef_cache=None, pe_cache=None, cef_ime=None, owned_frame=None,
                  legacy_ime=None, session='wayland', desktop='ubuntu:GNOME', xim='@im=ibus', busy_image='WXWork.exe',
-                 meeting_dpi=None, incomplete=False):
+                 meeting_dpi=None, incomplete=False, invalid_locale=False, missing_locale=False):
         data = root / name
         prefix = data / 'wecom/prefix'
         (prefix / app).parent.mkdir(parents=True)
@@ -142,6 +144,12 @@ if sys.argv[1:3] == ['reg', 'query']:
         env.pop('WECOM_WINE_INITIAL_THREAD_DPI', None)
         env.update(DISPLAY=':100', XDG_RUNTIME_DIR=str(data), XDG_SESSION_TYPE=session,
                    XDG_CURRENT_DESKTOP=desktop, XMODIFIERS=xim)
+        if invalid_locale:
+            env['LC_ALL'] = 'wecom-test-unavailable.UTF-8'
+        if missing_locale:
+            empty = data / 'empty-locales'
+            empty.mkdir()
+            env['LOCPATH'] = str(empty)
         if cef_ime is not None:
             env['WECOM_CEF_IME_FIX'] = cef_ime
         if legacy_ime is not None:
@@ -190,6 +198,19 @@ if sys.argv[1:3] == ['reg', 'query']:
             assert len(launches) == (0 if expected else 1), events
             if launches:
                 launch = launches[0]
+                language = launch['locale']
+                assert language['LANG'] == language['LC_CTYPE'] == language['LC_MESSAGES'], language
+                assert language['LC_ALL'] is None, language
+                if missing_locale:
+                    assert language['LC_CTYPE'] == 'C.UTF-8', language
+                assert all(event['locale'] == language for event in wine), events
+                locale_env = env.copy()
+                locale_env.pop('LC_ALL', None)
+                locale_env.update({key: value for key, value in language.items() if value is not None})
+                assert subprocess.check_output(['locale', 'charmap'], env=locale_env).strip() == b'UTF-8', language
+                if mode == 'upgrade' and not busy:
+                    stamp = json.loads((prefix / '.wecom-display-fonts.json').read_text())
+                    assert stamp['locale'] == language['LC_CTYPE'], stamp
                 named = (mode != 'arch' and session == 'wayland' and 'GNOME' in desktop.split(':')
                          and xim == '@im=ibus' and os.access('/usr/libexec/ibus-x11', os.X_OK))
                 assert bool(launch['private_xim']) == named, (name, launch)
@@ -271,7 +292,8 @@ if sys.argv[1:3] == ['reg', 'query']:
                 if mode != 'upgrade':
                     assert registry == dpi_registry, events
             report.append({'case': name, 'passed': True, 'wine_calls': len(wine),
-                           'dpi_registry_calls': len(dpi_registry), 'exit_code': result.returncode})
+                           'dpi_registry_calls': len(dpi_registry), 'exit_code': result.returncode,
+                           'locale': launches[0]['locale'] if launches else None})
         finally:
             old_mapping.close()
             old_file.close()
@@ -296,6 +318,10 @@ if sys.argv[1:3] == ['reg', 'query']:
     run_case('incomplete-busy-prefix', 'upgrade', incomplete=True, busy=True)
     run_case('upgrade-server-error', 'upgrade', server_error=2)
     run_case('arch-idle', 'arch')
+    run_case('upgrade-invalid-locale', 'upgrade', invalid_locale=True)
+    run_case('arch-invalid-locale', 'arch', invalid_locale=True)
+    run_case('upgrade-no-chinese-locale', 'upgrade', missing_locale=True)
+    run_case('arch-no-chinese-locale', 'arch', missing_locale=True)
     run_case('ubuntu-cef-ime-disabled', 'ubuntu', cef_ime='0')
     run_case('arch-cef-ime-opt-in', 'arch', cef_ime='1')
     run_case('arch-frame-cef-ime-opt-in', 'arch', cef_ime='1', owned_frame='1')

@@ -92,7 +92,6 @@ report['test_sha256'] = {path.name: hashlib.sha256(path.read_bytes()).hexdigest(
 with desktop(qa, size='3200x2000', bare=True,
              second_monitor='3840x2160' if args.mixed_scale else None) as env:
     if args.mixed_scale:
-        assert env['DISPLAY'] != ':0'
         assert env['DBUS_SESSION_BUS_ADDRESS'] != os.environ.get('DBUS_SESSION_BUS_ADDRESS')
         connection = Gio.DBusConnection.new_for_address_sync(
             env['DBUS_SESSION_BUS_ADDRESS'], Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT |
@@ -143,7 +142,6 @@ with desktop(qa, size='3200x2000', bare=True,
     if old_auth is None: os.environ.pop('XAUTHORITY')
     else: os.environ['XAUTHORITY'] = old_auth
     assert display
-    assert env['DISPLAY'] != ':0'
     with ((output / f'{args.name}-ibus.log').open('w') as ibus_log,
           (output / f'{args.name}-wine.log').open('w') as wine_log):
         ibus = subprocess.Popen(['ibus-daemon', '--xim', '--single', '--emoji-extension=disable', '--cache=none',
@@ -196,8 +194,9 @@ with desktop(qa, size='3200x2000', bare=True,
             assert ready['event'] == 'ready', ready
             report['ready'] = ready
             report['launcher_process'] = app.pid
-            styles = re.findall(r'selected style (0x[0-9a-f]+)',
-                                (output / f'{args.name}-wine.log').read_text())
+            # Wine console output uses the Windows locale; XIM trace markers are ASCII.
+            styles = re.findall(rb'selected style (0x[0-9a-f]+)',
+                                (output / f'{args.name}-wine.log').read_bytes())
             assert styles, 'No selected XIM style was recorded'
             report['xim_styles'] = sorted({int(style, 16) for style in styles})
             preedit_bit = 4 if args.preedit == 'position' else 2
@@ -238,7 +237,11 @@ with desktop(qa, size='3200x2000', bare=True,
                      ('composition', 80, 110), ('maximize', 0, 0), ('restore', 0, 0),
                      ('move', 800, 300), ('composition', 210, 200), ('caret', 30, 240),
                      ('composition', 30, 240),
-                     ('tall', 70, 280), ('composition', 70, 280), ('area', 70, 280),
+                     ('composition-first', 56, 240), ('caret-first', 82, 240),
+                     ('composition-first', 30, 260),
+                     ('tall', 70, 280), ('composition-first', 96, 280),
+                     ('composition-first', 30, 300), ('caret-first', 56, 300),
+                     ('composition', 70, 280), ('area', 70, 280),
                      ('offset-area', 70, 280), ('offset-small-area', 70, 280),
                      ('small-area', 70, 280), ('force', 70, 280), ('maximize', 0, 0), ('restore', 0, 0),
                      ('move', 500, 200), ('composition', 180, 300), ('stale', 70, 280),
@@ -246,12 +249,24 @@ with desktop(qa, size='3200x2000', bare=True,
             if args.mixed_scale:
                 steps.extend([('screen', 1, 0), ('composition', 80, 120), ('caret', 80, 120),
                               ('composition', 80, 120), ('screen', 0, 0), ('composition', 80, 120)])
+            if args.preedit == 'position' and not args.candidate:
+                # A candidate request must not replace the server-rendered preedit insertion point.
+                steps.extend([('candidate', 70, 280), ('force', 90, 300)])
             if args.candidate:
                 steps.extend([('caret', 120, 160), ('composition', 120, 160), ('candidate', 120, 160),
-                              ('force', 120, 160), ('exclude', 120, 160),
-                              ('move', 600, 240), ('candidate', 180, 200)])
+                              ('force', 220, 180), ('caret', 240, 190), ('temporary-caret', 260, 210),
+                              ('composition-first', 280, 230), ('destroy', 300, 240),
+                              ('exclude', 120, 160), ('force', 220, 180),
+                              ('candidate-last-list', 160, 180), ('force', 260, 200), ('caret', 280, 210),
+                              ('move', 600, 240), ('candidate', 180, 200),
+                              ('fresh-context', 70, 100), ('inactive-candidate', 190, 210),
+                              ('inactive-composition', 380, 240),
+                              ('reentrant-composition', 100, 140),
+                              ('candidate', 200, 220), ('restore-context', 300, 260),
+                              ('reentrant-candidate', 210, 230), ('force', 310, 250)])
             anchor_uses_bottom = False
             caret_point = None
+            previous_expected = None
             for command, xvalue, yvalue in steps:
                 start = len(coordinates)
                 app.stdin.write(f'{command} {xvalue} {yvalue}\n'); app.stdin.flush()
@@ -259,19 +274,25 @@ with desktop(qa, size='3200x2000', bare=True,
                 time.sleep(.25)
                 if command == 'stale':
                     assert result['caret'] == result['hwnd'] and result['focus'] != result['hwnd'], result
-                if command in ('caret', 'tall'):
+                if command in ('caret', 'tall', 'composition-first', 'caret-first', 'temporary-caret',
+                               'fresh-context', 'restore-context'):
                     caret_point = (xvalue, yvalue)
                     anchor_uses_bottom = args.preedit == 'callbacks'
                 elif command == 'exclude':
                     anchor_uses_bottom = True
-                elif command in ('composition', 'force'):
-                    anchor_uses_bottom = args.preedit == 'callbacks' and caret_point == (xvalue, yvalue)
+                elif command in ('composition', 'force', 'reentrant-composition'):
+                    anchor_uses_bottom = args.preedit == 'callbacks' and caret_point is not None
                 elif command in ('blur', 'destroy', 'stale'):
                     caret_point = None
                     anchor_uses_bottom = False
                 elif command in ('area', 'small-area', 'offset-area', 'offset-small-area', 'candidate'):
                     anchor_uses_bottom = False
                 expected = result['lower_physical'] if anchor_uses_bottom else result['physical']
+                point_conversion_valid = result['lower_physical_valid' if anchor_uses_bottom else 'physical_valid']
+                explicit_candidate = args.preedit == 'callbacks' and result['candidate_valid']
+                if explicit_candidate:
+                    expected = result['candidate_physical']
+                    point_conversion_valid = result['candidate_converted']
                 native_x, native_y, native_child = C.c_int(), C.c_int(), C.c_ulong()
                 native_root, local_x, local_y = C.c_ulong(), C.c_int(), C.c_int()
                 width, height, border, depth = C.c_uint(), C.c_uint(), C.c_uint(), C.c_uint()
@@ -289,15 +310,32 @@ with desktop(qa, size='3200x2000', bare=True,
                                    native_y.value + expected[1] - anchor_origin[1]]
                 updates = coordinates[start:]
                 actual = updates[-1]['rect'][:2] if updates else None
+                if args.preedit == 'position' and command == 'candidate' and not updates:
+                    actual = coordinates[-1]['rect'][:2] if coordinates else None
+                inactive_context = command in ('inactive-candidate', 'inactive-composition')
+                if inactive_context and not updates:
+                    actual = coordinates[-1]['rect'][:2] if coordinates else None
+                allowed_positions = {tuple(native_expected)}
+                if command in ('move', 'maximize', 'restore', 'screen') and previous_expected:
+                    # A window move can notify both its old and its new native origin.
+                    allowed_positions.add(tuple(previous_expected))
+                stable_commands = ('composition-first', 'caret-first', 'reentrant-composition')
+                stable_updates = not (explicit_candidate or command in stable_commands) or (
+                    bool(updates) and all(tuple(update['rect'][:2]) in allowed_positions for update in updates))
                 report['cases'].append({'command': command, 'point': [xvalue, yvalue], 'application': result,
                                         'ibus_updates': updates, 'expected': native_expected, 'actual': actual,
                                         'win32_expected': expected,
                                         'native_origin': [native_x.value, native_y.value],
                                         'native_size': native_size,
                                         'native_client_size': native_client_size,
-                                        'passed': result['ok'] == 1 and actual == native_expected and
+                                        'stable_updates': stable_updates,
+                                        'point_conversion_valid': bool(point_conversion_valid),
+                                        'passed': result['ok'] == 1 and point_conversion_valid and
+                                                  actual == native_expected and stable_updates and
+                                                  (not inactive_context or not updates) and
                                                   native_client_size == result['root_client_size']})
                 assert native_client_size == result['root_client_size'], report['cases'][-1]
+                previous_expected = native_expected
             app.stdin.write('quit\n'); app.stdin.flush()
             app.wait(timeout=10)
             report['all_ibus_updates'] = coordinates

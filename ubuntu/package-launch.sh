@@ -5,11 +5,12 @@ export WECOM_SHARED_PE_IMAGE="${WECOM_SHARED_PE_IMAGE:-1}"
 unset WINEARCH WINESERVER WINELOADER WINELOADERNOEXEC WINEDLLPATH WINESERVERSOCKET WECOM_REUSE_DESKTOP
 # Wine regenerates locale-dependent font links when its ANSI codepage changes.
 # Configure and upgrade the prefix in the same locale as launch-wecom.sh.
+root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+wecom_locale=$(python3 "$root/template/wecom-compat/scripts/select-locale.py")
 unset LC_ALL
-export LANG=zh_CN.UTF-8 LC_CTYPE=zh_CN.UTF-8 LC_MESSAGES=zh_CN.UTF-8
+export LANG="$wecom_locale" LC_CTYPE="$wecom_locale" LC_MESSAGES="$wecom_locale"
 export WINE_NATIVE_FILE_DIALOGS="${WINE_NATIVE_FILE_DIALOGS:-1}"
 export WINE_NATIVE_FILE_MANAGER="${WINE_NATIVE_FILE_MANAGER:-1}"
-root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 state="${XDG_DATA_HOME:-$HOME/.local/share}/wecom"
 mkdir -p -m 700 -- "$state"
 exec 9>"$state/setup.lock"

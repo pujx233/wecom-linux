@@ -27,11 +27,15 @@ static void check(BOOL result, const char *operation)
 
 static void stage(const char *name, HWND window)
 {
+    RECT rect;
     pump(180);
-    printf("{\"stage\":\"%s\",\"xid\":%lu,\"foreground\":%lu,\"wm_xid\":%lu,\"hwnd\":%lu,\"active\":%lu}\n", name,
+    check(GetWindowRect(window, &rect), "query window rectangle");
+    printf("{\"stage\":\"%s\",\"xid\":%lu,\"foreground\":%lu,\"wm_xid\":%lu,\"hwnd\":%lu,\"active\":%lu,"
+           "\"win32_rect\":[%ld,%ld,%ld,%ld]}\n", name,
            (unsigned long)GetPropA(window, "__wine_x11_whole_window"),
            (unsigned long)GetForegroundWindow(), (unsigned long)GetPropA(window, "__wine_x11_wm_window"),
-           (unsigned long)window, (unsigned long)GetActiveWindow());
+           (unsigned long)window, (unsigned long)GetActiveWindow(),
+           rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
 }
 
 static void update_layered(HWND window, int left, int top, int width, int height)

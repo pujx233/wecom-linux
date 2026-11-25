@@ -13,6 +13,7 @@ import time
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--files', type=Path, required=True)
 parser.add_argument('--qa', type=Path, required=True)
+parser.add_argument('--locale-switch', action='store_true', help='Require Chinese-to-C.UTF-8 and return migration')
 args = parser.parse_args()
 files, qa = args.files.resolve(strict=True), args.qa.resolve()
 qa.mkdir(parents=True, exist_ok=False)
@@ -42,7 +43,9 @@ os.environ['WECOM_QA_ROOT'] = str(qa)
 
 
 def client_env(env):
-    result = env | {'LANG': 'zh_CN.UTF-8', 'LC_CTYPE': 'zh_CN.UTF-8', 'LC_MESSAGES': 'zh_CN.UTF-8'}
+    selector = files / 'template/wecom-compat/scripts/select-locale.py'
+    name = subprocess.check_output([sys.executable, str(selector)], env=env, text=True).strip()
+    result = env | {'LANG': name, 'LC_CTYPE': name, 'LC_MESSAGES': name}
     result.pop('LC_ALL', None)
     return result
 
@@ -91,6 +94,7 @@ def launch(env, capture, label, dpi, override=None, busy=False):
         capture(qa / (label + '.png'))
         settings = json.loads(stamp.read_text())
         assert settings['dpi'] == dpi, settings
+        assert settings['locale'] == client_env(env)['LC_CTYPE'], settings
         if busy:
             before = stamp.read_bytes()
             subprocess.run(['python3', str(files / 'configure-prefix.py'), str(files), str(prefix)],
@@ -144,6 +148,17 @@ for scale in (1, 2):
                 launch(env, capture, 'existing-prefix-font-repair', 96, override='auto')
                 glyphs(env, 'repaired-cjk', True)
                 assert hashlib.sha256(private.read_bytes()).hexdigest() == private_digest
+                if args.locale_switch:
+                    empty = qa / 'empty-locales'
+                    empty.mkdir()
+                    fallback = env | {'LOCPATH': str(empty)}
+                    assert client_env(env)['LC_CTYPE'] == 'zh_CN.UTF-8'
+                    assert client_env(fallback)['LC_CTYPE'] == 'C.UTF-8'
+                    launch(fallback, capture, 'locale-to-utf8', 96)
+                    glyphs(fallback, 'utf8-cjk', True)
+                    launch(env, capture, 'locale-back-to-chinese', 96)
+                    glyphs(env, 'chinese-cjk-after-migration', True)
+                    assert hashlib.sha256(private.read_bytes()).hexdigest() == private_digest
             else:
                 launch(env, capture, 'automatic-200-percent', 192)
                 for key in (r'HKCU\Control Panel\Desktop', r'HKCU\Software\Wine\Fonts'):
