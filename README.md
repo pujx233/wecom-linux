@@ -32,7 +32,7 @@ DEB 修订 **5.0.13.6005-8~rc3**，面向 amd64，glibc 最低要求为 2.38。
 
 ```sh
 sha256sum -c SHA256SUMS
-sudo apt install ./com.qq.wecom.spark_5.0.13.6005-8~rc3_amd64.deb
+sudo apt install ./com.qq.wecom.spark_5.0.13.6005-8.rc3_amd64.deb
 ```
 
 在应用菜单启动“企业微信”。升级沿用原账号和聊天数据，用户目录位于 `~/.local/share/wecom/prefix`。
